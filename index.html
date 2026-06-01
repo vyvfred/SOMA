@@ -623,6 +623,7 @@ tr.subtotal td{
       <span id="userNom"></span>
       <span class="rolePill" id="userRolePill"></span>
     </div>
+    <button id="btnSave" class="ok" style="display:none;font-size:12px;padding:7px 14px" onclick="save()">💾 Sauvegarder</button>
     <button class="secondary" onclick="openChangePwd()" style="font-size:12px;padding:7px 12px">Changer MDP</button>
     <button class="secondary" onclick="doLogout()">Déconnexion</button>
   </div>
@@ -665,22 +666,48 @@ tr.subtotal td{
     </div>
   </div>
   <div class="card">
-    <h2>1. Analyse & objectif annuel</h2>
+    <h2>1. Analyse &amp; objectif annuel</h2>
+    <p class="hint" style="margin-bottom:18px">👋 Bienvenue ! Commencez par renseigner les données historiques de votre agence, puis fixez vos objectifs pour 2027. Ces informations servent de base à tous les calculs de l'outil. Certains champs peuvent déjà être pré-remplis par le contrôleur de gestion — vérifiez et complétez si nécessaire.</p>
     <div class="grid c3">
-      <div><h3>Réalisé</h3><label>CA 2026</label><input id="histCA" type="number"><label>TXR réalisé</label><input id="histTXR" type="number"><label>Absentéisme moyen cible %</label><input id="targetAbsRate" type="number"></div>
-      <div><h3>Perspectives</h3><textarea id="perspectives" rows="7"></textarea></div>
-      <div><h3>Objectif 2027</h3><label>Objectif CA</label><input id="targetCA" type="number"><label>TXR cible</label><input id="targetTXR" type="number"><label>Zone vacances</label><select id="schoolZone"><option>A</option><option>B</option><option>C</option></select></div>
+      <div>
+        <h3>Réalisé</h3>
+        <p class="hint" style="margin-bottom:12px">Renseignez les chiffres réels de votre agence. Le TXR est le taux de recette par heure (CA ÷ heures travaillées).</p>
+        <label>CA 2025 <span style="color:var(--ink3);font-weight:400">(si disponible)</span></label>
+        <input id="histCA2025" type="text" placeholder="ex : 1 850 000">
+        <label>CA 2026</label>
+        <input id="histCA" type="text" placeholder="ex : 2 200 000">
+        <label>TXR moyen réalisé 2026 <span style="color:var(--ink3);font-weight:400">(€/h)</span></label>
+        <input id="histTXR" type="text" placeholder="ex : 42">
+        <label>Absentéisme moyen cible % <span style="color:var(--ink3);font-weight:400">(maladie)</span></label>
+        <input id="targetAbsRate" type="text" placeholder="ex : 7">
+      </div>
+      <div>
+        <h3>Perspectives</h3>
+        <p class="hint" style="margin-bottom:12px">Décrivez en quelques lignes les évolutions prévues pour 2027 : nouveaux contrats, changements d'équipe, projets particuliers...</p>
+        <textarea id="perspectives" rows="9" placeholder="Ex : Renouvellement du contrat EHPAD en janvier, recrutement d'un CDD saisonnier prévu en juillet, travaux de locaux au T2..."></textarea>
+      </div>
+      <div>
+        <h3>Objectif 2027</h3>
+        <p class="hint" style="margin-bottom:12px">Fixez vos objectifs pour 2027. Le TXR cible est généralement proche du TXR réalisé 2026, sauf évolution connue.</p>
+        <label>Objectif CA 2027</label>
+        <input id="targetCA" type="text" placeholder="ex : 2 300 000">
+        <label>TXR cible 2027 <span style="color:var(--ink3);font-weight:400">(€/h)</span></label>
+        <input id="targetTXR" type="text" placeholder="ex : 43">
+        <label>Zone vacances scolaires</label>
+        <select id="schoolZone"><option>A</option><option>B</option><option>C</option></select>
+        <p class="hint" style="margin-top:8px">La zone scolaire est pré-remplie selon votre agence. Ne la modifiez que si nécessaire.</p>
+      </div>
     </div>
   </div>
   <div class="card"><div class="kpis" id="objectiveKpis"></div></div>
 </section>
 
-<section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint">Semaine, vacances, samedi, dimanche, férié par mois et par activité.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan"></table></div><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></section>
+<section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Commencez par l'activité Sanitaire qui représente généralement l'essentiel de votre CA. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan"></table></div><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></section>
 <section id="cal" class="panel"><div class="card"><h2>3. Calendrier intelligent</h2><label>Mois</label><select id="monthSel" style="max-width:220px"></select><br><br><div class="calendar" id="calGrid"></div></div><div class="card"><h3>Synthèse hebdomadaire</h3><div class="tablewrap"><table id="weekCA"></table></div></div></section>
-<section id="team" class="panel"><div class="card"><h2>4. Équipe & contrats</h2><button onclick="addEmployee()">Ajouter salarié</button><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
-<section id="presence" class="panel"><div class="card"><h2>5. CP, maladie & présence</h2><h3>Maladie par mois</h3><div class="tablewrap"><table id="sickTable"></table></div><div id="sickAlert"></div><br><div class="tablewrap"><table id="presenceTable"></table></div></div></section>
-<section id="hs" class="panel"><div class="card"><h2>6. Tensions RH & HS</h2><div class="kpis" id="hsKpis"></div><br><div class="tablewrap"><table id="hsTable"></table></div></div></section>
-<section id="guide" class="panel"><div class="card"><h2>7. Guide décision</h2><div id="guideBox"></div></div></section>
+<section id="team" class="panel"><div class="card"><h2>4. Équipe &amp; contrats</h2><p class="hint" style="margin-bottom:14px">👥 <b>Renseignez tous vos salariés</b> présents au 1er janvier 2027 : CDI, CDD, apprentis et intérimaires réguliers. Le nombre d'heures hebdomadaires est celui du contrat (35h, 39h...). Ces données alimentent le calcul des heures disponibles et des heures supplémentaires.</p><button onclick="addEmployee()">Ajouter salarié</button><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
+<section id="presence" class="panel"><div class="card"><h2>5. CP, maladie &amp; présence</h2><p class="hint" style="margin-bottom:14px">🏖 <b>Planifiez les absences de votre équipe.</b> Saisissez le taux de maladie mensuel estimé (en % des heures contractuelles) et répartissez les heures de congés payés semaine par semaine. L'outil calcule automatiquement les heures réellement disponibles après déduction des absences.</p><h3>Maladie par mois</h3><div class="tablewrap"><table id="sickTable"></table></div><div id="sickAlert"></div><br><div class="tablewrap"><table id="presenceTable"></table></div></div></section>
+<section id="hs" class="panel"><div class="card"><h2>6. Tensions RH &amp; HS</h2><p class="hint" style="margin-bottom:14px">⚡ <b>Visualisez les tensions sur votre équipe.</b> Ce tableau compare semaine par semaine les heures nécessaires pour atteindre votre objectif de CA (CA ÷ TXR cible) et les heures disponibles après absences. Les semaines en rouge nécessitent des heures supplémentaires — vérifiez que le volume annuel reste raisonnable.</p><div class="kpis" id="hsKpis"></div><br><div class="tablewrap"><table id="hsTable"></table></div></div></section>
+<section id="guide" class="panel"><div class="card"><h2>7. Guide décision</h2><p class="hint" style="margin-bottom:14px">🧭 <b>L'outil analyse votre budget et vous alerte sur les points d'attention.</b> Chaque recommandation est actionnable — cliquez sur les étapes concernées pour corriger. Une fois satisfait de votre budget, cliquez sur <b>Soumettre au DR</b> depuis l'étape 1.</p><div id="guideBox"></div></div></section>
 
 <!-- PANEL REFERENCES AGENCES (CG) -->
 <section id="refagences" class="panel">
@@ -854,6 +881,17 @@ const q=id=>document.getElementById(id);
 const euro=n=>(Number(n)||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
 const pct=n=>(Number(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
 const inp=(v,cb,type='number')=>`<input type="${type}" value="${v??''}" onchange="${cb}(this.value)">`;
+const fmtNum = n => n ? Number(n).toLocaleString('fr-FR') : '';
+function parseFr(s) { return parseFloat((s+'').replace(/\s/g,'').replace(',','.')) || 0; }
+// Formater les champs montants à la perte du focus
+function attachFmt(id) {
+  const el = q(id); if(!el) return;
+  el.addEventListener('focus', () => { el.value = el.value.replace(/\s/g,''); });
+  el.addEventListener('blur', () => {
+    const n = parseFr(el.value);
+    if(n > 999) el.value = n.toLocaleString('fr-FR');
+  });
+}
 let S={role:'rex',active:0,month:0,agencies:[]};
 
 // ═══════════════════════════════════════════════
@@ -938,6 +976,7 @@ function setupUI() {
   const role = PROFILE.role;
   // Afficher/masquer le switch de rôle (uniquement pour CG)
   if (q('roleSwitchZone')) q('roleSwitchZone').style.display = role === 'cg' ? '' : 'none';
+  if (q('btnSave')) q('btnSave').style.display = ['rex','cg','admin'].includes(role) ? '' : 'none';
   if (role === 'rex') {
     S.role = 'rex';
     buildNav();
@@ -1391,11 +1430,13 @@ function gaugeRow(label,value){let v=Math.max(0,Math.min(100,Number(value)||0));
 
 function bind(){
   let a=A();
-  ['histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','costHour','hsCostRate'].forEach(id=>{
+  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','costHour','hsCostRate'].forEach(id=>{
     let e=q(id);if(!e)return;
     e.value=a[id]??'';
-    e.oninput=ev=>{a[id]=(id==='perspectives'||id==='schoolZone')?ev.target.value:+ev.target.value;if(id==='schoolZone')genCal(a);render()}
+    e.oninput=ev=>{a[id]=(id==='perspectives'||id==='schoolZone')?ev.target.value:parseFr(ev.target.value);if(id==='schoolZone')genCal(a);render()}
   });
+  // Attacher formatage milliers sur les champs montants
+  ['histCA2025','histCA','targetCA'].forEach(attachFmt);
   if(q('agencySel')){
     // REX : uniquement son agence. CG : toutes.
     if(PROFILE && PROFILE.role==='rex'){
