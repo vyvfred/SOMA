@@ -1,0 +1,1770 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Budget 2027 — V48 Supabase</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Caveat:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+/* ── VARIABLES ── */
+:root{
+  --paper:#F7F3EC;
+  --paper2:#EDE8DF;
+  --paper3:#FFFEFB;
+  --ink:#1E1B16;
+  --ink2:#7A6F62;
+  --ink3:#B5A99A;
+  --border:#D5CEC4;
+  --red:#C0392B;
+  --blue:#2C3E7A;
+  --ochre:#E8A020;
+  --green:#27715A;
+  --green2:#E8F5EE;
+  --red2:#FDF0EE;
+  --blue2:#EEF1FA;
+  --ochre2:#FDF5E6;
+  --shadow:rgba(30,27,22,.12);
+}
+
+/* ── RESET & BASE ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background-color:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  color:var(--ink);
+  min-height:100vh;
+}
+
+/* ── AUTH SCREEN ── */
+#authScreen{
+  position:fixed;inset:0;
+  background:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  display:grid;
+  grid-template-columns:1fr 520px;
+  z-index:100;
+}
+.authLeft{
+  display:flex;flex-direction:column;justify-content:center;
+  padding:80px 72px;
+}
+.authLeft h1{
+  font-family:'Playfair Display',serif;
+  font-size:52px;font-weight:900;
+  color:var(--ink);letter-spacing:-2px;line-height:1.1;
+  margin-bottom:16px;
+}
+.authLeft h1 span{color:var(--red);}
+.authLeft p{
+  font-family:'Caveat',cursive;
+  font-size:20px;color:var(--ink2);
+  line-height:1.5;max-width:380px;
+}
+.authLeft .authTagline{
+  margin-top:48px;display:flex;flex-direction:column;gap:12px;
+}
+.authLeft .authTag{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--ink2);
+}
+.authLeft .authTag span{
+  width:28px;height:28px;border-radius:8px;
+  background:var(--paper3);border:1.5px solid var(--border);
+  display:grid;place-items:center;font-size:14px;
+  box-shadow:2px 2px 0 var(--border);
+}
+.authCard{
+  background:var(--paper3);
+  border-left:2px solid var(--border);
+  border-radius:0;
+  padding:64px 52px;
+  width:100%;
+  display:flex;flex-direction:column;justify-content:center;
+  box-shadow:-8px 0 32px var(--shadow);
+  position:relative;
+  min-height:100vh;
+}
+.authCard::before{
+  content:'VYV Ambulance';
+  font-family:'Caveat',cursive;
+  font-size:14px;
+  color:var(--ink3);
+  position:absolute;top:28px;right:28px;
+  transform:rotate(1.5deg);
+}
+.authLogo{
+  font-family:'Playfair Display',serif;
+  font-size:32px;
+  font-weight:900;
+  color:var(--ink);
+  margin-bottom:4px;
+  letter-spacing:-1px;
+}
+.authLogo span{color:var(--red);}
+.authCard p{font-size:13px;color:var(--ink2);margin:0 0 28px;font-family:'Caveat',cursive;font-size:16px;}
+.authCard label{
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--ink2);
+  margin-bottom:6px;
+}
+.authCard input{
+  width:100%;
+  border:none;
+  border-bottom:2px solid var(--border);
+  border-radius:0;
+  padding:10px 4px;
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;
+  background:transparent;
+  color:var(--ink);
+  outline:none;
+  transition:border-color .2s;
+  margin-bottom:20px;
+}
+.authCard input:focus{border-bottom-color:var(--red);}
+.authCard button{
+  width:100%;
+  margin-top:8px;
+  background:var(--ink);
+  color:var(--paper);
+  border:none;
+  border-radius:14px;
+  padding:14px;
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  letter-spacing:.04em;
+  transition:background .2s,transform .1s;
+  box-shadow:0 4px 0 var(--ink2);
+}
+.authCard button:hover{background:var(--red);box-shadow:0 4px 0 #8B1A12;}
+.authCard button:active{transform:translateY(2px);box-shadow:0 2px 0 var(--ink2);}
+.authErr{color:var(--red);font-size:13px;margin-top:12px;min-height:18px;font-family:'Caveat',cursive;font-size:15px;}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:10;
+  background:var(--paper3);
+  border-bottom:2px solid var(--border);
+  padding:14px 24px;
+  display:flex;align-items:center;gap:16px;
+  box-shadow:0 2px 12px var(--shadow);
+}
+.logo{
+  width:48px;height:48px;
+  border-radius:14px;
+  display:grid;place-items:center;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:'Playfair Display',serif;
+  font-weight:900;font-size:16px;
+  border:2px solid var(--ink);
+  box-shadow:3px 3px 0 var(--border);
+}
+h1{
+  font-family:'Playfair Display',serif;
+  font-size:20px;font-weight:900;
+  color:var(--ink);letter-spacing:-.5px;
+}
+.headerCenter{display:flex;flex-direction:column;gap:2px;}
+.topMeta{font-size:12px;color:var(--ink2);font-family:'Caveat',cursive;font-size:14px;}
+.actions{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.userBadge{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);}
+.userBadge .rolePill{
+  padding:4px 12px;border-radius:999px;
+  font-size:11px;font-weight:600;
+  background:var(--ink);color:var(--paper);
+  font-family:'DM Sans',sans-serif;
+  letter-spacing:.04em;
+}
+
+/* ── BUTTONS ── */
+button{
+  border:2px solid var(--ink);
+  border-radius:12px;
+  padding:9px 16px;
+  font-family:'DM Sans',sans-serif;
+  font-weight:600;font-size:13px;
+  cursor:pointer;
+  background:var(--ink);
+  color:var(--paper);
+  box-shadow:3px 3px 0 var(--border);
+  transition:transform .1s,box-shadow .1s;
+  letter-spacing:.02em;
+}
+button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--border);}
+button:active{transform:translate(1px,1px);box-shadow:2px 2px 0 var(--border);}
+button.secondary{
+  background:var(--paper3);color:var(--ink);
+  border-color:var(--border);
+  box-shadow:3px 3px 0 var(--border);
+}
+button.danger{background:var(--red2);color:var(--red);border-color:var(--red);box-shadow:3px 3px 0 #f0bbbb;}
+button.ok{background:var(--green2);color:var(--green);border-color:var(--green);box-shadow:3px 3px 0 #b8e0cc;}
+button.warn{background:var(--ochre2);color:#8B5E00;border-color:var(--ochre);box-shadow:3px 3px 0 #f1d08a;}
+
+/* ── ROLE SWITCH ── */
+.roleSwitch{display:flex;gap:6px;align-items:center;}
+.roleBtn{
+  border:2px solid var(--border)!important;
+  background:var(--paper3)!important;
+  color:var(--ink2)!important;
+  box-shadow:2px 2px 0 var(--border)!important;
+}
+.roleBtn.active{
+  background:var(--ink)!important;color:var(--paper)!important;
+  border-color:var(--ink)!important;
+  box-shadow:3px 3px 0 var(--ink2)!important;
+}
+
+/* ── STATUTS ── */
+.statut{
+  display:inline-block;
+  padding:4px 12px;
+  border-radius:4px;
+  font-size:11px;font-weight:700;
+  font-family:'DM Sans',sans-serif;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  border:1.5px solid currentColor;
+  transform:rotate(-0.5deg);
+  box-shadow:2px 2px 0 var(--border);
+}
+.statut.brouillon{background:#F5F5F0;color:var(--ink3);border-color:var(--border);}
+.statut.soumis_dr,.statut.soumis_df,.statut.soumis_dg,.statut.soumis_pdg{background:var(--blue2);color:var(--blue);}
+.statut.valide_dr,.statut.valide_df,.statut.valide_dg,.statut.valide_pdg{background:var(--green2);color:var(--green);}
+.statut.refuse_dr,.statut.refuse_df,.statut.refuse_dg,.statut.refuse_pdg{background:var(--red2);color:var(--red);}
+.statut.complement_dr,.statut.complement_df{background:var(--ochre2);color:#8B5E00;}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 77px);}
+
+/* ── SIDEBAR ── */
+nav{
+  padding:20px 12px;
+  border-right:3px solid var(--border);
+  background:var(--paper2);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  position:relative;
+}
+nav::after{
+  content:'';
+  position:absolute;top:0;right:-1px;bottom:0;width:1px;
+  background:linear-gradient(to bottom,transparent,var(--border),transparent);
+}
+.navgroup{
+  font-family:'Caveat',cursive;
+  font-size:16px;font-weight:700;
+  color:var(--ink2);
+  margin:16px 8px 8px;
+  padding-bottom:6px;
+  border-bottom:1.5px dashed var(--border);
+}
+.navbtn{
+  width:100%;text-align:left;
+  border:none!important;
+  background:transparent!important;
+  color:var(--ink2)!important;
+  margin-bottom:3px;
+  padding:8px 12px;
+  border-radius:10px;
+  font-family:'DM Sans',sans-serif!important;
+  font-size:13px!important;
+  font-weight:400!important;
+  box-shadow:none!important;
+  transition:all .15s;
+  display:flex;align-items:center;gap:8px;
+}
+.navbtn:hover{
+  background:var(--paper3)!important;
+  color:var(--ink)!important;
+  transform:translateX(2px) !important;
+  box-shadow:none!important;
+}
+.navbtn.active{
+  background:var(--paper3)!important;
+  color:var(--ink)!important;
+  font-weight:600!important;
+  border-left:3px solid var(--red)!important;
+  padding-left:9px;
+  box-shadow:2px 2px 0 var(--border)!important;
+}
+.navbtn:active{transform:none!important;}
+
+/* ── MAIN ── */
+main{padding:28px 32px;}
+.panel{display:none;}.panel.active{display:block;}
+
+/* ── CARDS ── */
+.card{
+  background:var(--paper3);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:24px 28px;
+  box-shadow:5px 6px 0 var(--border);
+  margin-bottom:20px;
+  position:relative;
+}
+
+/* ── TYPOGRAPHY ── */
+h2{
+  font-family:'Playfair Display',serif;
+  font-size:26px;font-weight:900;
+  color:var(--ink);
+  margin-bottom:16px;
+  letter-spacing:-.5px;
+}
+h3{
+  font-family:'Playfair Display',serif;
+  font-size:16px;font-weight:700;
+  color:var(--red);
+  margin-bottom:10px;
+}
+.hint{font-size:13px;color:var(--ink2);line-height:1.55;font-style:italic;}
+.sub{font-size:13px;color:var(--ink2);}
+
+/* ── FORMS ── */
+.grid{display:grid;gap:16px;}
+.c2{grid-template-columns:repeat(2,1fr);}
+.c3{grid-template-columns:repeat(3,1fr);}
+label{
+  display:block;
+  font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;
+  color:var(--ink2);margin-bottom:6px;
+}
+input,select,textarea{
+  width:100%;
+  border:1.5px solid var(--border);
+  border-radius:10px;
+  padding:9px 12px;
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+  background:var(--paper);
+  color:var(--ink);
+  outline:none;
+  transition:border-color .2s;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--red);background:var(--paper3);}
+
+/* ── KPIs ── */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;}
+.kpi{
+  border:1.5px solid var(--border);
+  border-radius:16px;
+  padding:16px 14px;
+  background:var(--paper3);
+  box-shadow:3px 4px 0 var(--border);
+  position:relative;
+  overflow:hidden;
+}
+.kpi::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--red);
+  opacity:.5;
+}
+.kpi .label{
+  font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;
+  color:var(--ink2);margin-bottom:8px;
+}
+.kpi .value{
+  font-family:'DM Mono',monospace;
+  font-size:18px;font-weight:500;
+  color:var(--ink);line-height:1.2;
+}
+.kpi .note{
+  font-family:'Caveat',cursive;
+  font-size:13px;color:var(--ink2);margin-top:4px;
+}
+
+/* ── TABLES ── */
+.tablewrap{overflow:auto;max-height:74vh;border-radius:16px;border:1.5px solid var(--border);box-shadow:4px 5px 0 var(--border);}
+table{width:100%;border-collapse:collapse;background:var(--paper3);}
+th,td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:12px;font-family:'DM Sans',sans-serif;}
+th{
+  position:sticky;top:0;
+  background:var(--paper2);
+  color:var(--ink);
+  font-weight:700;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  z-index:2;
+  border-bottom:2px solid var(--border);
+}
+.num{text-align:right;font-family:'DM Mono',monospace;}
+tr:nth-child(even) td{background:#FAF7F2;}
+tr:hover td{background:#F0EBE2!important;transition:background .1s;}
+tr.subtotal td{
+  background:var(--paper2)!important;
+  font-weight:700;
+  color:var(--ink);
+  border-top:1.5px solid var(--border);
+  border-bottom:1.5px solid var(--border);
+  font-family:'DM Mono',monospace;
+}
+.locked{background:#F5F2EC!important;color:var(--ink2)!important;font-family:'DM Mono',monospace;}
+.ok{color:var(--green);font-weight:700;}
+.warn{color:#8B5E00;font-weight:700;}
+.bad{color:var(--red);font-weight:700;}
+
+/* ── CALENDAR ── */
+.calendar{display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;}
+.day{
+  min-height:110px;
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+  background:var(--paper3);
+  box-shadow:2px 3px 0 var(--border);
+  transition:transform .1s;
+}
+.day:hover{transform:translateY(-2px);box-shadow:2px 5px 0 var(--border);}
+.day.vac{background:#FFFAEF;border-color:#E8C878;}
+.day.ferie{background:#FEF0EE;border-color:#E8A090;}
+.day.empty{opacity:.3;}
+.dh{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.dt{font-family:'Playfair Display',serif;font-weight:700;font-size:15px;color:var(--ink);}
+.small{font-size:10px;color:var(--ink2);font-family:'Caveat',cursive;font-size:12px;}
+.tot{
+  margin-top:6px;border-top:1px dashed var(--border);padding-top:5px;
+  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--blue);
+}
+
+/* ── ALERTS / POST-ITS ── */
+.alert{
+  padding:14px 16px;
+  border-radius:4px;
+  border-left:4px solid var(--blue);
+  background:var(--blue2);
+  margin-bottom:10px;
+  position:relative;
+  box-shadow:3px 3px 0 rgba(44,62,122,.12);
+}
+.critique{border-left-color:var(--red);background:var(--red2);}
+.warning{border-left-color:var(--ochre);background:var(--ochre2);}
+
+/* ── BADGES ── */
+.badgeFixe{
+  display:inline-flex;padding:3px 9px;border-radius:4px;
+  background:var(--blue2);color:var(--blue);
+  border:1.5px solid var(--blue);font-size:11px;font-weight:700;
+  font-family:'DM Sans',sans-serif;letter-spacing:.04em;
+  transform:rotate(-.3deg);
+}
+.badgeVar{
+  display:inline-flex;padding:3px 9px;border-radius:4px;
+  background:var(--ochre2);color:#8B5E00;
+  border:1.5px solid var(--ochre);font-size:11px;font-weight:700;
+  font-family:'DM Sans',sans-serif;letter-spacing:.04em;
+  transform:rotate(.3deg);
+}
+
+/* ── AUDIT ── */
+.auditGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+.auditItem{
+  border:1.5px solid var(--border);border-radius:14px;
+  padding:14px;background:var(--paper3);
+  box-shadow:3px 4px 0 var(--border);
+}
+.auditItem b{display:block;font-family:'DM Mono',monospace;font-size:17px;color:var(--ink);margin-top:4px;}
+.alertLine{
+  padding:12px 14px;border-radius:4px;
+  border-left:4px solid var(--border);
+  background:var(--paper3);margin-bottom:8px;font-size:13px;
+  box-shadow:2px 2px 0 var(--border);
+}
+.alertLine.info{background:var(--blue2);border-left-color:var(--blue);color:var(--blue);}
+.alertLine.warning{background:var(--ochre2);border-left-color:var(--ochre);color:#8B5E00;}
+.alertLine.critique{background:var(--red2);border-left-color:var(--red);color:var(--red);}
+
+/* ── CHARTS ── */
+.chartGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.chartBox{
+  border:1.5px solid var(--border);border-radius:18px;
+  background:var(--paper3);padding:18px;min-height:280px;
+  box-shadow:4px 5px 0 var(--border);
+}
+.chartTitle{
+  font-family:'Playfair Display',serif;
+  font-weight:700;font-size:15px;
+  color:var(--ink);margin-bottom:12px;
+}
+.barChart{display:flex;align-items:end;gap:16px;height:210px;border-left:1.5px solid var(--border);border-bottom:1.5px solid var(--border);padding:10px 10px 0;}
+.barGroup{flex:1;display:flex;align-items:end;gap:5px;justify-content:center;height:100%;position:relative;}
+.bar{width:26px;border-radius:6px 6px 0 0;background:var(--ink);min-height:2px;position:relative;}
+.bar.b2026{background:var(--ink3);}
+.bar.obj{background:var(--ochre);}
+.bar.budget{background:var(--green);}
+.barLabel{position:absolute;bottom:-22px;font-size:10px;color:var(--ink2);text-align:center;width:100%;left:0;font-family:'Caveat',cursive;font-size:12px;}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:24px;font-family:'Caveat',cursive;font-size:14px;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.sw{width:12px;height:12px;border-radius:3px;background:var(--ink);}
+.sw.g{background:var(--ink3);}.sw.o{background:var(--ochre);}.sw.v{background:var(--green);}
+.lineMini{height:210px;display:flex;align-items:end;gap:4px;border-left:1.5px solid var(--border);border-bottom:1.5px solid var(--border);padding:10px 6px 0;}
+.lineBar{flex:1;border-radius:4px 4px 0 0;background:var(--green);min-height:2px;}
+.gauge{height:16px;background:var(--paper2);border:1px solid var(--border);border-radius:999px;overflow:hidden;}
+.gaugeFill{height:100%;background:var(--red);border-radius:999px;}
+.ratioRow{display:grid;grid-template-columns:180px 1fr 80px;gap:10px;align-items:center;margin:14px 0;font-size:13px;}
+
+/* ── VALIDATION ── */
+.validBox{
+  border:1.5px solid var(--border);border-radius:16px;
+  padding:20px 24px;background:var(--paper3);margin-bottom:14px;
+  box-shadow:4px 5px 0 var(--border);
+}
+.validActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);}
+.histItem{
+  border-left:3px solid var(--border);padding:8px 14px;
+  margin-bottom:8px;font-size:13px;border-radius:0 8px 8px 0;
+}
+.histItem.valide{border-left-color:var(--green);background:var(--green2);}
+.histItem.refuse{border-left-color:var(--red);background:var(--red2);}
+.histItem.complement{border-left-color:var(--ochre);background:var(--ochre2);}
+.histItem.orientation{border-left-color:var(--blue);background:var(--blue2);}
+
+/* ── CONSOLIDATION ── */
+.consolRow{
+  display:grid;grid-template-columns:180px 120px 150px 130px 130px 120px;
+  gap:10px;align-items:center;padding:10px 14px;
+  border-bottom:1px solid var(--border);font-size:13px;
+}
+.consolRow.header{
+  background:var(--paper2);font-weight:700;
+  border-radius:12px 12px 0 0;font-size:11px;
+  text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);
+}
+
+/* ── MODAL ── */
+.modal{position:fixed;inset:0;background:rgba(30,27,22,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+.modalCard{
+  background:var(--paper3);border:1.5px solid var(--border);
+  border-radius:22px;padding:32px 36px;width:500px;
+  box-shadow:8px 10px 0 var(--border),0 24px 60px rgba(30,27,22,.2);
+}
+.modalCard h3{
+  font-family:'Playfair Display',serif;font-size:20px;font-weight:900;
+  margin-bottom:16px;color:var(--ink);
+}
+.modalCard textarea{height:110px;resize:vertical;}
+.modalActions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+
+/* ── LOADING ── */
+.loading{
+  text-align:center;padding:48px;color:var(--ink2);
+  font-family:'Caveat',cursive;font-size:18px;
+}
+
+/* ── FOOTER ── */
+.footer{
+  text-align:center;color:var(--ink3);padding:24px;
+  font-family:'Caveat',cursive;font-size:15px;
+  border-top:1px dashed var(--border);margin-top:8px;
+}
+</style></head><body>
+
+<!-- ECRAN DE CONNEXION -->
+<div id="authScreen">
+  <div class="authLeft">
+    <h1>Budget<br><span>2027</span></h1>
+    <p>Outil de construction budgétaire<br>réseau VYV Ambulance</p>
+    <div class="authTagline">
+      <div class="authTag"><span>📋</span>Saisie guidée en 10 étapes</div>
+      <div class="authTag"><span>✅</span>Circuit de validation intégré</div>
+      <div class="authTag"><span>📊</span>Consolidation réseau en temps réel</div>
+      <div class="authTag"><span>🔒</span>Accès sécurisé par rôle</div>
+    </div>
+  </div>
+  <div class="authCard">
+    <h2 style="font-family:'Playfair Display',serif;font-size:24px;font-weight:900;margin-bottom:6px">Connexion</h2>
+    <p style="font-family:'Caveat',cursive;font-size:16px;color:var(--ink2);margin-bottom:32px">Accédez à votre espace de travail</p>
+    <label>Email</label>
+    <input type="email" id="authEmail" placeholder="prenom.nom@vyv-ambulance.com">
+    <label>Mot de passe</label>
+    <input type="password" id="authPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()" style="width:100%;margin-top:8px">Se connecter</button>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="showForgot()" style="font-size:12px;border:none;background:transparent;box-shadow:none;color:var(--ink2);text-decoration:underline;cursor:pointer;padding:0">Mot de passe oublié ?</button>
+    </div>
+    <div id="forgotZone" style="display:none;margin-top:20px;padding-top:20px;border-top:1px dashed var(--border)">
+      <p style="font-family:'Caveat',cursive;font-size:15px;color:var(--ink2);margin-bottom:12px">Saisissez votre email pour recevoir un lien de réinitialisation.</p>
+      <label>Email</label>
+      <input type="email" id="forgotEmail" placeholder="prenom.nom@vyv-ambulance.com">
+      <button onclick="doForgot()" style="width:100%;margin-top:8px">Envoyer le lien</button>
+    </div>
+    <div class="authErr" id="authErr"></div>
+  </div>
+</div>
+
+<!-- APP PRINCIPALE (masquée jusqu'à connexion) -->
+<div id="appWrapper" style="display:none">
+
+<header>
+  <div class="logo">B27</div>
+  <div class="headerCenter">
+    <h1>Budget 2027</h1>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="topMeta" id="topAgencyMeta">Aucune agence sélectionnée</div>
+      <button id="btnChangeAgency" class="secondary" style="display:none;padding:4px 10px;font-size:12px;border-radius:8px" onclick="changeAgency()">Changer</button>
+    </div>
+  </div>
+  <div class="actions">
+    <div id="roleSwitchZone" class="roleSwitch" style="display:none">
+      <button id="rRex" class="roleBtn" onclick="setRole('rex')">REX exploitation</button>
+      <button id="rCG" class="roleBtn" onclick="setRole('cg')">Contrôleur de gestion</button>
+    </div>
+    <div class="userBadge">
+      <span id="userNom"></span>
+      <span class="rolePill" id="userRolePill"></span>
+    </div>
+    <button id="btnSave" class="ok" style="display:none;font-size:12px;padding:7px 14px" onclick="save()">💾 Sauvegarder</button>
+    <button class="secondary" onclick="openChangePwd()" style="font-size:12px;padding:7px 12px">Changer MDP</button>
+    <button class="secondary" onclick="doLogout()">Déconnexion</button>
+  </div>
+</header>
+
+<!-- MODAL CHANGEMENT MDP -->
+<div class="modal" id="changePwdModal" style="display:none">
+  <div class="modalCard" style="width:420px">
+    <h3>Changer mon mot de passe</h3>
+    <label>Nouveau mot de passe</label>
+    <input type="password" id="newPwd1" placeholder="Minimum 8 caractères">
+    <br><br>
+    <label>Confirmer le mot de passe</label>
+    <input type="password" id="newPwd2" placeholder="Répétez le mot de passe">
+    <div id="changePwdErr" style="color:var(--red);font-size:13px;margin-top:8px;min-height:16px"></div>
+    <div class="modalActions">
+      <button class="secondary" onclick="closeChangePwd()">Annuler</button>
+      <button onclick="doChangePwd()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<div class="app"><nav id="nav"></nav><main id="mainContent">
+
+<!-- PANELS REX -->
+<section id="objectif" class="panel active">
+  <div class="card" id="start">
+    <h2>Choisir l'agence</h2>
+    <div class="grid c3">
+      <div><label>Agence</label><select id="agencySel"></select></div>
+      <div><label>&nbsp;</label><button onclick="openAgency()">Valider</button></div>
+      <div><label>&nbsp;</label><button class="secondary" onclick="addAgency()">Agence hors référentiel</button></div>
+    </div>
+  </div>
+  <div class="card" id="budgetStatutBar" style="display:none">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <span>Statut du budget :</span>
+      <span class="statut" id="budgetStatutBadge">brouillon</span>
+      <span id="budgetStatutActions"></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>1. Analyse &amp; objectif annuel</h2>
+    <p class="hint" style="margin-bottom:18px">👋 Bienvenue ! Commencez par renseigner les données historiques de votre agence, puis fixez vos objectifs pour 2027. Ces informations servent de base à tous les calculs de l'outil. Certains champs peuvent déjà être pré-remplis par le contrôleur de gestion — vérifiez et complétez si nécessaire.</p>
+    <div class="grid c3">
+      <div>
+        <h3>Réalisé</h3>
+        <p class="hint" style="margin-bottom:12px">Renseignez les chiffres réels de votre agence. Le TXR est le taux de recette par heure (CA ÷ heures travaillées).</p>
+        <label>CA 2025 <span style="color:var(--ink3);font-weight:400">(si disponible)</span></label>
+        <input id="histCA2025" type="text" placeholder="ex : 1 850 000">
+        <label>CA 2026</label>
+        <input id="histCA" type="text" placeholder="ex : 2 200 000">
+        <label>TXR moyen réalisé 2026 <span style="color:var(--ink3);font-weight:400">(€/h)</span></label>
+        <input id="histTXR" type="text" placeholder="ex : 42">
+        <label>Absentéisme moyen cible % <span style="color:var(--ink3);font-weight:400">(maladie)</span></label>
+        <input id="targetAbsRate" type="text" placeholder="ex : 7">
+      </div>
+      <div>
+        <h3>Perspectives</h3>
+        <p class="hint" style="margin-bottom:12px">Décrivez en quelques lignes les évolutions prévues pour 2027 : nouveaux contrats, changements d'équipe, projets particuliers...</p>
+        <textarea id="perspectives" rows="9" placeholder="Ex : Renouvellement du contrat EHPAD en janvier, recrutement d'un CDD saisonnier prévu en juillet, travaux de locaux au T2..."></textarea>
+      </div>
+      <div>
+        <h3>Objectif 2027</h3>
+        <p class="hint" style="margin-bottom:12px">Fixez vos objectifs pour 2027. Le TXR cible est généralement proche du TXR réalisé 2026, sauf évolution connue.</p>
+        <label>Objectif CA 2027</label>
+        <input id="targetCA" type="text" placeholder="ex : 2 300 000">
+        <label>TXR cible 2027 <span style="color:var(--ink3);font-weight:400">(€/h)</span></label>
+        <input id="targetTXR" type="text" placeholder="ex : 43">
+        <label>Zone vacances scolaires</label>
+        <select id="schoolZone"><option>A</option><option>B</option><option>C</option></select>
+        <p class="hint" style="margin-top:8px">La zone scolaire est pré-remplie selon votre agence. Ne la modifiez que si nécessaire.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="kpis" id="objectiveKpis"></div></div>
+</section>
+
+<section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Commencez par l'activité Sanitaire qui représente généralement l'essentiel de votre CA. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan"></table></div><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></section>
+<section id="cal" class="panel"><div class="card"><h2>3. Calendrier intelligent</h2><label>Mois</label><select id="monthSel" style="max-width:220px"></select><br><br><div class="calendar" id="calGrid"></div></div><div class="card"><h3>Synthèse hebdomadaire</h3><div class="tablewrap"><table id="weekCA"></table></div></div></section>
+<section id="team" class="panel"><div class="card"><h2>4. Équipe &amp; contrats</h2><p class="hint" style="margin-bottom:14px">👥 <b>Renseignez tous vos salariés</b> présents au 1er janvier 2027 : CDI, CDD, apprentis et intérimaires réguliers. Le nombre d'heures hebdomadaires est celui du contrat (35h, 39h...). Ces données alimentent le calcul des heures disponibles et des heures supplémentaires.</p><button onclick="addEmployee()">Ajouter salarié</button><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
+<section id="presence" class="panel"><div class="card"><h2>5. CP, maladie &amp; présence</h2><p class="hint" style="margin-bottom:14px">🏖 <b>Planifiez les absences de votre équipe.</b> Saisissez le taux de maladie mensuel estimé (en % des heures contractuelles) et répartissez les heures de congés payés semaine par semaine. L'outil calcule automatiquement les heures réellement disponibles après déduction des absences.</p><h3>Maladie par mois</h3><div class="tablewrap"><table id="sickTable"></table></div><div id="sickAlert"></div><br><div class="tablewrap"><table id="presenceTable"></table></div></div></section>
+<section id="hs" class="panel"><div class="card"><h2>6. Tensions RH &amp; HS</h2><p class="hint" style="margin-bottom:14px">⚡ <b>Visualisez les tensions sur votre équipe.</b> Ce tableau compare semaine par semaine les heures nécessaires pour atteindre votre objectif de CA (CA ÷ TXR cible) et les heures disponibles après absences. Les semaines en rouge nécessitent des heures supplémentaires — vérifiez que le volume annuel reste raisonnable.</p><div class="kpis" id="hsKpis"></div><br><div class="tablewrap"><table id="hsTable"></table></div></div></section>
+<section id="guide" class="panel"><div class="card"><h2>7. Guide décision</h2><p class="hint" style="margin-bottom:14px">🧭 <b>L'outil analyse votre budget et vous alerte sur les points d'attention.</b> Chaque recommandation est actionnable — cliquez sur les étapes concernées pour corriger. Une fois satisfait de votre budget, cliquez sur <b>Soumettre au DR</b> depuis l'étape 1.</p><div id="guideBox"></div></div></section>
+
+<!-- PANEL REFERENCES AGENCES (CG) -->
+<section id="refagences" class="panel">
+  <div class="card">
+    <h2>Données de référence par agence</h2>
+    <div class="hint">Ces données sont pré-remplies automatiquement pour chaque REX à l'ouverture de son agence.</div>
+    <br>
+    <div id="refAgencesLoading" class="loading">Chargement...</div>
+    <div class="tablewrap"><table id="refAgencesTable"></table></div>
+    <br>
+    <button onclick="saveRefAgences()">Enregistrer toutes les données</button>
+    <span id="refAgencesSaveMsg" style="margin-left:14px;font-family:'Caveat',cursive;font-size:15px;color:var(--green)"></span>
+  </div>
+</section>
+
+<!-- PANEL CG -->
+<section id="cg" class="panel">
+  <div class="card">
+    <h2>8. Interface contrôleur de gestion</h2>
+    <div class="hint">Mêmes postes et même ordre que le tableau REX fourni.</div>
+    <div class="grid c3">
+      <div><label>Coût horaire moyen agence</label><input id="costHour" type="number"></div>
+      <div><label>Coefficient HS</label><input id="hsCostRate" type="number"></div>
+      <div><label>&nbsp;</label><button onclick="prefillCharges()">Pré-remplir standards</button></div>
+    </div>
+    <br><div class="tablewrap"><table id="cgTable"></table></div>
+  </div>
+</section>
+
+<!-- PANEL AFFECTATION DR (CG uniquement) -->
+<section id="affectation" class="panel">
+  <div class="card">
+    <h2>Affectation des DR par agence</h2>
+    <div class="hint">Associez un directeur régional à chaque agence. Cette affectation détermine le périmètre de validation de chaque DR.</div>
+    <br>
+    <div id="affectationLoading" class="loading">Chargement...</div>
+    <div class="tablewrap"><table id="affectationTable"></table></div>
+  </div>
+</section>
+
+<!-- PANEL CONTROLES -->
+<section id="controle" class="panel">
+  <div class="card">
+    <h2>9. Contrôles métier — audit V48</h2>
+    <div class="hint">Contrôles non bloquants.</div><br>
+    <div class="auditGrid" id="auditKpis"></div>
+    <div id="auditAlerts"></div>
+  </div>
+</section>
+
+<!-- PANEL REX OFFICIEL -->
+<section id="rex" class="panel"><div class="card"><h2>9. REX prévisionnel officiel</h2><div class="kpis" id="rexKpis"></div><br><div class="tablewrap"><table id="rexTable"></table></div></div></section>
+
+<!-- PANEL SYNTHESE -->
+<section id="finance" class="panel">
+  <div class="card"><h2>10. Synthèse financière</h2><div class="kpis" id="dashKpis"></div><br><div class="kpis" id="finKpis"></div></div>
+  <div class="chartGrid">
+    <div class="chartBox"><div class="chartTitle">CA : 2026 vs Objectif vs Budget</div><div class="barChart" id="chartCA"></div><div class="legend"><span><div class="sw g"></div>2026</span><span><div class="sw o"></div>Objectif</span><span><div class="sw v"></div>Budget</span></div></div>
+    <div class="chartBox"><div class="chartTitle">Résultats</div><div class="barChart" id="chartResult"></div></div>
+    <div class="chartBox"><div class="chartTitle">CA mensuel budgété</div><div class="lineMini" id="chartMonthlyCA"></div></div>
+    <div class="chartBox"><div class="chartTitle">Ratios clés</div><div id="chartRatios"></div></div>
+  </div>
+</section>
+
+<!-- PANEL VALIDATION (DR / DF / DG) -->
+<section id="validation" class="panel">
+  <div class="card">
+    <h2 id="validationTitle">Validation</h2>
+    <div id="validationContent"><div class="loading">Chargement...</div></div>
+  </div>
+</section>
+
+<!-- PANEL ADMIN -->
+<section id="admin" class="panel">
+  <div class="card">
+    <h2>Administration</h2>
+    <div class="grid c3" style="margin-bottom:20px">
+      <div><label>Nom complet</label><input id="adminNom" type="text" placeholder="NOM Prénom"></div>
+      <div><label>Email</label><input id="adminEmail" type="email" placeholder="prenom.nom@vyv-ambulance.com"></div>
+      <div><label>Rôle</label>
+        <select id="adminRole">
+          <option value="rex">REX</option>
+          <option value="dr">Directeur Régional</option>
+          <option value="cg">Contrôleur de gestion</option>
+          <option value="df">Direction Financière</option>
+          <option value="dg">Direction Générale</option>
+          <option value="pdg">PDG</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div id="adminAgenceZone"><label>Agence (si REX)</label><select id="adminAgence"><option value="">-- Choisir --</option></select></div>
+      <div><label>&nbsp;</label><button onclick="adminCreateUser()">Créer le compte</button></div>
+    </div>
+    <div id="adminMsg" style="margin-bottom:16px"></div>
+  </div>
+  <div class="card">
+    <h2>Utilisateurs</h2>
+    <div id="adminUsersLoading" class="loading">Chargement...</div>
+    <div class="tablewrap"><table id="adminUsersTable"></table></div>
+  </div>
+  <div class="card">
+    <h2>Tous les budgets</h2>
+    <div class="hint">En tant qu'admin, vous pouvez forcer le statut de n'importe quel budget et l'ouvrir en modification.</div>
+    <br>
+    <div id="adminBudgetsLoading" class="loading">Chargement...</div>
+    <div class="tablewrap"><table id="adminBudgetsTable"></table></div>
+  </div>
+</section>
+
+<!-- PANEL CONSOLIDATION (DF / DG / CG) -->
+<section id="consolidation" class="panel">
+  <div class="card">
+    <h2>Consolidation réseau</h2>
+    <div id="consolidationContent"><div class="loading">Chargement...</div></div>
+  </div>
+</section>
+
+</main></div>
+<div class="footer">Budget 2027 — V48 Supabase</div>
+</div><!-- fin appWrapper -->
+
+<!-- MODAL VALIDATION -->
+<div class="modal" id="validModal" style="display:none">
+  <div class="modalCard">
+    <h3 id="validModalTitle">Décision</h3>
+    <label>Commentaire</label>
+    <textarea id="validModalComment" placeholder="Expliquez votre décision, demande de complément ou orientation..."></textarea>
+    <div class="modalActions">
+      <button class="secondary" onclick="closeModal()">Annuler</button>
+      <button id="validModalConfirm" onclick="confirmDecision()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE CONFIG
+// ═══════════════════════════════════════════════
+const SUPA_URL = 'https://rtgbqltinxguuinhicrs.supabase.co';
+const SUPA_KEY = 'sb_publishable_yYD1zRGVsDRU0yjdpaalaA_maENPmTh';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ═══════════════════════════════════════════════
+// ETAT GLOBAL
+// ═══════════════════════════════════════════════
+let USER = null;       // profil Supabase de l'utilisateur connecté
+let PROFILE = null;    // profil métier (role, agence, region_id...)
+let DR_LIST = [];      // liste des DR pour l'affectation CG
+let BUDGET_ID = null;  // id du budget actif dans Supabase
+let BUDGET_STATUT = 'brouillon';
+let PENDING_DECISION = null; // {decision, niveau}
+
+const M=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+const T=[{"label":"Chiffre d'affaires","type":"product"},{"label":"Achats Matières premières et sous traitance","type":"charge"},{"label":"Variations stock marchandises et autres approvisionnements","type":"charge"},{"label":"MARGE BRUTE GLOBALE","type":"subtotal"},{"label":"Electricité - eau - chauffage","type":"charge"},{"label":"Matériels ambulances","type":"charge"},{"label":"Carburant","type":"charge"},{"label":"Entretiens petits équipements","type":"charge"},{"label":"Fourniture bureau - vêtements","type":"charge"},{"label":"Sous traitance","type":"charge"},{"label":"Crédit bail et location véhicules","type":"charge"},{"label":"Location téléphonie - informatique - mobilité","type":"charge"},{"label":"Location immobilières et charges locatives","type":"charge"},{"label":"Entretiens véhicules - batîment","type":"charge"},{"label":"Maintenance informatique","type":"charge"},{"label":"Assurance","type":"charge"},{"label":"Formation - documentation","type":"charge"},{"label":"Honoraires et prestations de services","type":"charge"},{"label":"Publicité - cadeaux","type":"charge"},{"label":"Frais de déplacement - missions réceptions","type":"charge"},{"label":"Péages","type":"charge"},{"label":"Affranchissement","type":"charge"},{"label":"Téléphonie - internet","type":"charge"},{"label":"Frais bancaires et cotisations","type":"charge"},{"label":"Autres Achats et charges externes","type":"subtotal"},{"label":"VALEUR AJOUTEE","type":"subtotal"},{"label":"Subventions d'exploitation","type":"product"},{"label":"Impôts, taxes et versements assimilés","type":"charge"},{"label":"Charges de personnel","type":"charge"},{"label":"EXCEDENT BRUT D'EXPLOITATION","type":"subtotal"},{"label":"Reprises s/ charges et transferts","type":"product"},{"label":"Autres produits","type":"product"},{"label":"Dotations amortissements et provisions","type":"charge"},{"label":"Autres charges","type":"charge"},{"label":"RESULTAT D'EXPLOITATION","type":"subtotal"},{"label":"Produits financiers","type":"product"},{"label":"Charges financières","type":"charge"},{"label":"RESULTAT FINANCIER","type":"subtotal"},{"label":"RESULTAT COURANT AVANT IMPOT","type":"subtotal"},{"label":"Produits exceptionnels","type":"product"},{"label":"Charges exceptionnelles","type":"charge"},{"label":"RESULTAT EXCEPTIONNEL","type":"subtotal"},{"label":"RESULTAT NET","type":"subtotal"}];
+const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['presence','CP / présence'],['hs','HS'],['guide','Guide'],['finance','Synthèse']];
+const panelsCG=[['objectif','Objectif'],['refagences','Données agences'],['cg','Interface CG'],['affectation','Affectation DR'],['controle','Contrôles'],['rex','REX officiel'],['finance','Synthèse'],['consolidation','Consolidation']];
+const panelsDR=[['validation','Mes agences'],['consolidation','Consolidation région']];
+const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau']];
+const agences=[
+  {nom:'ANGOULEME',zone:'A'},{nom:'COGNAC',zone:'A'},{nom:'CHATELLERAULT',zone:'A'},{nom:'PARTHENAY',zone:'A'},
+  {nom:'POITIERS',zone:'A'},{nom:'CLERMONT',zone:'A'},{nom:'DIJON',zone:'A'},{nom:'BOURG EN BRESSE',zone:'A'},
+  {nom:'CHAMBERY',zone:'A'},{nom:'THYEZ',zone:'A'},{nom:'ANNECY',zone:'A'},{nom:'LIMOGES',zone:'A'},
+  {nom:'BRIVE',zone:'A'},{nom:'TULLE',zone:'A'},{nom:'SAINT GILLES CROIX DE VIE',zone:'B'},
+  {nom:'NANTES',zone:'B'},{nom:'ANGERS',zone:'B'},{nom:'LAVAL',zone:'B'},{nom:'LE MANS',zone:'B'},
+  {nom:'RENNES',zone:'B'},{nom:'VANNES',zone:'B'},{nom:'EVREUX',zone:'B'},{nom:'TOURS',zone:'B'},
+  {nom:'CAHORS',zone:'C'},{nom:'MOISSAC',zone:'C'},{nom:'TOULOUSE',zone:'C'}
+];
+const feries=['2027-01-01','2027-04-05','2027-05-01','2027-05-08','2027-05-13','2027-05-24','2027-07-14','2027-08-15','2027-11-01','2027-11-11','2027-12-25'];
+const vac={A:[['2027-01-01','2027-01-03'],['2027-02-13','2027-02-28'],['2027-04-10','2027-04-25'],['2027-07-03','2027-12-31']],B:[['2027-01-01','2027-01-03'],['2027-02-20','2027-03-07'],['2027-04-17','2027-05-02'],['2027-07-03','2027-12-31']],C:[['2027-01-01','2027-01-03'],['2027-02-06','2027-02-21'],['2027-04-03','2027-04-18'],['2027-07-03','2027-12-31']]};
+const q=id=>document.getElementById(id);
+const euro=n=>(Number(n)||0).toLocaleString('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+const pct=n=>(Number(n)||0).toLocaleString('fr-FR',{maximumFractionDigits:1})+' %';
+const inp=(v,cb,type='number')=>`<input type="${type}" value="${v??''}" onchange="${cb}(this.value)">`;
+const fmtNum = n => n ? Number(n).toLocaleString('fr-FR') : '';
+function parseFr(s) { return parseFloat((s+'').replace(/\s/g,'').replace(',','.')) || 0; }
+// Formater les champs montants à la perte du focus
+function attachFmt(id) {
+  const el = q(id); if(!el) return;
+  el.addEventListener('focus', () => { el.value = el.value.replace(/\s/g,''); });
+  el.addEventListener('blur', () => {
+    const n = parseFr(el.value);
+    if(n > 999) el.value = n.toLocaleString('fr-FR');
+  });
+}
+let S={role:'rex',active:0,month:0,agencies:[]};
+
+// ═══════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════
+async function doLogin() {
+  const email = q('authEmail').value.trim();
+  const pwd   = q('authPassword').value;
+  q('authErr').textContent = '';
+  const {data, error} = await sb.auth.signInWithPassword({email, password: pwd});
+  if (error) { q('authErr').textContent = 'Identifiants incorrects.'; return; }
+  await afterLogin(data.user);
+}
+
+async function afterLogin(user) {
+  USER = user;
+  const {data: prof} = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (!prof) { q('authErr').textContent = 'Profil introuvable. Contactez l\'administrateur.'; return; }
+  PROFILE = prof;
+  q('authScreen').style.display = 'none';
+  q('appWrapper').style.display = '';
+  q('userNom').textContent = prof.nom;
+  q('userRolePill').textContent = roleLabel(prof.role);
+  setupUI();
+}
+
+function showForgot() {
+  let z = q('forgotZone');
+  if (z) z.style.display = z.style.display === 'none' ? '' : 'none';
+}
+
+async function doForgot() {
+  const email = (q('forgotEmail') ? q('forgotEmail').value : '').trim();
+  if (!email) { q('authErr').textContent = 'Saisissez votre email.'; return; }
+  const {error} = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.href
+  });
+  if (error) q('authErr').textContent = 'Erreur : ' + error.message;
+  else q('authErr').textContent = 'Lien envoyé ! Vérifiez votre boite mail.';
+}
+
+function openChangePwd() {
+  if (q('changePwdModal')) q('changePwdModal').style.display = 'flex';
+  if (q('newPwd1')) q('newPwd1').value = '';
+  if (q('newPwd2')) q('newPwd2').value = '';
+  if (q('changePwdErr')) q('changePwdErr').textContent = '';
+}
+
+function closeChangePwd() {
+  if (q('changePwdModal')) q('changePwdModal').style.display = 'none';
+}
+
+async function doChangePwd() {
+  const p1 = q('newPwd1').value;
+  const p2 = q('newPwd2').value;
+  if (p1.length < 8) { q('changePwdErr').textContent = 'Le mot de passe doit faire au moins 8 caractères.'; return; }
+  if (p1 !== p2) { q('changePwdErr').textContent = 'Les mots de passe ne correspondent pas.'; return; }
+  const {data, error} = await sb.auth.updateUser({password: p1});
+  if (error) { q('changePwdErr').textContent = 'Erreur : ' + error.message; return; }
+  closeChangePwd();
+  // Si l'utilisateur n'est pas encore connecté dans l'app (vient du lien recovery)
+  if (!PROFILE && data.user) {
+    await afterLogin(data.user);
+  } else {
+    alert('Mot de passe modifié avec succès.');
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+function roleLabel(r) {
+  return {rex:'REX',dr:'Dir. Régional',cg:'Contrôleur de gestion',df:'Direction Financière',dg:'Direction Générale',pdg:'PDG',admin:'Admin'}[r]||r;
+}
+
+// ═══════════════════════════════════════════════
+// SETUP UI SELON ROLE
+// ═══════════════════════════════════════════════
+function setupUI() {
+  const role = PROFILE.role;
+  // Afficher/masquer le switch de rôle (uniquement pour CG)
+  if (q('roleSwitchZone')) q('roleSwitchZone').style.display = role === 'cg' ? '' : 'none';
+  if (q('btnSave')) q('btnSave').style.display = ['rex','cg','admin'].includes(role) ? '' : 'none';
+  if (role === 'rex') {
+    S.role = 'rex';
+    buildNav();
+    // Pré-sélectionner l'agence du REX
+    if (PROFILE.agence) {
+      S.agencies = [agency(PROFILE.agence)];
+      let ref = agences.find(x => x.nom === PROFILE.agence);
+      if (ref) S.agencies[0].schoolZone = ref.zone;
+      loadBudgetFromSupabase(PROFILE.agence);
+    }
+  } else if (role === 'cg') {
+    S.role = 'rex';
+    buildNav();
+    render();
+  } else if (role === 'dr') {
+    buildNavDR();
+    show('validation');
+    renderValidation();
+  } else if (role === 'df' || role === 'dg' || role === 'pdg') {
+    buildNavDFDG();
+    show('validation');
+    renderValidation();
+  } else if (role === 'admin') {
+    buildNavAdmin();
+    show('admin');
+    renderAdmin();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function buildNav() {
+  const panels = PROFILE.role === 'cg' ? panelsCG : panelsREX;
+  let h = `<div class="navgroup">${PROFILE.role === 'cg' ? 'Contrôleur de gestion' : 'REX exploitation'}</div>`;
+  panels.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`);
+  q('nav').innerHTML = h;
+  document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => show(b.dataset.p));
+  if (q('rRex')) { q('rRex').classList.toggle('active', S.role==='rex'); q('rCG').classList.toggle('active', S.role==='cg'); }
+}
+
+function buildNavDR() {
+  let h = '<div class="navgroup">Directeur Régional</div>';
+  panelsDR.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`);
+  q('nav').innerHTML = h;
+  document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => show(b.dataset.p));
+}
+
+function buildNavDFDG() {
+  const label = PROFILE.role === 'df' ? 'Direction Financière' : PROFILE.role === 'dg' ? 'Direction Générale' : 'Présidence';
+  let h = `<div class="navgroup">${label}</div>`;
+  panelsDFDG.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`);
+  q('nav').innerHTML = h;
+  document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => show(b.dataset.p));
+}
+
+function buildNavAdmin() {
+  let h = '<div class="navgroup">Administration</div>';
+  [['admin','Utilisateurs & Budgets'],['consolidation','Consolidation réseau'],['affectation','Affectation DR'],['objectif','Modifier un budget']].forEach((x,i) => {
+    h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`;
+  });
+  q('nav').innerHTML = h;
+  document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => show(b.dataset.p));
+}
+
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  if (q(id)) q(id).classList.add('active');
+  document.querySelectorAll('.navbtn').forEach(n => n.classList.toggle('active', n.dataset.p === id));
+  if (id === 'validation') renderValidation();
+  if (id === 'refagences') renderRefAgences();
+  if (id === 'consolidation') renderConsolidation();
+  if (id === 'affectation') renderAffectation();
+  render();
+}
+
+function setRole(r) { S.role = r; buildNav(); show('finance'); }
+
+// ═══════════════════════════════════════════════
+// SUPABASE — BUDGET
+// ═══════════════════════════════════════════════
+async function loadBudgetFromSupabase(agence) {
+  const {data, error} = await sb.from('budgets')
+    .select('*').eq('agence', agence).eq('annee', 2027).single();
+  if (data) {
+    BUDGET_ID = data.id;
+    BUDGET_STATUT = data.statut;
+    if (data.data && Object.keys(data.data).length) {
+      S.agencies[S.active] = {...agency(agence), ...data.data, name: agence};
+      migrateState();
+    } else {
+      // Pré-remplir les données de référence CG si budget vide
+      let ref = data.data || {};
+      let a = S.agencies[S.active];
+      if (ref.histCA2025)    a.histCA2025    = ref.histCA2025;
+      if (ref.histCA)        a.histCA        = ref.histCA;
+      if (ref.histTXR2026)   { a.histTXR2026 = ref.histTXR2026; a.histTXR = ref.histTXR2026; a.targetTXR = ref.histTXR2026; }
+      if (ref.targetAbsRate) { a.targetAbsRate = ref.targetAbsRate; a.sick = Array(12).fill(ref.targetAbsRate); }
+    }
+  } else {
+    BUDGET_ID = null;
+    BUDGET_STATUT = 'brouillon';
+  }
+  if (q('start')) q('start').style.display = 'none';
+  if (q('btnChangeAgency')) q('btnChangeAgency').style.display = '';
+  updateStatutBar();
+  render();
+}
+
+async function saveBudgetToSupabase() {
+  const a = A();
+  const payload = { agence: a.name, annee: 2027, data: a, statut: BUDGET_STATUT };
+  if (BUDGET_ID) {
+    await sb.from('budgets').update({data: a, updated_at: new Date()}).eq('id', BUDGET_ID);
+  } else {
+    const {data} = await sb.from('budgets').insert(payload).select().single();
+    if (data) BUDGET_ID = data.id;
+  }
+  alert('Budget sauvegardé dans Supabase.');
+}
+
+async function soumettreBudget() {
+  if (!BUDGET_ID) { alert('Sauvegardez d\'abord le budget.'); return; }
+  const nextStatut = 'soumis_dr';
+  await sb.from('budgets').update({statut: nextStatut}).eq('id', BUDGET_ID);
+  BUDGET_STATUT = nextStatut;
+  updateStatutBar();
+  alert('Budget soumis au Directeur Régional.');
+}
+
+function updateStatutBar() {
+  if (!q('budgetStatutBar')) return;
+  const canEdit = ['brouillon','refuse_dr','complement_dr','refuse_df','complement_df','refuse_dg'].includes(BUDGET_STATUT);
+  const canSubmit = canEdit && BUDGET_ID;
+  q('budgetStatutBar').style.display = '';
+  q('budgetStatutBadge').textContent = statutLabel(BUDGET_STATUT);
+  q('budgetStatutBadge').className = 'statut ' + BUDGET_STATUT;
+  let actions = '';
+  if (PROFILE.role === 'rex' || PROFILE.role === 'cg') {
+    if (canSubmit && BUDGET_STATUT === 'brouillon') actions += `<button class="ok" onclick="soumettreBudget()">Soumettre au DR</button>`;
+    if (BUDGET_STATUT === 'refuse_dr' || BUDGET_STATUT === 'complement_dr') actions += `<button class="warn" onclick="soumettreBudget()">Re-soumettre au DR</button>`;
+    if (BUDGET_STATUT === 'refuse_df' || BUDGET_STATUT === 'complement_df') actions += `<button class="warn" onclick="soumettreDF()">Re-soumettre à la DF</button>`;
+  }
+  q('budgetStatutActions').innerHTML = actions;
+}
+
+async function soumettreDF() {
+  await sb.from('budgets').update({statut:'soumis_df'}).eq('id', BUDGET_ID);
+  BUDGET_STATUT = 'soumis_df'; updateStatutBar();
+}
+
+function statutLabel(s) {
+  const map = {brouillon:'Brouillon',soumis_dr:'Soumis DR',valide_dr:'Validé DR',refuse_dr:'Refusé DR',complement_dr:'Complément DR demandé',soumis_df:'Soumis DF',valide_df:'Validé DF',refuse_df:'Refusé DF',complement_df:'Complément DF demandé',soumis_dg:'Soumis DG',valide_dg:'Validé DG',refuse_dg:'Refusé DG',soumis_pdg:'Soumis PDG',valide_pdg:'Validé PDG',refuse_pdg:'Refusé PDG'};
+  return map[s] || s;
+}
+
+// ═══════════════════════════════════════════════
+// VALIDATION (DR / DF / DG)
+// ═══════════════════════════════════════════════
+async function renderValidation() {
+  if (!q('validationContent')) return;
+  q('validationContent').innerHTML = '<div class="loading">Chargement...</div>';
+  const role = PROFILE.role;
+  let budgets = [];
+
+  if (role === 'dr') {
+    // DR voit les agences de sa région
+    const {data: agencesRegion} = await sb.from('agences').select('nom').eq('region_id', PROFILE.region_id);
+    if (!agencesRegion || !agencesRegion.length) {
+      q('validationContent').innerHTML = '<div class="hint">Aucune agence affectée à votre région. Contactez le contrôleur de gestion.</div>';
+      return;
+    }
+    const noms = agencesRegion.map(a => a.nom);
+    const {data} = await sb.from('budgets').select('*').in('agence', noms).eq('annee', 2027);
+    budgets = data || [];
+    q('validationTitle').textContent = 'Validation — Mon périmètre';
+  } else if (role === 'df') {
+    const {data} = await sb.from('budgets').select('*').in('statut',['soumis_df','valide_df','refuse_df','complement_df','soumis_dg','valide_dg']).eq('annee',2027);
+    budgets = data || [];
+    q('validationTitle').textContent = 'Validation Direction Financière';
+  } else if (role === 'dg') {
+    const {data} = await sb.from('budgets').select('*').in('statut',['soumis_dg','valide_dg','refuse_dg','soumis_pdg','valide_pdg','refuse_pdg']).eq('annee',2027);
+    budgets = data || [];
+    q('validationTitle').textContent = 'Validation Direction Générale';
+  } else if (role === 'pdg') {
+    const {data} = await sb.from('budgets').select('*').eq('annee',2027);
+    budgets = data || [];
+    q('validationTitle').textContent = 'Validation Présidence — Tous les budgets';
+  }
+
+  if (!budgets.length) {
+    q('validationContent').innerHTML = '<div class="hint">Aucun budget à valider pour le moment.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const b of budgets) {
+    const ca = b.data?.targetCA || 0;
+    const canValidate = (role==='dr' && b.statut==='soumis_dr') || (role==='df' && b.statut==='soumis_df') || (role==='dg' && b.statut==='soumis_dg') || (role==='pdg' && b.statut==='soumis_pdg');
+    // Historique des validations
+    const {data: hist} = await sb.from('validations').select('*').eq('budget_id',b.id).order('created_at',{ascending:true});
+    let histHtml = '';
+    if (hist && hist.length) {
+      histHtml = hist.map(v => `<div class="histItem ${v.decision}"><b>${decisionLabel(v.decision)}</b> — ${new Date(v.created_at).toLocaleDateString('fr-FR')} — ${v.commentaire||''}</div>`).join('');
+    }
+    html += `
+    <div class="validBox">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+        <b style="font-size:16px">${b.agence}</b>
+        <span class="statut ${b.statut}">${statutLabel(b.statut)}</span>
+        <span style="color:var(--m);font-size:13px">CA objectif : ${euro(ca)}</span>
+      </div>
+      ${histHtml}
+      ${canValidate ? `
+      <div class="validActions">
+        <button class="ok" onclick="openModal('${b.id}','valide','${role}')">Valider</button>
+        <button class="danger" onclick="openModal('${b.id}','refuse','${role}')">Refuser</button>
+        <button class="warn" onclick="openModal('${b.id}','complement','${role}')">Demander complément</button>
+        <button class="secondary" onclick="openModal('${b.id}','orientation','${role}')">Donner orientation</button>
+      </div>` : ''}
+    </div>`;
+  }
+  q('validationContent').innerHTML = html;
+}
+
+function decisionLabel(d) {
+  return {valide:'Validé',refuse:'Refusé',complement:'Complément demandé',orientation:'Orientation donnée'}[d]||d;
+}
+
+function openModal(budgetId, decision, niveau) {
+  PENDING_DECISION = {budgetId, decision, niveau};
+  const titles = {valide:'Valider ce budget',refuse:'Refuser ce budget',complement:'Demander un complément',orientation:'Donner une orientation'};
+  q('validModalTitle').textContent = titles[decision];
+  q('validModalComment').value = '';
+  q('validModal').style.display = 'flex';
+}
+
+function closeModal() {
+  q('validModal').style.display = 'none';
+  PENDING_DECISION = null;
+}
+
+async function confirmDecision() {
+  if (!PENDING_DECISION) return;
+  const {budgetId, decision, niveau} = PENDING_DECISION;
+  const commentaire = q('validModalComment').value.trim();
+  // Enregistrer la validation
+  await sb.from('validations').insert({budget_id:budgetId, valideur_id:USER.id, niveau, decision, commentaire});
+  // Mettre à jour le statut du budget
+  let newStatut = '';
+  if (decision === 'valide') {
+    if (niveau==='dr') newStatut = 'valide_dr';
+    else if (niveau==='df') newStatut = 'valide_df';
+    else newStatut = 'valide_dg';
+  } else if (decision === 'refuse') {
+    newStatut = 'refuse_' + niveau;
+  } else if (decision === 'complement') {
+    newStatut = 'complement_' + niveau;
+  } else if (decision === 'orientation') {
+    // Orientation : statut inchangé (on garde soumis), juste un commentaire
+    newStatut = null;
+  }
+  if (newStatut) await sb.from('budgets').update({statut:newStatut}).eq('id', budgetId);
+  // Si DR valide, transmettre automatiquement à la DF
+  if (decision === 'valide' && niveau === 'dr') {
+    await sb.from('budgets').update({statut:'soumis_df'}).eq('id', budgetId);
+  }
+  // Si DF valide, transmettre automatiquement à la DG
+  if (decision === 'valide' && niveau === 'df') {
+    await sb.from('budgets').update({statut:'soumis_dg'}).eq('id', budgetId);
+  }
+  // Si DG valide, transmettre automatiquement au PDG
+  if (decision === 'valide' && niveau === 'dg') {
+    await sb.from('budgets').update({statut:'soumis_pdg'}).eq('id', budgetId);
+  }
+  closeModal();
+  renderValidation();
+}
+
+// ═══════════════════════════════════════════════
+// CONSOLIDATION
+// ═══════════════════════════════════════════════
+async function renderConsolidation() {
+  if (!q('consolidationContent')) return;
+  q('consolidationContent').innerHTML = '<div class="loading">Chargement...</div>';
+  let query = sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027);
+  if (PROFILE.role === 'dr') {
+    const {data: ag} = await sb.from('agences').select('nom').eq('region_id',PROFILE.region_id);
+    if (ag) query = query.in('agence', ag.map(a=>a.nom));
+  }
+  const {data: budgets} = await query.order('agence');
+  if (!budgets || !budgets.length) {
+    q('consolidationContent').innerHTML = '<div class="hint">Aucun budget disponible.</div>'; return;
+  }
+  let html = '<div class="consolRow header"><div>Agence</div><div>Statut</div><div>CA Objectif</div><div>CA Budget</div><div>REX</div><div>Mis à jour</div></div>';
+  let totObj=0, totCA=0, totREX=0;
+  for (const b of budgets) {
+    const d = b.data || {};
+    const caObj = +d.targetCA||0;
+    const caBud = d._caBudget||0;
+    const rex = d._rex||0;
+    totObj+=caObj; totCA+=caBud; totREX+=rex;
+    html += `<div class="consolRow">
+      <div><b>${b.agence}</b></div>
+      <div><span class="statut ${b.statut}">${statutLabel(b.statut)}</span></div>
+      <div class="num">${euro(caObj)}</div>
+      <div class="num">${caBud?euro(caBud):'—'}</div>
+      <div class="num ${rex<0?'bad':rex>0?'ok':''}">${caBud?euro(rex):'—'}</div>
+      <div style="font-size:11px;color:var(--m)">${new Date(b.updated_at).toLocaleDateString('fr-FR')}</div>
+    </div>`;
+  }
+  html += `<div class="consolRow" style="font-weight:900;background:#e9f5ff;border-radius:0 0 10px 10px">
+    <div>TOTAL</div><div></div>
+    <div class="num">${euro(totObj)}</div>
+    <div class="num">${euro(totCA)}</div>
+    <div class="num ${totREX<0?'bad':'ok'}">${euro(totREX)}</div>
+    <div></div>
+  </div>`;
+  q('consolidationContent').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════
+// AFFECTATION DR (CG uniquement)
+// ═══════════════════════════════════════════════
+async function renderAffectation() {
+  if (!q('affectationTable')) return;
+  q('affectationLoading').style.display = '';
+  // Charger les DR
+  const {data: drs} = await sb.from('profiles').select('id,nom').eq('role','dr');
+  DR_LIST = drs || [];
+  // Charger les agences avec leur region_id actuel
+  const {data: agData} = await sb.from('agences').select('nom,region_id');
+  // Charger les régions
+  const {data: regions} = await sb.from('regions').select('id,nom');
+  q('affectationLoading').style.display = 'none';
+  if (!DR_LIST.length) {
+    q('affectationTable').innerHTML = '<tr><td>Aucun DR créé. Créez d\'abord les comptes DR dans Supabase Auth.</td></tr>';
+    return;
+  }
+  // Construire un map agence -> region_id actuel
+  const agMap = {};
+  (agData||[]).forEach(a => agMap[a.nom] = a.region_id);
+  // Map region_id -> dr (via profiles)
+  const regMap = {};
+  (regions||[]).forEach(r => regMap[r.id] = r.nom);
+  let html = '<tr><th>Agence</th><th>Zone</th><th>Directeur régional</th></tr>';
+  for (const ag of agences) {
+    const currentRegion = agMap[ag.nom];
+    // Trouver le DR qui a cette region_id
+    const currentDR = DR_LIST.find(dr => dr.region_id === currentRegion);
+    const opts = `<option value="">-- Non affecté --</option>` +
+      DR_LIST.map(dr => `<option value="${dr.id}" ${currentDR?.id===dr.id?'selected':''}>${dr.nom}</option>`).join('');
+    html += `<tr>
+      <td><b>${ag.nom}</b></td>
+      <td>${ag.zone}</td>
+      <td><select onchange="saveAffectation('${ag.nom}',this.value)">${opts}</select></td>
+    </tr>`;
+  }
+  q('affectationTable').innerHTML = html;
+}
+
+async function saveAffectation(agenceNom, drUserId) {
+  if (!drUserId) {
+    await sb.from('agences').update({region_id: null}).eq('nom', agenceNom);
+    return;
+  }
+  // Récupérer ou créer la région du DR
+  const {data: drProfile} = await sb.from('profiles').select('region_id,nom').eq('id', drUserId).single();
+  let regionId = drProfile?.region_id;
+  if (!regionId) {
+    // Créer une région pour ce DR
+    const {data: newRegion} = await sb.from('regions').insert({nom: drProfile.nom}).select().single();
+    regionId = newRegion.id;
+    await sb.from('profiles').update({region_id: regionId}).eq('id', drUserId);
+  }
+  await sb.from('agences').update({region_id: regionId}).eq('nom', agenceNom);
+}
+
+// ═══════════════════════════════════════════════
+// MOTEUR DE CALCUL (identique V47)
+// ═══════════════════════════════════════════════
+function refs(){return Array.from({length:12},()=>({semaine:0,vacances:0,samedi:0,dimanche:0,ferie:0}))}
+function agency(name){let a={name,histCA:0,histCA2025:0,histTXR2026:40,targetAbsRate:5,perspectives:'',targetCA:0,targetTXR:40,schoolZone:'B',refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(5),costHour:28.5,hsCostRate:1.25,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(0),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
+function A(){return S.agencies[S.active]}
+function between(d,s,e){return d>=s&&d<=e}
+function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
+function typeDay(date,a){let iso=date.toISOString().slice(0,10),wd=date.getDay();if(feries.includes(iso))return 'ferie';if(wd===0)return 'dimanche';if(wd===6)return 'samedi';if(isVac(iso,a.schoolZone))return 'vacances';return 'semaine'}
+function isoWeek(date){let d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())),day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-y)/86400000)+1)/7)}
+function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0};a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp})}}}
+function monthCA(a,m){if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)}
+function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
+function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>x.week-y.week)}
+function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
+function baseH(a){return a.employees.reduce((s,e)=>s+(+e.hours||0),0)}
+function mainMonth(a,w){let c={};a.cal.filter(d=>d.week==w).forEach(d=>c[d.month]=(c[d.month]||0)+1);return +(Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||0)}
+function pres(a,w){let base=baseH(a),p=a.presence[w]||{cp:0,other:0},m=mainMonth(a,w),rate=+a.sick[m]||0,mal=base*rate/100,av=Math.max(0,base-(+p.cp||0)-mal-(+p.other||0));return {base,cp:+p.cp||0,other:+p.other||0,m,rate,mal,av,etp:av/35}}
+function hsRows(a){return needWeeks(a).map(n=>{let p=pres(a,n.week),gap=n.hours-p.av,hs=Math.max(0,gap),under=Math.max(0,-gap),t=hs>20?'critique':hs>0?'warning':under>35?'sous-charge':'ok';return {...n,...p,gap,hs,under,t}})}
+function hsTot(a){return hsRows(a).reduce((o,r)=>{o.ca+=r.ca;o.need+=r.hours;o.av+=r.av;o.hs+=r.hs;return o},{ca:0,need:0,av:0,hs:0})}
+function payrollMonth(a,m){
+  return hsRows(a).reduce((s,r)=>{
+    let daysWeek=a.cal.filter(d=>d.week===r.week).length||7;
+    let daysMonth=a.cal.filter(d=>d.week===r.week&&d.month===m).length;
+    if(!daysMonth)return s;
+    let ratio=daysMonth/daysWeek;
+    let weeklyCost=(r.av*a.costHour)+(r.hs*a.costHour*a.hsCostRate);
+    return s+weeklyCost*ratio;
+  },0)
+}
+function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
+function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return +x.values[m]||0}
+function sig(a,m){let v=l=>manual(a,l,m),ca=monthCA(a,m),marge=ca-v("Achats Matières premières et sous traitance")-v("Variations stock marchandises et autres approvisionnements"),aa=["Electricité - eau - chauffage","Matériels ambulances","Carburant","Entretiens petits équipements","Fourniture bureau - vêtements","Sous traitance","Crédit bail et location véhicules","Location téléphonie - informatique - mobilité","Location immobilières et charges locatives","Entretiens véhicules - batîment","Maintenance informatique","Assurance","Formation - documentation","Honoraires et prestations de services","Publicité - cadeaux","Frais de déplacement - missions réceptions","Péages","Affranchissement","Téléphonie - internet","Frais bancaires et cotisations"].reduce((s,l)=>s+v(l),0),va=marge-aa,pay=payrollMonth(a,m),ebe=va+v("Subventions d'exploitation")-v("Impôts, taxes et versements assimilés")-pay,rex=ebe+v("Reprises s/ charges et transferts")+v("Autres produits")-v("Dotations amortissements et provisions")-v("Autres charges"),rf=v("Produits financiers")-v("Charges financières"),rcai=rex+rf,re=v("Produits exceptionnels")-v("Charges exceptionnelles"),rn=rcai+re;return {"Chiffre d'affaires":ca,"Charges de personnel":pay,"MARGE BRUTE GLOBALE":marge,"Autres Achats et charges externes":aa,"VALEUR AJOUTEE":va,"EXCEDENT BRUT D'EXPLOITATION":ebe,"RESULTAT D'EXPLOITATION":rex,"RESULTAT FINANCIER":rf,"RESULTAT COURANT AVANT IMPOT":rcai,"RESULTAT EXCEPTIONNEL":re,"RESULTAT NET":rn}}
+function amount(a,l,m){let row=T.find(r=>r.label===l);if(l==="Chiffre d'affaires"||l==="Charges de personnel"||row?.type==='subtotal')return sig(a,m)[l]||0;return manual(a,l,m)}
+function ann(a,l){return M.reduce((s,_,m)=>s+amount(a,l,m),0)}
+
+function isEditableREX(label){return label!=="Chiffre d'affaires"&&label!=="Charges de personnel"&&!(T.find(r=>r.label===label)?.type==='subtotal')}
+function chargesSummary(a){
+  let ca=ann(a,"Chiffre d'affaires"),fixed=0,variable=0,manualEmpty=0,annualNoKey=0,pctHigh=0,monthlyIrregular=0;
+  T.forEach(r=>{
+    if(!isEditableREX(r.label))return;
+    let x=a.rex[r.label];if(!x)return;
+    let total=M.reduce((s,_,m)=>s+manual(a,r.label,m),0);
+    if(r.type==='charge'){if(x.chargeType==='fixe')fixed+=total;if(x.chargeType==='variable')variable+=total;if(total===0)manualEmpty++;}
+    if(x.mode==='annual'&&!x.allocationKey)annualNoKey++;
+    if(x.mode==='pct'&&(+x.pct||0)>20)pctHigh++;
+    if(x.mode==='month'){let vals=x.values.map(v=>+v||0),avg=vals.reduce((s,v)=>s+v,0)/12;if(avg>0){let max=Math.max(...vals),min=Math.min(...vals);if((max-min)>avg*1.5)monthlyIrregular++;}}
+  });
+  let payroll=ann(a,"Charges de personnel"),hs=hsTot(a).hs;
+  return {ca,fixed,variable,payroll,hs,manualEmpty,annualNoKey,pctHigh,monthlyIrregular};
+}
+function auditAlerts(a){
+  let s=chargesSummary(a),alerts=[],ca=s.ca,rex=ann(a,"RESULTAT D'EXPLOITATION");
+  if(s.annualNoKey>0)alerts.push(['warning','Charges annuelles sans clé de répartition','Certaines charges annuelles n\'ont pas de clé claire.']);
+  if(s.pctHigh>0)alerts.push(['warning','Pourcentage CA élevé','Un ou plusieurs postes en % CA dépassent 20 %.']);
+  if(s.monthlyIrregular>0)alerts.push(['info','Répartition mensuelle très irrégulière','Certains postes mensuels varient fortement entre mois.']);
+  if(ca>0&&rex/ca<-0.03)alerts.push(['critique','REX fortement négatif','Le REX est inférieur à -3 % du CA.']);
+  if(ca>0&&s.payroll/ca>0.70)alerts.push(['warning','Masse salariale élevée','Les charges de personnel dépassent 70 % du CA.']);
+  if(s.hs>500)alerts.push(['warning','HS élevées','Le volume annuel d\'heures supplémentaires dépasse 500 h.']);
+  if(s.manualEmpty>10)alerts.push(['info','Nombreuses lignes de charges à zéro','Plusieurs postes de charges restent à zéro. Vérifier si c\'est volontaire.']);
+  if(!alerts.length)alerts.push(['info','Aucune anomalie majeure détectée','Les contrôles simples ne détectent pas d\'incohérence importante.']);
+  return alerts;
+}
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+function kpis(id,arr){if(q(id))q(id).innerHTML=arr.map(x=>`<div class="kpi"><div class="label">${x[0]}</div><div class="value">${x[1]}</div><div class="note">${x[2]||''}</div></div>`).join('')}
+function refTable(id,act){if(!q(id))return;q(id).innerHTML='<tr><th>Mois</th><th>Semaine</th><th>Vacances</th><th>Samedi</th><th>Dimanche</th><th>Férié</th></tr>'+M.map((mo,i)=>`<tr><td><b>${mo}</b></td>${['semaine','vacances','samedi','dimanche','ferie'].map(t=>`<td>${inp(A().refs[act][i][t],`setRef.bind(null,'${act}',${i},'${t}')`)}</td>`).join('')}</tr>`).join('')}
+function maxAbs(vals){return Math.max(1,...vals.map(v=>Math.abs(+v||0)))}
+function makeTripleBars(values,labels){let max=maxAbs(values.map(v=>v.value));return values.map((v,i)=>`<div class="barGroup"><div class="bar ${v.cls}" style="height:${Math.max(2,Math.abs(v.value)/max*180)}px" title="${labels[i]} : ${euro(v.value)}"></div><div class="barLabel">${labels[i]}</div></div>`).join('')}
+function gaugeRow(label,value){let v=Math.max(0,Math.min(100,Number(value)||0));return `<div class="ratioRow"><b>${label}</b><div class="gauge"><div class="gaugeFill" style="width:${v}%"></div></div><span>${pct(v)}</span></div>`}
+
+function bind(){
+  let a=A();
+  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','costHour','hsCostRate'].forEach(id=>{
+    let e=q(id);if(!e)return;
+    e.value=a[id]??'';
+    e.oninput=ev=>{a[id]=(id==='perspectives'||id==='schoolZone')?ev.target.value:parseFr(ev.target.value);if(id==='schoolZone')genCal(a);render()}
+  });
+  // Attacher formatage milliers sur les champs montants
+  ['histCA2025','histCA','targetCA'].forEach(attachFmt);
+  if(q('agencySel')){
+    // REX : uniquement son agence. CG : toutes.
+    if(PROFILE && PROFILE.role==='rex'){
+      q('agencySel').innerHTML=`<option>${PROFILE.agence}</option>`;
+    } else {
+      q('agencySel').innerHTML='<option value="">Choisir</option>'+agences.map(x=>`<option>${x.nom}</option>`).join('')+S.agencies.filter(a=>a.name!=='Nouvelle agence'&&!agences.find(x=>x.nom===a.name)).map(a=>`<option>${a.name}</option>`).join('');
+      q('agencySel').value=a.name==='Nouvelle agence'?'':a.name;
+      q('agencySel').onchange=()=>{if(q('agencySel').value)openAgency()};
+    }
+  }
+}
+
+function render(){
+  if(!PROFILE)return;
+  bind();
+  let a=A();
+  if(!a.cal.length)genCal(a);
+  let meta=a.name&&a.name!=='Nouvelle agence'?('Agence : '+a.name+' \u2022 Zone '+a.schoolZone+' \u2022 CA budget '+euro(annualCA(a))):'Aucune agence sélectionnée';
+  if(q('topAgencyMeta'))q('topAgencyMeta').textContent=meta;
+  kpis('objectiveKpis',[['Objectif CA',euro(a.targetCA)],['CA construit',euro(annualCA(a))],['Écart',euro(annualCA(a)-a.targetCA)],['Heures nécessaires',hsTot(a).need.toFixed(0)+' h'],['HS estimées',hsTot(a).hs.toFixed(0)+' h'],['Zone',a.schoolZone]]);
+  refTable('refSan','san');refTable('refSai','sai');refTable('refTP','tp');
+  renderCal();renderTeam();renderPresence();renderHS();renderGuide();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
+  updateStatutBar();
+}
+
+function renderCal(){if(!q('monthSel'))return;let a=A(),m=S.month;q('monthSel').innerHTML=M.map((x,i)=>`<option value="${i}" ${i===m?'selected':''}>${x}</option>`).join('');q('monthSel').onchange=e=>{S.month=+e.target.value;render()};let days=a.cal.filter(d=>d.month===m),start=(new Date(2027,m,1).getDay()+6)%7,h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(w=>`<div class="small"><b>${w}</b></div>`).join('')+Array.from({length:start},()=>'<div class="day empty"></div>').join('');days.forEach(d=>h+=`<div class="day ${d.type==='vacances'?'vac':''} ${d.type==='ferie'?'ferie':''}"><div class="dh"><span class="dt">${d.day}</span><span class="small">${d.type} \u2022 S${d.week}</span></div><div>San ${euro(d.ca.san)}</div><div>Sais ${euro(d.ca.sai)}</div><div>TP ${euro(d.ca.tp)}</div><div class="tot">${euro(d.total)}</div></div>`);if(q('calGrid'))q('calGrid').innerHTML=h;if(q('weekCA'))q('weekCA').innerHTML='<tr><th>Semaine</th><th>Jours</th><th>CA</th><th>Heures</th></tr>'+needWeeks(a).map(w=>`<tr><td>S${w.week}</td><td>${w.days}</td><td class="num">${euro(w.ca)}</td><td class="num">${w.hours.toFixed(1)}</td></tr>`).join('')}
+function renderTeam(){if(!q('empTable'))return;q('empTable').innerHTML='<tr><th>Nom</th><th>Contrat</th><th>Heures hebdo</th><th>ETP</th><th></th></tr>'+A().employees.map((e,i)=>`<tr><td>${inp(e.name,`setEmp.bind(null,${i},'name')`,'text')}</td><td><select onchange="setEmp(${i},'contract',this.value)">${['CDI','CDD','APPRENTI','INTERIM'].map(c=>`<option ${e.contract===c?'selected':''}>${c}</option>`).join('')}</select></td><td>${inp(e.hours,`setEmp.bind(null,${i},'hours')`)}</td><td class="num">${((+e.hours||0)/35).toFixed(2)}</td><td><button class="danger" onclick="delEmp(${i})">X</button></td></tr>`).join('')}
+function renderPresence(){let a=A();if(q('sickTable')){let avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12,diff=avg-(+a.targetAbsRate||0),cls=Math.abs(diff)<.05?'ok':'warn';q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Moy</th><th>Cible</th></tr><tr><td><b>% maladie</b></td>'+a.sick.map((v,i)=>`<td>${inp(v,`setSick.bind(null,${i})`)}</td>`).join('')+`<td class="num"><span class="${cls}">${pct(avg)}</span></td><td>${pct(a.targetAbsRate)}</td></tr>`;if(q('sickAlert'))q('sickAlert').innerHTML=`<div class="alert"><b>Contrôle maladie</b> écart ${pct(diff)} <button class="secondary" onclick="applyAvg()">Répartir moyenne</button></div>`}if(q('presenceTable'))q('presenceTable').innerHTML='<tr><th>Semaine</th><th>Mois</th><th>Capacité</th><th>CP h</th><th>Maladie %</th><th>Maladie h</th><th>Autres h</th><th>Disponible</th><th>ETP</th></tr>'+needWeeks(a).map(w=>{let p=pres(a,w.week);return `<tr><td>S${w.week}</td><td>${M[p.m]}</td><td class="num">${p.base.toFixed(1)}</td><td>${inp(p.cp,`setPresence.bind(null,${w.week},'cp')`)}</td><td class="num">${pct(p.rate)}</td><td class="num">${p.mal.toFixed(1)}</td><td>${inp(p.other,`setPresence.bind(null,${w.week},'other')`)}</td><td class="num">${p.av.toFixed(1)}</td><td class="num">${p.etp.toFixed(2)}</td></tr>`}).join('')}
+function renderHS(){let a=A(),rows=hsRows(a),tot=hsTot(a);kpis('hsKpis',[['CA',euro(tot.ca)],['Besoin',tot.need.toFixed(0)+' h'],['Disponible',tot.av.toFixed(0)+' h'],['HS',tot.hs.toFixed(0)+' h'],['ETP moy',(tot.av/52/35).toFixed(2)],['Coût HS',euro(tot.hs*a.costHour*a.hsCostRate)]]);if(q('hsTable'))q('hsTable').innerHTML='<tr><th>Semaine</th><th>CA</th><th>Besoin</th><th>Disponible</th><th>Écart</th><th>HS</th><th>Tension</th></tr>'+rows.map(r=>{let c=r.t==='critique'?'bad':r.t==='warning'?'warn':r.t==='sous-charge'?'warn':'ok';return `<tr><td>S${r.week}</td><td class="num">${euro(r.ca)}</td><td class="num">${r.hours.toFixed(1)}</td><td class="num">${r.av.toFixed(1)}</td><td class="num"><span class="${c}">${r.gap.toFixed(1)}</span></td><td class="num"><span class="${c}">${r.hs.toFixed(1)}</span></td><td><span class="${c}">${r.t}</span></td></tr>`}).join('')}
+function renderGuide(){if(!q('guideBox'))return;let rec=[],a=A(),avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12;if(Math.abs(avg-a.targetAbsRate)>.05)rec.push(['warning','Moyenne maladie non respectée',`Moyenne ${avg.toFixed(1)}% vs cible ${(+a.targetAbsRate).toFixed(1)}%.`]);hsRows(a).filter(x=>x.hs>20).slice(0,8).forEach(x=>rec.push(['critique',`Semaine ${x.week} en tension`,`${x.hs.toFixed(1)} h supplémentaires. Éviter les CP.`]));hsRows(a).filter(x=>x.under>35).slice(0,8).forEach(x=>rec.push(['alert',`Semaine ${x.week} favorable aux CP`,`Sous-charge ${x.under.toFixed(1)} h.`]));if(!a.employees.length)rec.unshift(['critique','Aucune équipe renseignée','Renseigner les salariés.']);q('guideBox').innerHTML=rec.map(r=>`<div class="alert ${r[0]}"><b>${r[1]}</b><br>${r[2]}</div>`).join('')||'<div class="alert">Aucune recommandation.</div>'}
+function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*a.hsCostRate,hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+gaugeRow('Résultat net / CA',netRate)+gaugeRow('Coût HS / CA',hsRate)}
+
+function cgBadgeType(x){return x.chargeType==='fixe'?'<span class="badgeFixe">fixe</span>':'<span class="badgeVar">variable</span>'}
+function cgCellType(x,safe){return '<td>'+cgBadgeType(x)+`<select onchange="setRexType('${safe}',this.value)" style="margin-top:5px"><option value="fixe" ${x.chargeType==='fixe'?'selected':''}>charge fixe</option><option value="variable" ${x.chargeType==='variable'?'selected':''}>charge variable</option></select></td>`}
+function cgCellMode(x,safe){return `<td><select onchange="setRexMode('${safe}',this.value)"><option value="month" ${x.mode==='month'?'selected':''}>saisie mensuelle</option><option value="annual" ${x.mode==='annual'?'selected':''}>montant annuel</option><option value="pct" ${x.mode==='pct'?'selected':''}>% CA mensuel</option></select></td>`}
+function cgCellKey(x,safe){if(x.mode==='annual')return '<td><label>Montant annuel</label><input value="'+( x.annual||0)+'" type="number" onchange="setRexAnnual(\''+safe+'\',this.value)"><label>Clé</label><select onchange="setRexKey(\''+safe+'\',this.value)"><option value="monthly12" '+(x.allocationKey==='monthly12'?'selected':'')+'>division par 12</option><option value="ca" '+(x.allocationKey==='ca'?'selected':'')+'>% du CA mensuel</option></select></td>';if(x.mode==='pct')return '<td><label>% CA mensuel</label><input value="'+(x.pct||0)+'" type="number" onchange="setRexVal(\''+safe+'\',0,this.value)"></td>';return '<td><span class="hint">saisie par mois</span></td>'}
+function cgRowMonths(a,r,x,safe){return M.map(function(_,m){if(x.mode==='month')return '<td><input value="'+(x.values[m]||0)+'" type="number" onchange="setRexVal(\''+safe+'\','+m+',this.value)"></td>';return '<td class="num locked">'+euro(manual(a,r.label,m))+'</td>'}).join('')}
+function cgBuildRow(a,r){let x=a.rex[r.label],safe=r.label.replace(/'/g,"\'"),total=M.reduce((s,_,m)=>s+manual(a,r.label,m),0);if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe';if(!x.allocationKey)x.allocationKey='monthly12';return '<tr><td><b>'+r.label+'</b></td>'+cgCellType(x,safe)+cgCellMode(x,safe)+cgCellKey(x,safe)+cgRowMonths(a,r,x,safe)+'<td class="num"><b>'+euro(total)+'</b></td></tr>'}
+function renderCG(){let a=A();if(!q('cgTable'))return;let header='<tr><th>Poste officiel</th><th>Type</th><th>Mode</th><th>Clé / valeur</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th></tr>';let rows=T.filter(r=>r.type!=='subtotal'&&r.label!=="Chiffre d'affaires"&&r.label!=="Charges de personnel").map(r=>cgBuildRow(a,r)).join('');q('cgTable').innerHTML=header+rows}
+
+function renderControl(){if(!q('auditKpis'))return;let a=A(),s=chargesSummary(a),ca=s.ca;q('auditKpis').innerHTML=[['Charges fixes',euro(s.fixed),pct(ca?s.fixed/ca*100:0)],['Charges variables',euro(s.variable),pct(ca?s.variable/ca*100:0)],['Charges personnel',euro(s.payroll),pct(ca?s.payroll/ca*100:0)],['HS annuelles',s.hs.toFixed(0)+' h',''],['REX',euro(ann(a,"RESULTAT D'EXPLOITATION")),pct(ca?ann(a,"RESULTAT D'EXPLOITATION")/ca*100:0)],['Résultat net',euro(ann(a,"RESULTAT NET")),pct(ca?ann(a,"RESULTAT NET")/ca*100:0)]].map(x=>`<div class="auditItem"><span>${x[0]}</span><b>${x[1]}</b><small>${x[2]||''}</small></div>`).join('');if(q('auditAlerts'))q('auditAlerts').innerHTML=auditAlerts(a).map(x=>`<div class="alertLine ${x[0]}"><b>${x[1]}</b><br>${x[2]}</div>`).join('')}
+function renderREX(){let a=A(),ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");kpis('rexKpis',[['CA',euro(ca)],['Charges personnel',euro(ann(a,"Charges de personnel")),pct(ca?ann(a,"Charges de personnel")/ca*100:0)],['VA',euro(ann(a,"VALEUR AJOUTEE"))],['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION"))],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)]]);if(q('rexTable'))q('rexTable').innerHTML='<tr><th>Rubrique officielle</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th><th>% CA</th></tr>'+T.map(r=>{let total=ann(a,r.label),cls=r.type==='subtotal'?'subtotal':r.type;return `<tr class="${cls}"><td><b>${r.label}</b></td>`+M.map((_,m)=>`<td class="num">${euro(amount(a,r.label,m))}</td>`).join('')+`<td class="num"><b>${euro(total)}</b></td><td class="num">${pct(ca?total/ca*100:0)}</td></tr>`}).join('')}
+function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),t=hsTot(a);kpis('finKpis',[['CA calendrier',euro(ca)],['Charges personnel',euro(ms),'présence + HS'],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)],['MS / CA',pct(ca?ms/ca*100:0)],['HS',t.hs.toFixed(0)+' h']])}
+
+// ═══════════════════════════════════════════════
+// ACTIONS UTILISATEUR
+// ═══════════════════════════════════════════════
+function setRef(act,m,t,v){A().refs[act][m][t]=+v;genCal(A());render()}
+function setEmp(i,f,v){A().employees[i][f]=f==='hours'?+v:v;render()}
+function delEmp(i){A().employees.splice(i,1);render()}
+function addEmployee(){A().employees.push({name:'Nouveau salarié',contract:'CDI',hours:35});render()}
+function setPresence(w,f,v){let a=A();if(!a.presence[w])a.presence[w]={cp:0,other:0};a.presence[w][f]=+v;render()}
+function setSick(m,v){A().sick[m]=+v;render()}
+function applyAvg(){A().sick=Array(12).fill(+A().targetAbsRate||0);render()}
+function setRexMode(l,v){A().rex[l].mode=v;render()}
+function setRexType(l,v){A().rex[l].chargeType=v;render()}
+function setRexKey(l,v){A().rex[l].allocationKey=v;render()}
+function setRexVal(l,m,v){let x=A().rex[l];if(x.mode==='pct')x.pct=+v;else x.values[m]=+v;render()}
+function setRexAnnual(l,v){A().rex[l].annual=+v;render()}
+function prefillCharges(){let a=A(),ca=annualCA(a),set=(l,mode,val)=>{if(a.rex[l]){a.rex[l].mode=mode==='pct'?'pct':'annual';a.rex[l].chargeType='variable';a.rex[l].allocationKey=mode==='pct'?'ca':'monthly12';if(mode==='pct')a.rex[l].pct=val;else a.rex[l].annual=Math.round(val)}};set('Carburant','pct',5.2);set('Crédit bail et location véhicules','annual',ca*.05);set('Location immobilières et charges locatives','annual',ca*.028);set('Assurance','annual',ca*.018);set('Impôts, taxes et versements assimilés','annual',ca*.048);set('Honoraires et prestations de services','annual',ca*.026);set('Péages','annual',ca*.013);set('Charges financières','annual',ca*.002);render()}
+
+function openAgency(){
+  let name=q('agencySel').value;
+  if(!name)return alert('Choisis une agence');
+  let idx=S.agencies.findIndex(a=>a.name===name);
+  if(idx<0){let ag=agency(name),ref=agences.find(x=>x.nom===name);ag.schoolZone=ref?.zone||'B';if(S.agencies.length===1&&S.agencies[0].name==='Nouvelle agence'){S.agencies[0]=ag;idx=0}else{S.agencies.push(ag);idx=S.agencies.length-1}}
+  S.active=idx;
+  if(q('start'))q('start').style.display='none';
+  if(q('btnChangeAgency'))q('btnChangeAgency').style.display='';
+  loadBudgetFromSupabase(name);
+}
+function addAgency(){let n=prompt('Nom agence');if(!n)return;S.agencies.push(agency(n));S.active=S.agencies.length-1;render()}
+function changeAgency(){if(q('start'))q('start').style.display='';show('objectif')}
+
+function migrateState(){S.agencies.forEach(a=>{if(!a.sick)a.sick=Array(12).fill(+a.targetAbsRate||5);if(!a.presence)a.presence={};if(!a.employees)a.employees=[];if(!a.rex)a.rex={};T.forEach(r=>{if(r.type!=='subtotal'&&!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(0),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0};if(a.rex[r.label]){let x=a.rex[r.label];if(!x.values)x.values=Array(12).fill(0);if(!x.mode)x.mode='month';if(!x.allocationKey)x.allocationKey='monthly12';if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe'}})})}
+
+// Sauvegarde : Supabase en priorité, localStorage en fallback
+function save(){saveBudgetToSupabase()}
+function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='budget_2027_v48.json';a.click()}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════
+async function renderAdmin() {
+  // Peupler le select agences
+  if (q('adminAgence')) {
+    q('adminAgence').innerHTML = '<option value="">-- Choisir --</option>' +
+      agences.map(a => `<option value="${a.nom}">${a.nom}</option>`).join('');
+  }
+  if (q('adminRole')) {
+    q('adminRole').onchange = () => {
+      if (q('adminAgenceZone')) q('adminAgenceZone').style.display = q('adminRole').value === 'rex' ? '' : 'none';
+    };
+    q('adminAgenceZone').style.display = 'none';
+  }
+  await renderAdminUsers();
+  await renderAdminBudgets();
+}
+
+async function renderAdminUsers() {
+  if (!q('adminUsersTable')) return;
+  q('adminUsersLoading').style.display = '';
+  const {data: users} = await sb.from('profiles').select('*').order('nom');
+  q('adminUsersLoading').style.display = 'none';
+  if (!users || !users.length) { q('adminUsersTable').innerHTML = ''; return; }
+  let html = '<tr><th>Nom</th><th>Email</th><th>Role</th><th>Agence</th><th>Actions</th></tr>';
+  for (const u of users) {
+    const roles = ['rex','dr','cg','df','dg','pdg','admin'];
+    const roleOpts = roles.map(r => `<option value="${r}" ${u.role===r?'selected':''}>${roleLabel(r)}</option>`).join('');
+    const agOpts = '<option value="">--</option>' + agences.map(a => `<option value="${a.nom}" ${u.agence===a.nom?'selected':''}>${a.nom}</option>`).join('');
+    html += `<tr>
+      <td><b>${u.nom}</b></td>
+      <td style="font-size:11px;color:var(--ink2)">${u.email}</td>
+      <td><select onchange="adminUpdateRole('${u.id}',this.value)" style="width:auto">${roleOpts}</select></td>
+      <td><select onchange="adminUpdateAgence('${u.id}',this.value)" style="width:auto">${agOpts}</select></td>
+      <td>
+        <button class="warn" style="font-size:11px;padding:5px 10px" onclick="adminResetPwd('${u.email}')">Reset MDP</button>
+        <button class="danger" style="font-size:11px;padding:5px 10px;margin-left:4px" onclick="adminDeleteUser('${u.id}','${u.nom}')">Supprimer</button>
+      </td>
+    </tr>`;
+  }
+  q('adminUsersTable').innerHTML = html;
+}
+
+async function renderAdminBudgets() {
+  if (!q('adminBudgetsTable')) return;
+  q('adminBudgetsLoading').style.display = '';
+  const {data: budgets} = await sb.from('budgets').select('*').eq('annee',2027).order('agence');
+  q('adminBudgetsLoading').style.display = 'none';
+  if (!budgets || !budgets.length) {
+    q('adminBudgetsTable').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink2);padding:20px">Aucun budget créé pour le moment.</td></tr>';
+    return;
+  }
+  const statuts = ['brouillon','soumis_dr','valide_dr','refuse_dr','complement_dr','soumis_df','valide_df','refuse_df','complement_df','soumis_dg','valide_dg','refuse_dg','soumis_pdg','valide_pdg','refuse_pdg'];
+  let html = '<tr><th>Agence</th><th>Statut actuel</th><th>CA Objectif</th><th>Forcer statut</th><th>Actions</th></tr>';
+  for (const b of budgets) {
+    const ca = b.data?.targetCA || 0;
+    const statOpts = statuts.map(s => `<option value="${s}" ${b.statut===s?'selected':''}>${statutLabel(s)}</option>`).join('');
+    html += `<tr>
+      <td><b>${b.agence}</b></td>
+      <td><span class="statut ${b.statut}">${statutLabel(b.statut)}</span></td>
+      <td class="num">${euro(ca)}</td>
+      <td><select onchange="adminForceStatut('${b.id}',this.value)" style="width:auto;font-size:11px">${statOpts}</select></td>
+      <td><button class="secondary" style="font-size:11px;padding:5px 10px" onclick="adminOpenBudget('${b.agence}','${b.id}')">Ouvrir</button></td>
+    </tr>`;
+  }
+  q('adminBudgetsTable').innerHTML = html;
+}
+
+async function adminCreateUser() {
+  const nom = q('adminNom').value.trim();
+  const email = q('adminEmail').value.trim();
+  const role = q('adminRole').value;
+  const agence = role === 'rex' ? q('adminAgence').value : null;
+  if (!nom || !email) { showAdminMsg('Nom et email obligatoires.', 'bad'); return; }
+  if (role === 'rex' && !agence) { showAdminMsg('Sélectionnez une agence pour ce REX.', 'bad'); return; }
+  // Vérifier si le profil existe déjà
+  const {data: existing} = await sb.from('profiles').select('id').eq('email', email).single().catch(() => ({data:null}));
+  if (existing) { showAdminMsg('Un compte avec cet email existe déjà.', 'bad'); return; }
+  showAdminMsg('Compte créé. Insérez manuellement dans Supabase Auth puis rafraîchissez.', 'ok');
+  // Copier la commande SQL dans le presse-papier
+  const sql = `-- 1. Créer dans Auth (Supabase → Authentication → Add user)\n-- Email: ${email} / MDP: vyvFred01!\n-- 2. Puis exécuter:\nINSERT INTO public.profiles (id, email, nom, role${agence?', agence':''})\nSELECT id, email, '${nom}', '${role}'${agence?`, '${agence}'`:''} FROM auth.users WHERE email = '${email}';`;
+  try { await navigator.clipboard.writeText(sql); showAdminMsg('SQL copié dans le presse-papier. Exécutez-le dans Supabase après avoir créé le compte Auth.', 'ok'); } catch(e) {}
+  await renderAdminUsers();
+}
+
+async function adminUpdateRole(userId, newRole) {
+  await sb.from('profiles').update({role: newRole}).eq('id', userId);
+  showAdminMsg('Rôle mis à jour.', 'ok');
+}
+
+async function adminUpdateAgence(userId, agence) {
+  await sb.from('profiles').update({agence: agence || null}).eq('id', userId);
+  showAdminMsg('Agence mise à jour.', 'ok');
+}
+
+async function adminResetPwd(email) {
+  const {error} = await sb.auth.resetPasswordForEmail(email);
+  if (error) showAdminMsg('Erreur : ' + error.message, 'bad');
+  else showAdminMsg('Email de réinitialisation envoyé à ' + email, 'ok');
+}
+
+async function adminDeleteUser(userId, nom) {
+  if (!confirm('Supprimer le profil de ' + nom + ' ? Cette action est irréversible.')) return;
+  await sb.from('profiles').delete().eq('id', userId);
+  showAdminMsg('Profil supprimé.', 'ok');
+  await renderAdminUsers();
+}
+
+async function adminForceStatut(budgetId, newStatut) {
+  await sb.from('budgets').update({statut: newStatut}).eq('id', budgetId);
+  showAdminMsg('Statut forcé : ' + statutLabel(newStatut), 'ok');
+  await renderAdminBudgets();
+}
+
+async function adminOpenBudget(agenceNom, budgetId) {
+  // Charger le budget en mode édition admin
+  S.agencies = [agency(agenceNom)];
+  S.active = 0;
+  let ref = agences.find(x => x.nom === agenceNom);
+  if (ref) S.agencies[0].schoolZone = ref.zone;
+  BUDGET_ID = budgetId;
+  const {data} = await sb.from('budgets').select('*').eq('id', budgetId).single();
+  if (data) {
+    BUDGET_STATUT = data.statut;
+    if (data.data && Object.keys(data.data).length) {
+      S.agencies[0] = {...agency(agenceNom), ...data.data, name: agenceNom};
+      migrateState();
+    }
+  }
+  if (q('start')) q('start').style.display = 'none';
+  if (q('btnChangeAgency')) q('btnChangeAgency').style.display = '';
+  show('objectif');
+  render();
+}
+
+function showAdminMsg(msg, type) {
+  if (!q('adminMsg')) return;
+  q('adminMsg').innerHTML = `<div class="alertLine ${type==='ok'?'info':type==='bad'?'critique':'warning'}">${msg}</div>`;
+  setTimeout(() => { if(q('adminMsg')) q('adminMsg').innerHTML = ''; }, 4000);
+}
+
+// ═══════════════════════════════════════════════
+// RÉFÉRENCES AGENCES (CG)
+// ═══════════════════════════════════════════════
+let REF_AGENCES = {}; // cache local des données saisies
+
+async function renderRefAgences() {
+  if (!q('refAgencesTable')) return;
+  q('refAgencesLoading').style.display = '';
+  // Charger les données existantes depuis Supabase
+  const {data: budgets} = await sb.from('budgets')
+    .select('agence,data').eq('annee', 2027);
+  // Construire un map agence -> données ref
+  const map = {};
+  (budgets || []).forEach(b => { map[b.agence] = b.data || {}; });
+  q('refAgencesLoading').style.display = 'none';
+  let html = '<tr><th>Agence</th><th>Zone</th><th>CA 2025</th><th>CA 2026</th><th>TXR moyen réalisé 2026</th><th>Absentéisme moyen cible %</th></tr>';
+  agences.forEach(ag => {
+    const d = map[ag.nom] || {};
+    html += `<tr>
+      <td><b>${ag.nom}</b></td>
+      <td style="text-align:center">${ag.zone}</td>
+      <td><input type="number" value="${d.histCA2025||''}" placeholder="0" onchange="setRefAgence('${ag.nom}','histCA2025',this.value)" style="width:130px"></td>
+      <td><input type="number" value="${d.histCA||''}" placeholder="0" onchange="setRefAgence('${ag.nom}','histCA',this.value)" style="width:130px"></td>
+      <td><input type="number" value="${d.histTXR2026||40}" placeholder="40" onchange="setRefAgence('${ag.nom}','histTXR2026',this.value)" style="width:100px"></td>
+      <td><input type="number" value="${d.targetAbsRate||5}" placeholder="5" onchange="setRefAgence('${ag.nom}','targetAbsRate',this.value)" style="width:100px"></td>
+    </tr>`;
+    // Mettre en cache
+    if (!REF_AGENCES[ag.nom]) REF_AGENCES[ag.nom] = {};
+    REF_AGENCES[ag.nom].histCA2025    = d.histCA2025    || 0;
+    REF_AGENCES[ag.nom].histCA        = d.histCA        || 0;
+    REF_AGENCES[ag.nom].histTXR2026   = d.histTXR2026   || 40;
+    REF_AGENCES[ag.nom].targetAbsRate = d.targetAbsRate || 5;
+  });
+  q('refAgencesTable').innerHTML = html;
+}
+
+function setRefAgence(nom, field, value) {
+  if (!REF_AGENCES[nom]) REF_AGENCES[nom] = {};
+  REF_AGENCES[nom][field] = +value;
+}
+
+async function saveRefAgences() {
+  let count = 0;
+  for (const [nom, data] of Object.entries(REF_AGENCES)) {
+    // Upsert dans budgets : créer ou mettre à jour le champ data
+    const {data: existing} = await sb.from('budgets').select('id,data').eq('agence', nom).eq('annee', 2027).single().catch(() => ({data:null}));
+    if (existing) {
+      const merged = {...existing.data, ...data};
+      await sb.from('budgets').update({data: merged}).eq('id', existing.id);
+    } else {
+      await sb.from('budgets').insert({agence: nom, annee: 2027, data, statut: 'brouillon'});
+    }
+    count++;
+  }
+  if (q('refAgencesSaveMsg')) {
+    q('refAgencesSaveMsg').textContent = count + ' agences enregistrées !';
+    setTimeout(() => { if(q('refAgencesSaveMsg')) q('refAgencesSaveMsg').textContent = ''; }, 3000);
+  }
+}
+
+async function init() {
+  S.agencies=[agency('Nouvelle agence')];
+  migrateState();
+
+  // Détecter un token de récupération dans l'URL (lien "mot de passe oublié")
+  const hash = window.location.hash;
+  if (hash && hash.includes('type=recovery') && hash.includes('access_token=')) {
+    // Extraire le token et établir la session
+    const params = new URLSearchParams(hash.replace('#',''));
+    const accessToken = params.get('access_token');
+    const refreshToken = params.get('refresh_token');
+    if (accessToken) {
+      await sb.auth.setSession({access_token: accessToken, refresh_token: refreshToken || ''});
+      // Nettoyer l'URL sans recharger
+      history.replaceState(null, '', window.location.pathname);
+      // Afficher directement la modale de changement de mot de passe
+      q('authScreen').style.display = 'none';
+      q('appWrapper').style.display = '';
+      // Modale simplifiée pour reset
+      q('changePwdModal').style.display = 'flex';
+      if (q('changePwdErr')) q('changePwdErr').textContent = 'Saisissez votre nouveau mot de passe.';
+      return;
+    }
+  }
+
+  // Session normale
+  const {data: {session}} = await sb.auth.getSession();
+  if (session) {
+    await afterLogin(session.user);
+  }
+}
+
+// Après changement de MDP depuis le lien de récupération : connecter l'utilisateur
+async function doChangePwdAndLogin() {
+  const p1 = q('newPwd1').value;
+  const p2 = q('newPwd2').value;
+  if (p1.length < 8) { q('changePwdErr').textContent = 'Le mot de passe doit faire au moins 8 caractères.'; return; }
+  if (p1 !== p2) { q('changePwdErr').textContent = 'Les mots de passe ne correspondent pas.'; return; }
+  const {data, error} = await sb.auth.updateUser({password: p1});
+  if (error) { q('changePwdErr').textContent = 'Erreur : ' + error.message; return; }
+  closeChangePwd();
+  if (data.user) await afterLogin(data.user);
+}
+
+init();
+</script></body></html>
