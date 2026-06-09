@@ -567,7 +567,9 @@ tr.subtotal td{
   font-family:'Caveat',cursive;font-size:15px;
   border-top:1px dashed var(--border);margin-top:8px;
 }
-</style></head><body>
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head><body>
 
 <!-- ECRAN DE CONNEXION -->
 <div id="authScreen">
@@ -704,7 +706,13 @@ tr.subtotal td{
 
 <section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Commencez par l'activité Sanitaire qui représente généralement l'essentiel de votre CA. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan"></table></div><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></section>
 <section id="cal" class="panel"><div class="card"><h2>3. Calendrier intelligent</h2><label>Mois</label><select id="monthSel" style="max-width:220px"></select><br><br><div class="calendar" id="calGrid"></div></div><div class="card"><h3>Synthèse hebdomadaire</h3><div class="tablewrap"><table id="weekCA"></table></div></div></section>
-<section id="team" class="panel"><div class="card"><h2>4. Équipe &amp; contrats</h2><p class="hint" style="margin-bottom:14px">👥 <b>Renseignez tous vos salariés</b> présents au 1er janvier 2027 : CDI, CDD, apprentis et intérimaires réguliers. Le nombre d'heures hebdomadaires est celui du contrat (35h, 39h...). Ces données alimentent le calcul des heures disponibles et des heures supplémentaires.</p><button onclick="addEmployee()">Ajouter salarié</button><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
+<section id="team" class="panel"><div class="card"><h2>4. Équipe &amp; contrats</h2><p class="hint" style="margin-bottom:14px">👥 <b>Renseignez tous vos salariés</b> présents au 1er janvier 2027 : CDI, CDD, apprentis et intérimaires réguliers. Le nombre d'heures hebdomadaires est celui du contrat (35h, 39h...). Ces données alimentent le calcul des heures disponibles et des heures supplémentaires.</p><div style="display:flex;gap:10px;margin-bottom:14px">
+      <button onclick="addEmployee()">+ Ajouter salarié</button>
+      <button class="secondary" onclick="triggerImportExcel()">📥 Importer depuis Excel</button>
+      <button class="secondary" onclick="importSGCV()" style="font-size:11px;opacity:.6">Test Saint-Gilles</button>
+      <input type="file" id="excelFileInput" accept=".xlsx" style="display:none" onchange="handleExcelImport(event)">
+      <span id="importMsg" style="font-family:'Caveat',cursive;font-size:15px;color:var(--green);margin-left:10px"></span>
+    </div><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
 <section id="presence" class="panel"><div class="card"><h2>5. CP, maladie &amp; présence</h2><p class="hint" style="margin-bottom:14px">🏖 <b>Planifiez les absences de votre équipe.</b> Saisissez le taux de maladie mensuel estimé (en % des heures contractuelles) et répartissez les heures de congés payés semaine par semaine. L'outil calcule automatiquement les heures réellement disponibles après déduction des absences.</p><h3>Maladie par mois</h3><div class="tablewrap"><table id="sickTable"></table></div><div id="sickAlert"></div><br><div class="tablewrap"><table id="presenceTable"></table></div></div></section>
 <section id="hs" class="panel"><div class="card"><h2>6. Tensions RH &amp; HS</h2><p class="hint" style="margin-bottom:14px">⚡ <b>Visualisez les tensions sur votre équipe.</b> Ce tableau compare semaine par semaine les heures nécessaires pour atteindre votre objectif de CA (CA ÷ TXR cible) et les heures disponibles après absences. Les semaines en rouge nécessitent des heures supplémentaires — vérifiez que le volume annuel reste raisonnable.</p><div class="kpis" id="hsKpis"></div><br><div class="tablewrap"><table id="hsTable"></table></div></div></section>
 <section id="guide" class="panel"><div class="card"><h2>7. Guide décision</h2><p class="hint" style="margin-bottom:14px">🧭 <b>L'outil analyse votre budget et vous alerte sur les points d'attention.</b> Chaque recommandation est actionnable — cliquez sur les étapes concernées pour corriger. Une fois satisfait de votre budget, cliquez sur <b>Soumettre au DR</b> depuis l'étape 1.</p><div id="guideBox"></div></div></section>
@@ -875,6 +883,7 @@ const agences=[
   {nom:'RENNES',zone:'B'},{nom:'VANNES',zone:'B'},{nom:'EVREUX',zone:'B'},{nom:'TOURS',zone:'B'},
   {nom:'CAHORS',zone:'C'},{nom:'MOISSAC',zone:'C'},{nom:'TOULOUSE',zone:'C'}
 ];
+const SGCV_DATA = [{"name": "ARNAUD EDWIGE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "ARNOULT NATHALIE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "AUROYER SANDRA", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "AVERTY Jean", "qual": "DEA", "contract": "CDI", "hours": 17.5, "hoursM": 0, "hsTarget": 1.75, "pctRoulant": 100, "joursSem": 3}, {"name": "BARREAU Cyril", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "BIGUET JEAN-SEBASTIEN", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "BRISSEAU DAVID", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "CHAILLOU ERIC", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "CHEVRIER Jean-Luc", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 70, "joursSem": 4}, {"name": "COLPIN Alexis", "qual": "DEA", "contract": "CDD", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DELANEF Ines", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DUMONTIER Nathalie", "qual": "AA", "contract": "CDI", "hours": 24, "hoursM": 0, "hsTarget": 1, "pctRoulant": 100, "joursSem": 3}, {"name": "DUPARC CHRISTELLE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DUPONT ANNIE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DURANTEAU RODRIGUE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "GAUTIER Fabrice", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "GOICHON Aurelie", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "GOUAS Cyril", "qual": "REGULATEUR", "contract": "CDI", "hours": 35, "hoursM": 3, "hsTarget": 0, "pctRoulant": 30, "joursSem": 5}, {"name": "HELBECQUE Clara", "qual": "DEA", "contract": "CDD", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "HOFLACK JEROME", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "JASSELIN DORINE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "JULIEN Adeline", "qual": "REGULATEUR", "contract": "CDI", "hours": 35, "hoursM": 3, "hsTarget": 0, "pctRoulant": 30, "joursSem": 5}, {"name": "LONGUEIRA VANESSA", "qual": "TAXI", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "MATHE Pascal", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "MAURIER Romain", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "MICHAUD GUYLAINE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "NUNES COIMBRA Fernando", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PADUA CHRISTOPHE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PASQUIER Mireille", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PENARD AUDREY", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PERDRIEL LOIC", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "RENAUD Christine", "qual": "AA", "contract": "CDI", "hours": 24, "hoursM": 0, "hsTarget": 1, "pctRoulant": 100, "joursSem": 3}, {"name": "ROBIN Celine", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "SAGOT Alexis", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "SARRAZIN Florent", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 70, "joursSem": 5}, {"name": "SAUCET NATHALIE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "SOURON SANDRA", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "TAVARD DENIS", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "TROMEUR Isabelle", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 3, "hsTarget": 0, "pctRoulant": 90, "joursSem": 5}, {"name": "VIALLARD JEROME", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "BARANGER Fabien", "qual": "REX", "contract": "CDI", "hours": 0, "hoursM": 0, "hsTarget": 0, "pctRoulant": 0, "joursSem": 5}];
 const feries=['2027-01-01','2027-04-05','2027-05-01','2027-05-08','2027-05-13','2027-05-24','2027-07-14','2027-08-15','2027-11-01','2027-11-11','2027-12-25'];
 const vac={A:[['2027-01-01','2027-01-03'],['2027-02-13','2027-02-28'],['2027-04-10','2027-04-25'],['2027-07-03','2027-12-31']],B:[['2027-01-01','2027-01-03'],['2027-02-20','2027-03-07'],['2027-04-17','2027-05-02'],['2027-07-03','2027-12-31']],C:[['2027-01-01','2027-01-03'],['2027-02-06','2027-02-21'],['2027-04-03','2027-04-18'],['2027-07-03','2027-12-31']]};
 const q=id=>document.getElementById(id);
@@ -1359,7 +1368,7 @@ async function saveAffectation(agenceNom, drUserId) {
 // MOTEUR DE CALCUL (identique V47)
 // ═══════════════════════════════════════════════
 function refs(){return Array.from({length:12},()=>({semaine:0,vacances:0,samedi:0,dimanche:0,ferie:0}))}
-function agency(name){let a={name,histCA:0,histCA2025:0,histTXR2026:40,targetAbsRate:5,perspectives:'',targetCA:0,targetTXR:40,schoolZone:'B',refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(5),costHour:28.5,hsCostRate:1.25,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(0),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
+function agency(name){let a={name,histCA:0,histCA2025:0,histTXR2026:40,targetAbsRate:5,perspectives:'',targetCA:0,targetTXR:40,schoolZone:'B',refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(5),costHour:28.5,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(0),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
 function A(){return S.agencies[S.active]}
 function between(d,s,e){return d>=s&&d<=e}
 function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
@@ -1370,20 +1379,40 @@ function monthCA(a,m){if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month=
 function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
 function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>x.week-y.week)}
 function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
-function baseH(a){return a.employees.reduce((s,e)=>s+(+e.hours||0),0)}
+function isRoulant(qual){return ['DEA','AA','TAXI','TPMR'].includes((qual||'').toUpperCase())}
+function baseH(a){return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0),0)}
+function baseHNonRoulant(a){return a.employees.filter(e=>!isRoulant(e.qual)&&e.qual!=='REX').reduce((s,e)=>s+(+e.hours||0),0)}
 function mainMonth(a,w){let c={};a.cal.filter(d=>d.week==w).forEach(d=>c[d.month]=(c[d.month]||0)+1);return +(Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||0)}
 function pres(a,w){let base=baseH(a),p=a.presence[w]||{cp:0,other:0},m=mainMonth(a,w),rate=+a.sick[m]||0,mal=base*rate/100,av=Math.max(0,base-(+p.cp||0)-mal-(+p.other||0));return {base,cp:+p.cp||0,other:+p.other||0,m,rate,mal,av,etp:av/35}}
 function hsRows(a){return needWeeks(a).map(n=>{let p=pres(a,n.week),gap=n.hours-p.av,hs=Math.max(0,gap),under=Math.max(0,-gap),t=hs>20?'critique':hs>0?'warning':under>35?'sous-charge':'ok';return {...n,...p,gap,hs,under,t}})}
 function hsTot(a){return hsRows(a).reduce((o,r)=>{o.ca+=r.ca;o.need+=r.hours;o.av+=r.av;o.hs+=r.hs;return o},{ca:0,need:0,av:0,hs:0})}
 function payrollMonth(a,m){
-  return hsRows(a).reduce((s,r)=>{
+  // MS roulante : heures disponibles x cout horaire + HS x coef
+  let msRoulant = hsRows(a).reduce((s,r)=>{
     let daysWeek=a.cal.filter(d=>d.week===r.week).length||7;
     let daysMonth=a.cal.filter(d=>d.week===r.week&&d.month===m).length;
     if(!daysMonth)return s;
     let ratio=daysMonth/daysWeek;
-    let weeklyCost=(r.av*a.costHour)+(r.hs*a.costHour*a.hsCostRate);
+    let weeklyCost=(r.av*(+a.costHour||0))+(r.hs*(+a.costHour||0)*(+a.hsCostRate||1.25));
     return s+weeklyCost*ratio;
-  },0)
+  },0);
+  // MS non roulants : cout journalier x jours travailles par mois
+  let msNonRoulant = a.employees
+    .filter(e=>!isRoulant(e.qual)&&e.qual!=='REX'&&e.qual!=='FACTURIERE')
+    .reduce((s,e)=>{
+      let daysMonth=a.cal.filter(d=>d.month===m&&[1,2,3,4,5].includes(new Date(2027,d.month,d.day).getDay())).length;
+      let joursHebdo=+e.joursSem||5;
+      let joursActifs=Math.round(daysMonth*joursHebdo/5);
+      return s+(+e.coutJour||0)*joursActifs;
+    },0);
+  // Quote-part DR : cout annuel x pourcentage / 12
+  let msDR = (+a.drCostAnnual||0)*(+a.drPct||0)/100/12;
+  // REX : cout journalier x jours mois
+  let msREX = a.employees.filter(e=>e.qual==='REX').reduce((s,e)=>{
+    let daysMonth=a.cal.filter(d=>d.month===m&&[1,2,3,4,5].includes(new Date(2027,d.month,d.day).getDay())).length;
+    return s+(+e.coutJour||0)*daysMonth;
+  },0);
+  return msRoulant+msNonRoulant+msDR+msREX;
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
 function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return +x.values[m]||0}
@@ -1463,7 +1492,40 @@ function render(){
 }
 
 function renderCal(){if(!q('monthSel'))return;let a=A(),m=S.month;q('monthSel').innerHTML=M.map((x,i)=>`<option value="${i}" ${i===m?'selected':''}>${x}</option>`).join('');q('monthSel').onchange=e=>{S.month=+e.target.value;render()};let days=a.cal.filter(d=>d.month===m),start=(new Date(2027,m,1).getDay()+6)%7,h=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(w=>`<div class="small"><b>${w}</b></div>`).join('')+Array.from({length:start},()=>'<div class="day empty"></div>').join('');days.forEach(d=>h+=`<div class="day ${d.type==='vacances'?'vac':''} ${d.type==='ferie'?'ferie':''}"><div class="dh"><span class="dt">${d.day}</span><span class="small">${d.type} \u2022 S${d.week}</span></div><div>San ${euro(d.ca.san)}</div><div>Sais ${euro(d.ca.sai)}</div><div>TP ${euro(d.ca.tp)}</div><div class="tot">${euro(d.total)}</div></div>`);if(q('calGrid'))q('calGrid').innerHTML=h;if(q('weekCA'))q('weekCA').innerHTML='<tr><th>Semaine</th><th>Jours</th><th>CA</th><th>Heures</th></tr>'+needWeeks(a).map(w=>`<tr><td>S${w.week}</td><td>${w.days}</td><td class="num">${euro(w.ca)}</td><td class="num">${w.hours.toFixed(1)}</td></tr>`).join('')}
-function renderTeam(){if(!q('empTable'))return;q('empTable').innerHTML='<tr><th>Nom</th><th>Contrat</th><th>Heures hebdo</th><th>ETP</th><th></th></tr>'+A().employees.map((e,i)=>`<tr><td>${inp(e.name,`setEmp.bind(null,${i},'name')`,'text')}</td><td><select onchange="setEmp(${i},'contract',this.value)">${['CDI','CDD','APPRENTI','INTERIM'].map(c=>`<option ${e.contract===c?'selected':''}>${c}</option>`).join('')}</select></td><td>${inp(e.hours,`setEmp.bind(null,${i},'hours')`)}</td><td class="num">${((+e.hours||0)/35).toFixed(2)}</td><td><button class="danger" onclick="delEmp(${i})">X</button></td></tr>`).join('')}
+function renderTeam(){
+  if(!q('empTable'))return;
+  let a=A();
+  let quals=['DEA','AA','TAXI','TPMR','REGULATEUR','REX'];
+  let contracts=['CDI','CDD','APPRENTI','INTERIM'];
+  let header='<tr><th>Nom</th><th>Qualification</th><th>Contrat</th><th>H. base</th><th>H. majorées</th><th>% roulant</th><th>Jours/sem</th><th>ETP roulant</th><th>Coût/jour <span style="font-weight:400;color:var(--ink2)">(non-roulants)</span></th><th></th></tr>';
+  let rows=a.employees.map((e,i)=>{
+    let qualOpts=quals.map(q=>('<option value="'+q+'"'+(e.qual===q?' selected':'')+'>'+q+'</option>')).join('');
+    let contractOpts=contracts.map(c=>('<option'+(e.contract===c?' selected':'')+'>'+c+'</option>')).join('');
+    let etp=isRoulant(e.qual)?((+e.hours||0)/35).toFixed(2):'—';
+    let coutJourCell=!isRoulant(e.qual)&&e.qual!=='REX'||e.qual==='REX'
+      ?'<td><input type="number" value="'+(e.coutJour||0)+'" style="width:90px" onchange="setEmp('+i+',\'coutJour\',this.value)" placeholder="€/jour"></td>'
+      :'<td style="color:var(--ink3);text-align:center">—</td>';
+    return '<tr><td><input type="text" value="'+e.name+'" onchange="setEmp('+i+',\'name\',this.value)" style="width:180px"></td>'
+      +'<td><select onchange="setEmp('+i+',\'qual\',this.value)" style="width:100px">'+qualOpts+'</select></td>'
+      +'<td><select onchange="setEmp('+i+',\'contract\',this.value)" style="width:70px">'+contractOpts+'</select></td>'
+      +'<td><input type="number" value="'+(e.hours||0)+'" style="width:70px" onchange="setEmp('+i+',\'hours\',this.value)"></td>'
+      +'<td><input type="number" value="'+(e.hoursM||0)+'" style="width:70px" onchange="setEmp('+i+',\'hoursM\',this.value)"></td>'
+      +'<td><input type="number" value="'+(e.pctRoulant||0)+'" style="width:70px" onchange="setEmp('+i+',\'pctRoulant\',this.value)" min="0" max="100">%</td>'
+      +'<td><input type="number" value="'+(e.joursSem||5)+'" style="width:60px" onchange="setEmp('+i+',\'joursSem\',this.value)" min="1" max="7"></td>'
+      +'<td class="num">'+etp+'</td>'
+      +coutJourCell
+      +'<td><button class="danger" style="padding:4px 8px;font-size:11px" onclick="delEmp('+i+')">X</button></td>'
+      +'</tr>';
+  }).join('');
+  // Ligne DR en bas
+  let drRow='<tr style="background:var(--blue2)"><td colspan="6"><b>Quote-part Directeur Régional</b></td>'
+    +'<td colspan="2"><label style="font-size:10px">Coût annuel DR (€)</label>'
+    +'<input type="number" value="'+(a.drCostAnnual||0)+'" style="width:130px" onchange="setDR(\'drCostAnnual\',this.value)"></td>'
+    +'<td colspan="2"><label style="font-size:10px">% affecté à cette agence</label>'
+    +'<input type="number" value="'+(a.drPct||0)+'" style="width:90px" onchange="setDR(\'drPct\',this.value)" min="0" max="100">%</td>'
+    +'</tr>';
+  q('empTable').innerHTML=header+rows+drRow;
+}
 function renderPresence(){let a=A();if(q('sickTable')){let avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12,diff=avg-(+a.targetAbsRate||0),cls=Math.abs(diff)<.05?'ok':'warn';q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Moy</th><th>Cible</th></tr><tr><td><b>% maladie</b></td>'+a.sick.map((v,i)=>`<td>${inp(v,`setSick.bind(null,${i})`)}</td>`).join('')+`<td class="num"><span class="${cls}">${pct(avg)}</span></td><td>${pct(a.targetAbsRate)}</td></tr>`;if(q('sickAlert'))q('sickAlert').innerHTML=`<div class="alert"><b>Contrôle maladie</b> écart ${pct(diff)} <button class="secondary" onclick="applyAvg()">Répartir moyenne</button></div>`}if(q('presenceTable'))q('presenceTable').innerHTML='<tr><th>Semaine</th><th>Mois</th><th>Capacité</th><th>CP h</th><th>Maladie %</th><th>Maladie h</th><th>Autres h</th><th>Disponible</th><th>ETP</th></tr>'+needWeeks(a).map(w=>{let p=pres(a,w.week);return `<tr><td>S${w.week}</td><td>${M[p.m]}</td><td class="num">${p.base.toFixed(1)}</td><td>${inp(p.cp,`setPresence.bind(null,${w.week},'cp')`)}</td><td class="num">${pct(p.rate)}</td><td class="num">${p.mal.toFixed(1)}</td><td>${inp(p.other,`setPresence.bind(null,${w.week},'other')`)}</td><td class="num">${p.av.toFixed(1)}</td><td class="num">${p.etp.toFixed(2)}</td></tr>`}).join('')}
 function renderHS(){let a=A(),rows=hsRows(a),tot=hsTot(a);kpis('hsKpis',[['CA',euro(tot.ca)],['Besoin',tot.need.toFixed(0)+' h'],['Disponible',tot.av.toFixed(0)+' h'],['HS',tot.hs.toFixed(0)+' h'],['ETP moy',(tot.av/52/35).toFixed(2)],['Coût HS',euro(tot.hs*a.costHour*a.hsCostRate)]]);if(q('hsTable'))q('hsTable').innerHTML='<tr><th>Semaine</th><th>CA</th><th>Besoin</th><th>Disponible</th><th>Écart</th><th>HS</th><th>Tension</th></tr>'+rows.map(r=>{let c=r.t==='critique'?'bad':r.t==='warning'?'warn':r.t==='sous-charge'?'warn':'ok';return `<tr><td>S${r.week}</td><td class="num">${euro(r.ca)}</td><td class="num">${r.hours.toFixed(1)}</td><td class="num">${r.av.toFixed(1)}</td><td class="num"><span class="${c}">${r.gap.toFixed(1)}</span></td><td class="num"><span class="${c}">${r.hs.toFixed(1)}</span></td><td><span class="${c}">${r.t}</span></td></tr>`}).join('')}
 function renderGuide(){if(!q('guideBox'))return;let rec=[],a=A(),avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12;if(Math.abs(avg-a.targetAbsRate)>.05)rec.push(['warning','Moyenne maladie non respectée',`Moyenne ${avg.toFixed(1)}% vs cible ${(+a.targetAbsRate).toFixed(1)}%.`]);hsRows(a).filter(x=>x.hs>20).slice(0,8).forEach(x=>rec.push(['critique',`Semaine ${x.week} en tension`,`${x.hs.toFixed(1)} h supplémentaires. Éviter les CP.`]));hsRows(a).filter(x=>x.under>35).slice(0,8).forEach(x=>rec.push(['alert',`Semaine ${x.week} favorable aux CP`,`Sous-charge ${x.under.toFixed(1)} h.`]));if(!a.employees.length)rec.unshift(['critique','Aucune équipe renseignée','Renseigner les salariés.']);q('guideBox').innerHTML=rec.map(r=>`<div class="alert ${r[0]}"><b>${r[1]}</b><br>${r[2]}</div>`).join('')||'<div class="alert">Aucune recommandation.</div>'}
@@ -1485,9 +1547,21 @@ function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Char
 // ACTIONS UTILISATEUR
 // ═══════════════════════════════════════════════
 function setRef(act,m,t,v){A().refs[act][m][t]=+v;genCal(A());render()}
-function setEmp(i,f,v){A().employees[i][f]=f==='hours'?+v:v;render()}
+function setEmp(i,f,v){
+  let numFields=['hours','hoursM','hsTarget','pctRoulant','joursSem','coutJour'];
+  A().employees[i][f]=numFields.includes(f)?+v:v;
+  render();
+}
+function setDR(f,v){A()[f]=+v;render()}
+function importSGCV(){
+  let a=A();
+  if(a.name!=='SAINT GILLES CROIX DE VIE'){alert('Cette fonction importe les donnees de Saint-Gilles. Selectionnez d\'abord cette agence.');return;}
+  if(a.employees.length>0&&!confirm('Remplacer la liste existante par les données importées ?'))return;
+  a.employees=SGCV_DATA.map(e=>({...e}));
+  render();
+}
 function delEmp(i){A().employees.splice(i,1);render()}
-function addEmployee(){A().employees.push({name:'Nouveau salarié',contract:'CDI',hours:35});render()}
+function addEmployee(){A().employees.push({name:'Nouveau salarié',qual:'DEA',contract:'CDI',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0});render()}
 function setPresence(w,f,v){let a=A();if(!a.presence[w])a.presence[w]={cp:0,other:0};a.presence[w][f]=+v;render()}
 function setSick(m,v){A().sick[m]=+v;render()}
 function applyAvg(){A().sick=Array(12).fill(+A().targetAbsRate||0);render()}
@@ -1511,7 +1585,14 @@ function openAgency(){
 function addAgency(){let n=prompt('Nom agence');if(!n)return;S.agencies.push(agency(n));S.active=S.agencies.length-1;render()}
 function changeAgency(){if(q('start'))q('start').style.display='';show('objectif')}
 
-function migrateState(){S.agencies.forEach(a=>{if(!a.sick)a.sick=Array(12).fill(+a.targetAbsRate||5);if(!a.presence)a.presence={};if(!a.employees)a.employees=[];if(!a.rex)a.rex={};T.forEach(r=>{if(r.type!=='subtotal'&&!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(0),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0};if(a.rex[r.label]){let x=a.rex[r.label];if(!x.values)x.values=Array(12).fill(0);if(!x.mode)x.mode='month';if(!x.allocationKey)x.allocationKey='monthly12';if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe'}})})}
+function migrateState(){S.agencies.forEach(a=>{
+  if(a.drCostAnnual===undefined)a.drCostAnnual=0;
+  if(a.drPct===undefined)a.drPct=0;
+  a.employees=(a.employees||[]).map(e=>({
+    qual:e.qual||'DEA',hoursM:e.hoursM||0,hsTarget:e.hsTarget||0,
+    pctRoulant:e.pctRoulant!==undefined?e.pctRoulant:100,
+    joursSem:e.joursSem||5,coutJour:e.coutJour||0,...e
+  }));if(!a.sick)a.sick=Array(12).fill(+a.targetAbsRate||5);if(!a.presence)a.presence={};if(!a.employees)a.employees=[];if(!a.rex)a.rex={};T.forEach(r=>{if(r.type!=='subtotal'&&!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(0),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0};if(a.rex[r.label]){let x=a.rex[r.label];if(!x.values)x.values=Array(12).fill(0);if(!x.mode)x.mode='month';if(!x.allocationKey)x.allocationKey='monthly12';if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe'}})})}
 
 // Sauvegarde : Supabase en priorité, localStorage en fallback
 function save(){saveBudgetToSupabase()}
@@ -1595,16 +1676,48 @@ async function adminCreateUser() {
   const role = q('adminRole').value;
   const agence = role === 'rex' ? q('adminAgence').value : null;
   if (!nom || !email) { showAdminMsg('Nom et email obligatoires.', 'bad'); return; }
-  if (role === 'rex' && !agence) { showAdminMsg('Sélectionnez une agence pour ce REX.', 'bad'); return; }
-  // Vérifier si le profil existe déjà
+  if (role === 'rex' && !agence) { showAdminMsg('Selectionnez une agence pour ce REX.', 'bad'); return; }
   const {data: existing} = await sb.from('profiles').select('id').eq('email', email).single().catch(() => ({data:null}));
-  if (existing) { showAdminMsg('Un compte avec cet email existe déjà.', 'bad'); return; }
-  showAdminMsg('Compte créé. Insérez manuellement dans Supabase Auth puis rafraîchissez.', 'ok');
-  // Copier la commande SQL dans le presse-papier
-  const sql = `-- 1. Créer dans Auth (Supabase → Authentication → Add user)\n-- Email: ${email} / MDP: vyvFred01!\n-- 2. Puis exécuter:\nINSERT INTO public.profiles (id, email, nom, role${agence?', agence':''})\nSELECT id, email, '${nom}', '${role}'${agence?`, '${agence}'`:''} FROM auth.users WHERE email = '${email}';`;
-  try { await navigator.clipboard.writeText(sql); showAdminMsg('SQL copié dans le presse-papier. Exécutez-le dans Supabase après avoir créé le compte Auth.', 'ok'); } catch(e) {}
-  await renderAdminUsers();
+  if (existing) { showAdminMsg('Un compte avec cet email existe deja.', 'bad'); return; }
+  const agenceField = agence ? ', agence' : '';
+  const agenceVal = agence ? `, '${agence}'` : '';
+  const sql = `INSERT INTO public.profiles (id, email, nom, role${agenceField})\nSELECT id, email, '${nom}', '${role}'${agenceVal}\nFROM auth.users WHERE email = '${email}';`;
+  showCreateModal(nom, email, sql);
 }
+
+function showCreateModal(nom, email, sql) {
+  let old = document.getElementById('createUserModal');
+  if (old) old.remove();
+  const div = document.createElement('div');
+  div.id = 'createUserModal';
+  div.className = 'modal';
+  div.style.display = 'flex';
+  div.innerHTML = '<div class="modalCard" style="width:560px">'
+    + '<h3>Creer le compte de ' + nom + '</h3>'
+    + '<div class="alertLine info" style="margin-bottom:16px"><b>Etape 1</b> — Creez le compte dans Supabase Authentication.<br><small>Email : <b>' + email + '</b> &nbsp;|&nbsp; Mot de passe provisoire : <b>vyvFred01!</b></small></div>'
+    + '<a href="https://supabase.com/dashboard/project/rtgbqltinxguuinhicrs/auth/users" target="_blank"><button style="width:100%;margin-bottom:16px">🔗 Ouvrir Supabase Authentication</button></a>'
+    + '<div class="alertLine warning" style="margin-bottom:8px"><b>Etape 2</b> — Une fois le compte cree, copiez ce SQL et executez-le dans le SQL Editor Supabase.</div>'
+    + '<textarea id="sqlToCopy" style="font-family:monospace;font-size:12px;height:90px;background:#f5f2ec;border:1px solid var(--border);width:100%;padding:10px;border-radius:10px" readonly>' + sql + '</textarea>'
+    + '<div class="modalActions">'
+    + '<button class="secondary" onclick="closeCreateModal()">Fermer</button>'
+    + '<a href="https://supabase.com/dashboard/project/rtgbqltinxguuinhicrs/sql/new" target="_blank"><button class="ok">🔗 SQL Editor</button></a>'
+    + '<button onclick="copySQLAdmin()">📋 Copier le SQL</button>'
+    + '</div></div>';
+  document.body.appendChild(div);
+}
+
+function closeCreateModal() {
+  let m = document.getElementById('createUserModal');
+  if (m) m.remove();
+}
+function copySQLAdmin() {
+  const el = document.getElementById('sqlToCopy');
+  if (!el) return;
+  navigator.clipboard.writeText(el.value).then(() => {
+    showAdminMsg('SQL copie !', 'ok');
+  }).catch(() => { el.select(); document.execCommand('copy'); showAdminMsg('SQL copie !', 'ok'); });
+}
+
 
 async function adminUpdateRole(userId, newRole) {
   await sb.from('profiles').update({role: newRole}).eq('id', userId);
@@ -1720,6 +1833,93 @@ async function saveRefAgences() {
     q('refAgencesSaveMsg').textContent = count + ' agences enregistrées !';
     setTimeout(() => { if(q('refAgencesSaveMsg')) q('refAgencesSaveMsg').textContent = ''; }, 3000);
   }
+}
+
+// ═══════════════════════════════════════════════
+// IMPORT EXCEL
+// ═══════════════════════════════════════════════
+function triggerImportExcel() {
+  if (q('excelFileInput')) q('excelFileInput').click();
+}
+
+function handleExcelImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type: 'array'});
+      // Chercher la feuille "Saisie personnel"
+      const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('saisie')) || wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      // Trouver la ligne d'en-tête (contient "Nom")
+      let headerRow = -1;
+      for (let i = 0; i < rows.length; i++) {
+        if (rows[i].some(c => typeof c === 'string' && c.toLowerCase().includes('nom'))) {
+          headerRow = i; break;
+        }
+      }
+      if (headerRow < 0) { showImportMsg('En-tête non trouvée. Vérifiez le fichier.', 'bad'); return; }
+      // Mapper les colonnes
+      const headers = rows[headerRow].map(h => (h+'').toLowerCase().trim());
+      const idx = {
+        name: headers.findIndex(h => h.includes('nom') || h.includes('pr')),
+        qual: headers.findIndex(h => h.includes('qual')),
+        contract: headers.findIndex(h => h.includes('contrat')),
+        hours: headers.findIndex(h => h.includes('base') || (h.includes('heure') && h.includes('contract') && !h.includes('major'))),
+        hoursM: headers.findIndex(h => h.includes('major')),
+        hsTarget: headers.findIndex(h => h.includes('hs') || h.includes('suppl')),
+        pctRoulant: headers.findIndex(h => h.includes('%') || h.includes('pct') || h.includes('roulant')),
+        joursSem: headers.findIndex(h => h.includes('jour')),
+      };
+      // Lire les lignes de données
+      let employees = [];
+      let skipped = 0;
+      for (let i = headerRow + 1; i < rows.length; i++) {
+        const row = rows[i];
+        const name = (row[idx.name] || '').toString().trim();
+        if (!name) continue;
+        const qual = ((row[idx.qual] || '')).toString().trim().toUpperCase();
+        // Exclure les facturières
+        if (qual === 'FACTURIERE' || qual === 'FACTURIÈRE') { skipped++; continue; }
+        const contract = (row[idx.contract] || 'CDI').toString().trim().toUpperCase();
+        const contractMap = {'CONTRAT A DUREE INDETERMINEE':'CDI','CONTRAT A DUREE DETERMINEE':'CDD','CDI':'CDI','CDD':'CDD','APPRENTI':'APPRENTI','INTERIM':'INTERIM'};
+        const contractNorm = contractMap[contract] || (contract.includes('INDET') ? 'CDI' : contract.includes('DETER') ? 'CDD' : 'CDI');
+        const hoursRaw = (row[idx.hours] || '0').toString().replace(',','.');
+        const hours = hoursRaw.toUpperCase() === 'FORFAIT' ? 0 : parseFloat(hoursRaw) || 0;
+        employees.push({
+          name,
+          qual: ['DEA','AA','TAXI','TPMR','REGULATEUR','REX'].includes(qual) ? qual : 'DEA',
+          contract: contractNorm,
+          hours,
+          hoursM: parseFloat((row[idx.hoursM]||0).toString().replace(',','.')) || 0,
+          hsTarget: parseFloat((row[idx.hsTarget]||0).toString().replace(',','.')) || 0,
+          pctRoulant: parseFloat((row[idx.pctRoulant]||100).toString().replace(',','.').replace('%','')) || 0,
+          joursSem: parseInt((row[idx.joursSem]||5).toString()) || 5,
+          coutJour: 0,
+        });
+      }
+      if (!employees.length) { showImportMsg('Aucun salarié trouvé. Vérifiez le fichier.', 'bad'); return; }
+      if (A().employees.length > 0 && !confirm(employees.length + ' salariés trouvés. Remplacer la liste existante ?')) return;
+      A().employees = employees;
+      // Réinitialiser l'input file
+      event.target.value = '';
+      render();
+      showImportMsg(employees.length + ' salariés importés !' + (skipped ? ' (' + skipped + ' facturier(s) ignoré(s))' : ''), 'ok');
+    } catch(err) {
+      showImportMsg('Erreur de lecture : ' + err.message, 'bad');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showImportMsg(msg, type) {
+  if (!q('importMsg')) return;
+  q('importMsg').style.color = type === 'ok' ? 'var(--green)' : 'var(--red)';
+  q('importMsg').textContent = msg;
+  setTimeout(() => { if(q('importMsg')) q('importMsg').textContent = ''; }, 4000);
 }
 
 async function init() {
