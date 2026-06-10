@@ -664,6 +664,15 @@ tr.subtotal td{
 <section id="rex" class="panel"><div class="card"><h2>Prévisionnel budgétaire</h2><div class="kpis" id="rexKpis"></div><br><div class="tablewrap"><table id="rexTable"></table></div></div></section>
 
 <!-- PANEL SYNTHESE -->
+<section id="previsionnel" class="panel">
+  <div class="card">
+    <h2>6. Prévisionnel budgétaire</h2>
+    <p class="hint" style="margin-bottom:16px">Tableau de résultat prévisionnel calculé à partir de vos données et des charges saisies par le contrôleur de gestion. Vue en lecture seule.</p>
+    <div class="kpis" id="prevKpis" style="margin-bottom:16px"></div>
+    <div class="tablewrap"><table id="prevTable"></table></div>
+  </div>
+</section>
+
 <section id="finance" class="panel">
   <div class="card"><h2>10. Synthèse financière</h2><div class="kpis" id="dashKpis"></div><br><div class="kpis" id="finKpis"></div></div>
   <div class="chartGrid">
@@ -764,7 +773,7 @@ let PENDING_DECISION = null; // {decision, niveau}
 
 const M=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
 const T=[{"label":"Chiffre d'affaires","type":"product"},{"label":"Achats Matières premières et sous traitance","type":"charge"},{"label":"Variations stock marchandises et autres approvisionnements","type":"charge"},{"label":"MARGE BRUTE GLOBALE","type":"subtotal"},{"label":"Electricité - eau - chauffage","type":"charge"},{"label":"Matériels ambulances","type":"charge"},{"label":"Carburant","type":"charge"},{"label":"Entretiens petits équipements","type":"charge"},{"label":"Fourniture bureau - vêtements","type":"charge"},{"label":"Sous traitance","type":"charge"},{"label":"Crédit bail et location véhicules","type":"charge"},{"label":"Location téléphonie - informatique - mobilité","type":"charge"},{"label":"Location immobilières et charges locatives","type":"charge"},{"label":"Entretiens véhicules - batîment","type":"charge"},{"label":"Maintenance informatique","type":"charge"},{"label":"Assurance","type":"charge"},{"label":"Formation - documentation","type":"charge"},{"label":"Honoraires et prestations de services","type":"charge"},{"label":"Publicité - cadeaux","type":"charge"},{"label":"Frais de déplacement - missions réceptions","type":"charge"},{"label":"Péages","type":"charge"},{"label":"Affranchissement","type":"charge"},{"label":"Téléphonie - internet","type":"charge"},{"label":"Frais bancaires et cotisations","type":"charge"},{"label":"Autres Achats et charges externes","type":"subtotal"},{"label":"VALEUR AJOUTEE","type":"subtotal"},{"label":"Subventions d'exploitation","type":"product"},{"label":"Impôts, taxes et versements assimilés","type":"charge"},{"label":"Charges de personnel","type":"charge"},{"label":"EXCEDENT BRUT D'EXPLOITATION","type":"subtotal"},{"label":"Reprises s/ charges et transferts","type":"product"},{"label":"Autres produits","type":"product"},{"label":"Dotations amortissements et provisions","type":"charge"},{"label":"Autres charges","type":"charge"},{"label":"RESULTAT D'EXPLOITATION","type":"subtotal"},{"label":"Produits financiers","type":"product"},{"label":"Charges financières","type":"charge"},{"label":"RESULTAT FINANCIER","type":"subtotal"},{"label":"RESULTAT COURANT AVANT IMPOT","type":"subtotal"},{"label":"Produits exceptionnels","type":"product"},{"label":"Charges exceptionnelles","type":"charge"},{"label":"RESULTAT EXCEPTIONNEL","type":"subtotal"},{"label":"RESULTAT NET","type":"subtotal"}];
-const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['finance','Synthèse']];
+const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['previsionnel','Prévisionnel'],['finance','Synthèse']];
 const panelsCG=[['objectif','Sélection agence'],['refagences','Données agences'],['cg','Charges CG'],['affectation','Affectation DR'],['controle','Contrôles'],['rex','Prévisionnel'],['finance','Synthèse'],['consolidation','Consolidation']];
 const panelsDR=[['validation','Mes agences'],['consolidation','Consolidation région']];
 const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau']];
@@ -1458,7 +1467,7 @@ function render(){
   else{if(q('refSaiSection'))q('refSaiSection').style.display='none';}
   if(a.actTP){refTable('refTP','tp');if(q('refTPSection'))q('refTPSection').style.display='';}
   else{if(q('refTPSection'))q('refTPSection').style.display='none';}
-  renderCal();renderTeam();renderRH();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
+  renderCal();renderTeam();renderRH();renderPrevisionnel();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
   updateStatutBar();
 }
 
@@ -1666,6 +1675,34 @@ function renderCG(){let a=A();if(!q('cgTable'))return;let header='<tr><th>Poste 
 
 function renderControl(){if(!q('auditKpis'))return;let a=A(),s=chargesSummary(a),ca=s.ca;q('auditKpis').innerHTML=[['Charges fixes',euro(s.fixed),pct(ca?s.fixed/ca*100:0)],['Charges variables',euro(s.variable),pct(ca?s.variable/ca*100:0)],['Charges personnel',euro(s.payroll),pct(ca?s.payroll/ca*100:0)],['HS annuelles',s.hs.toFixed(0)+' h',''],['REX',euro(ann(a,"RESULTAT D'EXPLOITATION")),pct(ca?ann(a,"RESULTAT D'EXPLOITATION")/ca*100:0)],['Résultat net',euro(ann(a,"RESULTAT NET")),pct(ca?ann(a,"RESULTAT NET")/ca*100:0)]].map(x=>`<div class="auditItem"><span>${x[0]}</span><b>${x[1]}</b><small>${x[2]||''}</small></div>`).join('');if(q('auditAlerts'))q('auditAlerts').innerHTML=auditAlerts(a).map(x=>`<div class="alertLine ${x[0]}"><b>${x[1]}</b><br>${x[2]}</div>`).join('')}
 function renderREX(){let a=A(),ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");kpis('rexKpis',[['CA',euro(ca)],['Charges personnel',euro(ann(a,"Charges de personnel")),pct(ca?ann(a,"Charges de personnel")/ca*100:0)],['VA',euro(ann(a,"VALEUR AJOUTEE"))],['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION"))],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)]]);if(q('rexTable'))q('rexTable').innerHTML='<tr><th>Rubrique officielle</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th><th>% CA</th></tr>'+T.map(r=>{let total=ann(a,r.label),cls=r.type==='subtotal'?'subtotal':r.type;return `<tr class="${cls}"><td><b>${r.label}</b></td>`+M.map((_,m)=>`<td class="num">${euro(amount(a,r.label,m))}</td>`).join('')+`<td class="num"><b>${euro(total)}</b></td><td class="num">${pct(ca?total/ca*100:0)}</td></tr>`}).join('')}
+function renderPrevisionnel(){
+  let a=A();
+  if(!q('prevTable'))return;
+  let ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");
+  // KPIs
+  if(q('prevKpis'))q('prevKpis').innerHTML=[
+    ['CA budgété',euro(ca),''],
+    ['Charges personnel',euro(ann(a,"Charges de personnel")),ca?pct(ann(a,"Charges de personnel")/ca*100):''],
+    ['Valeur ajoutée',euro(ann(a,"VALEUR AJOUTEE")),''],
+    ['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION")),''],
+    ['REX',euro(rex),ca?pct(rex/ca*100):''],
+    ['Résultat net',euro(net),ca?pct(net/ca*100):'']
+  ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
+  // Tableau SIG complet — lecture seule
+  let header='<tr><th>Rubrique</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th><th>% CA</th></tr>';
+  let rows=T.map(function(r){
+    let total=ann(a,r.label);
+    let cls=r.type==='subtotal'?'subtotal':'';
+    let pctCA=ca?pct(total/ca*100):'—';
+    return '<tr class="'+cls+'"><td><b>'+r.label+'</b></td>'
+      +M.map(function(_,m){return '<td class="num locked">'+euro(amount(a,r.label,m))+'</td>';}).join('')
+      +'<td class="num locked"><b>'+euro(total)+'</b></td>'
+      +'<td class="num locked">'+pctCA+'</td>'
+      +'</tr>';
+  }).join('');
+  q('prevTable').innerHTML=header+rows;
+}
+
 function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),t=hsTot(a);kpis('finKpis',[['CA calendrier',euro(ca)],['Charges personnel',euro(ms),'présence + HS'],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)],['MS / CA',pct(ca?ms/ca*100:0)],['HS',t.hs.toFixed(0)+' h']])}
 
 // ═══════════════════════════════════════════════
@@ -2139,6 +2176,7 @@ function completion() {
 
     cg: cgScore,
     rex: finScore,
+    previsionnel: finScore,
     finance: finScore,
     global: globalScore
   };
