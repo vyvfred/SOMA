@@ -592,13 +592,13 @@ tr.subtotal td{
 <section id="rh" class="panel">
   <div class="card">
     <h2>5. Présence, HS &amp; alertes</h2>
-    <p class="hint" style="margin-bottom:16px">Saisissez le taux de maladie mensuel (%) et les congés payés en jours (1J = 7H). L'outil calcule les heures disponibles, les tensions et les heures supplémentaires semaine par semaine.</p>
+    <p class="hint" style="margin-bottom:16px">Saisissez le taux de maladie & AT mensuel (%) et les congés payés en jours (1J = 7H). L'outil calcule les heures disponibles, les tensions et les heures supplémentaires semaine par semaine.</p>
 
     <!-- KPIs synthétiques -->
     <div class="kpis" id="rhKpis" style="margin-bottom:16px"></div>
 
     <!-- Absentéisme maladie -->
-    <h3 style="margin-bottom:8px">Absentéisme maladie par mois</h3>
+    <h3 style="margin-bottom:8px">Maladie &amp; AT par mois (%)</h3>
     <div class="tablewrap" style="margin-bottom:4px"><table id="sickTable"></table></div>
     <div id="sickAlert" style="margin-bottom:16px"></div>
 
@@ -1523,6 +1523,27 @@ function renderRH(){
     ['Coût HS',euro(hsCost),'']
   ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
 
+  // ── Compteur CP ──
+  let gen = cpGeneres(a);
+  let plan = cpPlanifies(a);
+  let restant = Math.round((gen - plan) * 10) / 10;
+  if (q('cpCounter')) q('cpCounter').style.display = a.employees.length ? 'grid' : 'none';
+  if (q('cpGeneres')) q('cpGeneres').textContent = gen.toFixed(1) + ' J';
+  if (q('cpPlanifies')) q('cpPlanifies').textContent = plan.toFixed(1) + ' J';
+  if (q('cpRestant')) {
+    q('cpRestant').textContent = restant.toFixed(1) + ' J';
+    q('cpRestant').style.color = Math.abs(restant) < 1 ? 'var(--green)' : restant > 0 ? 'var(--orange)' : 'var(--orange)';
+  }
+  if (q('cpEquilibre')) {
+    if (Math.abs(restant) < 1) {
+      q('cpEquilibre').innerHTML = '<span style="color:var(--green)">✓ Équilibré</span>';
+    } else if (restant > 0) {
+      q('cpEquilibre').innerHTML = '<span style="color:var(--orange)">⚠ ' + restant.toFixed(1) + ' J à placer</span>';
+    } else {
+      q('cpEquilibre').innerHTML = '<span style="color:var(--orange)">⚠ ' + Math.abs(restant).toFixed(1) + ' J en excès</span>';
+    }
+  }
+
   // ── Tableau maladie ──
   if(q('sickTable')){
     let filled=a.sick.filter(v=>v!==null&&v!==undefined);
@@ -1530,7 +1551,7 @@ function renderRH(){
     let diff=avg-(+a.targetAbsRate||0);
     let cls=Math.abs(diff)<0.05?'ok':'warn';
     q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Moy</th><th>Cible</th></tr>'
-      +'<tr><td><b>Maladie %</b></td>'
+      +'<tr><td><b>Maladie & AT %</b></td>'
       +a.sick.map(function(v,i){
         let display=v!==null&&v!==undefined?v:'';
         return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
@@ -1538,7 +1559,7 @@ function renderRH(){
       +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
       +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
     if(q('sickAlert')){
-      let msg=Math.abs(diff)>0.05?'<div class="alert"><b>Ecart maladie</b> '+pct(diff)+' vs cible <button class="secondary" onclick="applyAvg()" style="margin-left:8px">Appliquer la cible</button></div>':'';
+      let msg=Math.abs(diff)>0.05?'<div class="alert"><b>Ecart Maladie & AT</b> '+pct(diff)+' vs cible <button class="secondary" onclick="applyAvg()" style="margin-left:8px">Appliquer la cible</button></div>':'';
       q('sickAlert').innerHTML=msg;
     }
   }
@@ -1553,8 +1574,8 @@ function renderRH(){
     +'<th>Sem.</th><th>Mois</th>'
     +'<th title="Heures contractuelles">Cap. (h)</th>'
     +'<th title="Congés payés en jours">CP (J)</th>'
-    +'<th title="Taux maladie">Mal. %</th>'
-    +'<th title="Heures maladie">Mal. (h)</th>'
+    +'<th title="Taux maladie et accident du travail">Mal.+AT %</th>'
+    +'<th title="Heures maladie et AT déduites">Mal.+AT (h)</th>'
     +'<th title="Autres absences en jours">Autres (J)</th>'
     +'<th title="Heures disponibles"><b>Dispo (h)</b></th>'
     +'<th title="Heures nécessaires pour CA">Besoin (h)</th>'
@@ -1624,7 +1645,7 @@ function renderPresence(){
     let diff=avg-(+a.targetAbsRate||0);
     let cls=Math.abs(diff)<0.05?'ok':'warn';
     q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Moy</th><th>Cible</th></tr>'
-      +'<tr><td><b>Maladie %</b></td>'
+      +'<tr><td><b>Maladie & AT %</b></td>'
       +a.sick.map(function(v,i){
         let display=v!==null&&v!==undefined?v:'';
         return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
@@ -2192,6 +2213,69 @@ function completionBadge(score) {
   let color = completionColor(score);
   let bg = score >= 90 ? '#E5F2EA' : score >= 50 ? '#FFF8E1' : '#FAE8DC';
   return '<span style="font-size:10px;font-weight:700;padding:1px 6px;background:' + bg + ';color:' + color + ';margin-left:auto;font-family:DM Mono,monospace">' + score + '%</span>';
+}
+
+// ═══════════════════════════════════════════════
+// GESTION CP
+// ═══════════════════════════════════════════════
+function cpGeneres(a) {
+  // CP générés : chaque salarié génère 2.5J/mois sauf les mois avec AM
+  // On considère que le taux maladie mensuel réduit le stock proportionnellement
+  let salaries = a.employees.filter(e => e.qual !== 'FACTURIERE');
+  let nbSal = salaries.length;
+  if (!nbSal) return 0;
+  let totalJ = 0;
+  M.forEach(function(_, m) {
+    let tauxMal = a.sick[m] !== null && a.sick[m] !== undefined ? +a.sick[m] / 100 : 0;
+    // Chaque salarié génère 2.5J moins la part en AM
+    let jMois = 2.5 * (1 - tauxMal);
+    totalJ += nbSal * jMois;
+  });
+  return Math.round(totalJ * 10) / 10;
+}
+
+function cpPlanifies(a) {
+  return Object.values(a.presence || {}).reduce(function(s, p) {
+    return s + (+p.cp || 0);
+  }, 0);
+}
+
+function repartirCPAuto() {
+  let a = A();
+  let generes = cpGeneres(a);
+  let planifies = cpPlanifies(a);
+  let restant = Math.round((generes - planifies) * 10) / 10;
+  if (restant <= 0) { alert('Les CP sont déjà tous planifiés.'); return; }
+  // Trouver les semaines favorables (sous-charge)
+  let rows = hsRows(a);
+  let semFavorables = rows
+    .filter(function(r) { return r.t === 'sous-charge' || r.under > 10; })
+    .sort(function(a, b) { return b.under - a.under; }); // trier par sous-charge décroissante
+  if (!semFavorables.length) {
+    semFavorables = rows.filter(function(r) { return r.t === 'ok'; });
+  }
+  if (!semFavorables.length) { alert('Aucune semaine disponible pour placer des CP.'); return; }
+  // Répartir équitablement sur les semaines favorables
+  let nbSal = a.employees.filter(function(e){ return e.qual !== 'FACTURIERE'; }).length || 1;
+  let cpParSem = Math.ceil(restant / semFavorables.length * 10) / 10;
+  let placed = 0;
+  semFavorables.forEach(function(r) {
+    if (placed >= restant) return;
+    let toPlace = Math.min(cpParSem, restant - placed);
+    toPlace = Math.round(toPlace * 10) / 10;
+    if (!a.presence[r.week]) a.presence[r.week] = {cp: 0, other: 0};
+    a.presence[r.week].cp = Math.round(((+a.presence[r.week].cp || 0) + toPlace) * 10) / 10;
+    placed = Math.round((placed + toPlace) * 10) / 10;
+  });
+  render();
+}
+
+function resetCP() {
+  let a = A();
+  Object.keys(a.presence || {}).forEach(function(w) {
+    if (a.presence[w]) a.presence[w].cp = 0;
+  });
+  render();
 }
 
 async function init() {
