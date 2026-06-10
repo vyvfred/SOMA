@@ -1527,7 +1527,7 @@ function renderRH(){
   let gen = cpGeneres(a);
   let plan = cpPlanifies(a);
   let restant = Math.round((gen - plan) * 10) / 10;
-  if (q('cpCounter')) q('cpCounter').style.display = a.employees.length ? 'grid' : 'none';
+  if (q('cpCounter')) { q('cpCounter').style.display = a.employees.length ? 'grid' : 'none'; }
   if (q('cpGeneres')) q('cpGeneres').textContent = gen.toFixed(1) + ' J';
   if (q('cpPlanifies')) q('cpPlanifies').textContent = plan.toFixed(1) + ' J';
   if (q('cpRestant')) {
