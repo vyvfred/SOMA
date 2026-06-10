@@ -589,9 +589,27 @@ tr.subtotal td{
       <input type="file" id="excelFileInput" accept=".xlsx" style="display:none" onchange="handleExcelImport(event)">
       <span id="importMsg" style="font-family:'Caveat',cursive;font-size:15px;color:var(--green);margin-left:10px"></span>
     </div><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
-<section id="presence" class="panel"><div class="card"><h2>5. CP, maladie &amp; présence</h2><p class="hint" style="margin-bottom:14px">🏖 <b>Planifiez les absences de votre équipe.</b> Saisissez le taux de maladie mensuel estimé (en % des heures contractuelles) et répartissez les heures de congés payés semaine par semaine. L'outil calcule automatiquement les heures réellement disponibles après déduction des absences.</p><h3>Maladie par mois</h3><div class="tablewrap"><table id="sickTable"></table></div><div id="sickAlert"></div><br><div class="tablewrap"><table id="presenceTable"></table></div></div></section>
-<section id="hs" class="panel"><div class="card"><h2>6. Tensions RH &amp; HS</h2><p class="hint" style="margin-bottom:14px">⚡ <b>Visualisez les tensions sur votre équipe.</b> Ce tableau compare semaine par semaine les heures nécessaires pour atteindre votre objectif de CA (CA ÷ TXR cible) et les heures disponibles après absences. Les semaines en rouge nécessitent des heures supplémentaires — vérifiez que le volume annuel reste raisonnable.</p><div class="kpis" id="hsKpis"></div><br><div class="tablewrap"><table id="hsTable"></table></div></div></section>
-<section id="guide" class="panel"><div class="card"><h2>7. Guide décision</h2><p class="hint" style="margin-bottom:14px">🧭 <b>L'outil analyse votre budget et vous alerte sur les points d'attention.</b> Chaque recommandation est actionnable — cliquez sur les étapes concernées pour corriger. Une fois satisfait de votre budget, cliquez sur <b>Soumettre au DR</b> depuis l'étape 1.</p><div id="guideBox"></div></div></section>
+<section id="rh" class="panel">
+  <div class="card">
+    <h2>5. Présence, HS &amp; alertes</h2>
+    <p class="hint" style="margin-bottom:16px">Saisissez le taux de maladie mensuel (%) et les congés payés en jours (1J = 7H). L'outil calcule les heures disponibles, les tensions et les heures supplémentaires semaine par semaine.</p>
+
+    <!-- KPIs synthétiques -->
+    <div class="kpis" id="rhKpis" style="margin-bottom:16px"></div>
+
+    <!-- Absentéisme maladie -->
+    <h3 style="margin-bottom:8px">Absentéisme maladie par mois</h3>
+    <div class="tablewrap" style="margin-bottom:4px"><table id="sickTable"></table></div>
+    <div id="sickAlert" style="margin-bottom:16px"></div>
+
+    <!-- Tableau hebdomadaire fusionné -->
+    <h3 style="margin-bottom:8px">Détail hebdomadaire</h3>
+    <div class="tablewrap"><table id="rhTable"></table></div>
+
+    <!-- Résumé alertes critiques -->
+    <div id="rhAlertsSummary" style="margin-top:16px"></div>
+  </div>
+</section>
 
 <!-- PANEL REFERENCES AGENCES (CG) -->
 <section id="refagences" class="panel">
@@ -746,7 +764,7 @@ let PENDING_DECISION = null; // {decision, niveau}
 
 const M=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
 const T=[{"label":"Chiffre d'affaires","type":"product"},{"label":"Achats Matières premières et sous traitance","type":"charge"},{"label":"Variations stock marchandises et autres approvisionnements","type":"charge"},{"label":"MARGE BRUTE GLOBALE","type":"subtotal"},{"label":"Electricité - eau - chauffage","type":"charge"},{"label":"Matériels ambulances","type":"charge"},{"label":"Carburant","type":"charge"},{"label":"Entretiens petits équipements","type":"charge"},{"label":"Fourniture bureau - vêtements","type":"charge"},{"label":"Sous traitance","type":"charge"},{"label":"Crédit bail et location véhicules","type":"charge"},{"label":"Location téléphonie - informatique - mobilité","type":"charge"},{"label":"Location immobilières et charges locatives","type":"charge"},{"label":"Entretiens véhicules - batîment","type":"charge"},{"label":"Maintenance informatique","type":"charge"},{"label":"Assurance","type":"charge"},{"label":"Formation - documentation","type":"charge"},{"label":"Honoraires et prestations de services","type":"charge"},{"label":"Publicité - cadeaux","type":"charge"},{"label":"Frais de déplacement - missions réceptions","type":"charge"},{"label":"Péages","type":"charge"},{"label":"Affranchissement","type":"charge"},{"label":"Téléphonie - internet","type":"charge"},{"label":"Frais bancaires et cotisations","type":"charge"},{"label":"Autres Achats et charges externes","type":"subtotal"},{"label":"VALEUR AJOUTEE","type":"subtotal"},{"label":"Subventions d'exploitation","type":"product"},{"label":"Impôts, taxes et versements assimilés","type":"charge"},{"label":"Charges de personnel","type":"charge"},{"label":"EXCEDENT BRUT D'EXPLOITATION","type":"subtotal"},{"label":"Reprises s/ charges et transferts","type":"product"},{"label":"Autres produits","type":"product"},{"label":"Dotations amortissements et provisions","type":"charge"},{"label":"Autres charges","type":"charge"},{"label":"RESULTAT D'EXPLOITATION","type":"subtotal"},{"label":"Produits financiers","type":"product"},{"label":"Charges financières","type":"charge"},{"label":"RESULTAT FINANCIER","type":"subtotal"},{"label":"RESULTAT COURANT AVANT IMPOT","type":"subtotal"},{"label":"Produits exceptionnels","type":"product"},{"label":"Charges exceptionnelles","type":"charge"},{"label":"RESULTAT EXCEPTIONNEL","type":"subtotal"},{"label":"RESULTAT NET","type":"subtotal"}];
-const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['presence','CP / présence'],['hs','HS'],['guide','Guide'],['finance','Synthèse']];
+const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['finance','Synthèse']];
 const panelsCG=[['objectif','Sélection agence'],['refagences','Données agences'],['cg','Charges CG'],['affectation','Affectation DR'],['controle','Contrôles'],['rex','Prévisionnel'],['finance','Synthèse'],['consolidation','Consolidation']];
 const panelsDR=[['validation','Mes agences'],['consolidation','Consolidation région']];
 const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau']];
@@ -976,6 +994,7 @@ function show(id) {
   if (q(id)) q(id).classList.add('active');
   document.querySelectorAll('.navbtn').forEach(n => n.classList.toggle('active', n.dataset.p === id));
   if (id === 'validation') renderValidation();
+  if (id === 'rh') renderRH();
   if (id === 'refagences') renderRefAgences();
   if (id === 'consolidation') renderConsolidation();
   if (id === 'affectation') renderAffectation();
@@ -1303,7 +1322,18 @@ function isRoulant(qual){return ['DEA','AA','TAXI','TPMR'].includes((qual||'').t
 function baseH(a){return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0),0)}
 function baseHNonRoulant(a){return a.employees.filter(e=>!isRoulant(e.qual)&&e.qual!=='REX').reduce((s,e)=>s+(+e.hours||0),0)}
 function mainMonth(a,w){let c={};a.cal.filter(d=>d.week==w).forEach(d=>c[d.month]=(c[d.month]||0)+1);return +(Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||0)}
-function pres(a,w){let base=baseH(a),p=a.presence[w]||{cp:0,other:0},m=mainMonth(a,w),rate=+a.sick[m]||0,mal=base*rate/100,av=Math.max(0,base-(+p.cp||0)-mal-(+p.other||0));return {base,cp:+p.cp||0,other:+p.other||0,m,rate,mal,av,etp:av/35}}
+function pres(a,w){
+  let base=baseH(a);
+  let p=a.presence[w]||{cp:0,other:0};
+  let m=mainMonth(a,w);
+  let rate=a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]:0;
+  // CP et autres exprimés en jours (1J = 7H)
+  let cpH=(+p.cp||0)*7;
+  let otherH=(+p.other||0)*7;
+  let mal=base*rate/100;
+  let av=Math.max(0,base-cpH-mal-otherH);
+  return {base,cp:+p.cp||0,cpH,other:+p.other||0,otherH,m,rate,mal,av,etp:av/35};
+}
 function hsRows(a){return needWeeks(a).map(n=>{let p=pres(a,n.week),gap=n.hours-p.av,hs=Math.max(0,gap),under=Math.max(0,-gap),t=hs>20?'critique':hs>0?'warning':under>35?'sous-charge':'ok';return {...n,...p,gap,hs,under,t}})}
 function hsTot(a){return hsRows(a).reduce((o,r)=>{o.ca+=r.ca;o.need+=r.hours;o.av+=r.av;o.hs+=r.hs;return o},{ca:0,need:0,av:0,hs:0})}
 function payrollMonth(a,m){
@@ -1428,7 +1458,7 @@ function render(){
   else{if(q('refSaiSection'))q('refSaiSection').style.display='none';}
   if(a.actTP){refTable('refTP','tp');if(q('refTPSection'))q('refTPSection').style.display='';}
   else{if(q('refTPSection'))q('refTPSection').style.display='none';}
-  renderCal();renderTeam();renderPresence();renderHS();renderGuide();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
+  renderCal();renderTeam();renderRH();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
   updateStatutBar();
 }
 
@@ -1467,7 +1497,161 @@ function renderTeam(){
     +'</tr>';
   q('empTable').innerHTML=header+rows+drRow;
 }
-function renderPresence(){let a=A();if(q('sickTable')){let avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12,diff=avg-(+a.targetAbsRate||0),cls=Math.abs(diff)<.05?'ok':'warn';q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Moy</th><th>Cible</th></tr><tr><td><b>% maladie</b></td>'+a.sick.map((v,i)=>`<td>${inp(v,`setSick.bind(null,${i})`)}</td>`).join('')+`<td class="num"><span class="${cls}">${pct(avg)}</span></td><td>${pct(a.targetAbsRate)}</td></tr>`;if(q('sickAlert'))q('sickAlert').innerHTML=`<div class="alert"><b>Contrôle maladie</b> écart ${pct(diff)} <button class="secondary" onclick="applyAvg()">Répartir moyenne</button></div>`}if(q('presenceTable'))q('presenceTable').innerHTML='<tr><th>Semaine</th><th>Mois</th><th>Capacité</th><th>CP h</th><th>Maladie %</th><th>Maladie h</th><th>Autres h</th><th>Disponible</th><th>ETP</th></tr>'+needWeeks(a).map(w=>{let p=pres(a,w.week);return `<tr><td>S${w.week}</td><td>${M[p.m]}</td><td class="num">${p.base.toFixed(1)}</td><td>${inp(p.cp,`setPresence.bind(null,${w.week},'cp')`)}</td><td class="num">${pct(p.rate)}</td><td class="num">${p.mal.toFixed(1)}</td><td>${inp(p.other,`setPresence.bind(null,${w.week},'other')`)}</td><td class="num">${p.av.toFixed(1)}</td><td class="num">${p.etp.toFixed(2)}</td></tr>`}).join('')}
+function renderRH(){
+  let a=A();
+  if(!q('rhTable'))return;
+
+  // ── KPIs ──
+  let tot=hsTot(a);
+  let hsAnn=tot.hs,hsCost=hsAnn*(+a.costHour||0)*(+a.hsCostRate||1.25);
+  let empMoy=tot.av?tot.av/52/35:0;
+  if(q('rhKpis'))q('rhKpis').innerHTML=[
+    ['CA annuel',euro(tot.ca),''],
+    ['Besoin total',tot.need.toFixed(0)+' h','CA ÷ TXR'],
+    ['Dispo total',tot.av.toFixed(0)+' h','après absences'],
+    ['HS estimées',hsAnn.toFixed(0)+' h',hsAnn>500?'⚠ élevé':''],
+    ['ETP moyen',empMoy.toFixed(2),'roulant'],
+    ['Coût HS',euro(hsCost),'']
+  ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
+
+  // ── Tableau maladie ──
+  if(q('sickTable')){
+    let filled=a.sick.filter(v=>v!==null&&v!==undefined);
+    let avg=filled.length?filled.reduce((s,v)=>s+(+v||0),0)/filled.length:0;
+    let diff=avg-(+a.targetAbsRate||0);
+    let cls=Math.abs(diff)<0.05?'ok':'warn';
+    q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Moy</th><th>Cible</th></tr>'
+      +'<tr><td><b>Maladie %</b></td>'
+      +a.sick.map(function(v,i){
+        let display=v!==null&&v!==undefined?v:'';
+        return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
+      }).join('')
+      +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
+      +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
+    if(q('sickAlert')){
+      let msg=Math.abs(diff)>0.05?'<div class="alert"><b>Ecart maladie</b> '+pct(diff)+' vs cible <button class="secondary" onclick="applyAvg()" style="margin-left:8px">Appliquer la cible</button></div>':'';
+      q('sickAlert').innerHTML=msg;
+    }
+  }
+
+  // ── Tableau hebdomadaire fusionné ──
+  let rows=needWeeks(a);
+  let hsR=hsRows(a);
+  // Alertes critiques pour résumé
+  let critiques=[];
+
+  let header='<tr>'
+    +'<th>Sem.</th><th>Mois</th>'
+    +'<th title="Heures contractuelles">Cap. (h)</th>'
+    +'<th title="Congés payés en jours">CP (J)</th>'
+    +'<th title="Taux maladie">Mal. %</th>'
+    +'<th title="Heures maladie">Mal. (h)</th>'
+    +'<th title="Autres absences en jours">Autres (J)</th>'
+    +'<th title="Heures disponibles"><b>Dispo (h)</b></th>'
+    +'<th title="Heures nécessaires pour CA">Besoin (h)</th>'
+    +'<th title="Dispo - Besoin"><b>Écart</b></th>'
+    +'<th title="Heures supplémentaires"><b>HS (h)</b></th>'
+    +'<th>Alerte</th>'
+    +'</tr>';
+
+  let tableRows=rows.map(function(w){
+    let p=pres(a,w.week);
+    let hr=hsR.find(r=>r.week===w.week)||{hs:0,gap:0,t:'ok',hours:0};
+    // Alerte inline
+    let alertTxt='', alertStyle='';
+    if(hr.t==='critique'){
+      alertTxt='🔴 Tension';
+      alertStyle='color:var(--orange);font-weight:700;';
+      critiques.push('S'+w.week+' ('+M[p.m]+') : '+hr.hs.toFixed(0)+' h suppl. nécessaires');
+    } else if(hr.t==='warning'){
+      alertTxt='🟡 HS mod.';
+      alertStyle='color:#FF8F00;font-weight:700;';
+    } else if(hr.t==='sous-charge'){
+      alertTxt='🔵 CP possible';
+      alertStyle='color:var(--blue);';
+    } else {
+      alertTxt='🟢 OK';
+      alertStyle='color:var(--green);';
+    }
+    let ecartCls=hr.gap<-5?'bad':hr.gap>5?'ok':'';
+    return '<tr>'
+      +'<td>S'+w.week+'</td>'
+      +'<td>'+M[p.m]+'</td>'
+      +'<td class="num">'+p.base.toFixed(1)+'</td>'
+      +'<td><input type="number" value="'+(p.cp!==null&&p.cp!==undefined&&p.cp!==0?p.cp:'')+'" placeholder="0" onchange="setPresence('+w.week+',\'cp\',this.value)" style="width:55px"></td>'
+      +'<td class="num">'+pct(p.rate)+'</td>'
+      +'<td class="num">'+p.mal.toFixed(1)+'</td>'
+      +'<td><input type="number" value="'+(p.other!==null&&p.other!==undefined&&p.other!==0?p.other:'')+'" placeholder="0" onchange="setPresence('+w.week+',\'other\',this.value)" style="width:55px"></td>'
+      +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
+      +'<td class="num">'+hr.hours.toFixed(1)+'</td>'
+      +'<td class="num"><span class="'+ecartCls+'">'+hr.gap.toFixed(1)+'</span></td>'
+      +'<td class="num"><b>'+(hr.hs>0?'<span style="color:var(--orange)">'+hr.hs.toFixed(1)+'</span>':'0')+'</b></td>'
+      +'<td style="'+alertStyle+'font-size:12px;white-space:nowrap">'+alertTxt+'</td>'
+      +'</tr>';
+  }).join('');
+
+  q('rhTable').innerHTML=header+tableRows;
+
+  // ── Résumé alertes ──
+  if(q('rhAlertsSummary')){
+    if(critiques.length){
+      q('rhAlertsSummary').innerHTML='<div class="alert critique"><b>'+critiques.length+' semaine(s) en tension critique</b><br>'
+        +critiques.slice(0,5).map(c=>'• '+c).join('<br>')
+        +(critiques.length>5?'<br>... et '+(critiques.length-5)+' autres':'')
+        +'</div>';
+    } else if(hsAnn>300){
+      q('rhAlertsSummary').innerHTML='<div class="alert warning"><b>Volume HS annuel élevé</b> — '+hsAnn.toFixed(0)+' h. Vérifiez la cohérence avec votre effectif.</div>';
+    } else {
+      q('rhAlertsSummary').innerHTML='<div class="alert" style="border-left-color:var(--green);background:var(--green-light);color:var(--green)"><b>Aucune tension critique détectée</b></div>';
+    }
+  }
+}
+
+function renderPresence(){
+  let a=A();
+  if(q('sickTable')){
+    let filled=a.sick.filter(v=>v!==null&&v!==undefined);
+    let avg=filled.length?filled.reduce((s,v)=>s+(+v||0),0)/filled.length:0;
+    let diff=avg-(+a.targetAbsRate||0);
+    let cls=Math.abs(diff)<0.05?'ok':'warn';
+    q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Moy</th><th>Cible</th></tr>'
+      +'<tr><td><b>Maladie %</b></td>'
+      +a.sick.map(function(v,i){
+        let display=v!==null&&v!==undefined?v:'';
+        return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
+      }).join('')
+      +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
+      +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
+    if(q('sickAlert'))q('sickAlert').innerHTML='<div class="alert"><b>Contrôle maladie</b> — écart '+pct(diff)+' <button class="secondary" onclick="applyAvg()">Répartir la moyenne cible</button></div>';
+  }
+  if(q('presenceTable')){
+    let header='<tr>'
+      +'<th>Semaine</th><th>Mois</th>'
+      +'<th title="Heures contractuelles hebdo">Capacité (h)</th>'
+      +'<th title="Congés payés en jours — 1J = 7H">CP (J)</th>'
+      +'<th title="Taux maladie du mois">Maladie %</th>'
+      +'<th title="Heures maladie déduites">Maladie (h)</th>'
+      +'<th title="Autres absences en jours — 1J = 7H">Autres abs. (J)</th>'
+      +'<th title="Heures disponibles après déductions">Disponible (h)</th>'
+      +'<th>ETP</th>'
+      +'</tr>';
+    let rows=needWeeks(a).map(function(w){
+      let p=pres(a,w.week);
+      return '<tr>'
+        +'<td>S'+w.week+'</td>'
+        +'<td>'+M[p.m]+'</td>'
+        +'<td class="num">'+p.base.toFixed(1)+'</td>'
+        +'<td><input type="number" value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+w.week+',\'cp\',this.value)" style="width:60px" title="Jours de CP (1J=7H)"></td>'
+        +'<td class="num">'+pct(p.rate)+'</td>'
+        +'<td class="num">'+p.mal.toFixed(1)+'</td>'
+        +'<td><input type="number" value="'+(p.other||'')+'" placeholder="0" onchange="setPresence('+w.week+',\'other\',this.value)" style="width:60px" title="Autres absences en jours (1J=7H)"></td>'
+        +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
+        +'<td class="num">'+p.etp.toFixed(2)+'</td>'
+        +'</tr>';
+    }).join('');
+    q('presenceTable').innerHTML=header+rows;
+  }
+}
 function renderHS(){let a=A(),rows=hsRows(a),tot=hsTot(a);kpis('hsKpis',[['CA',euro(tot.ca)],['Besoin',tot.need.toFixed(0)+' h'],['Disponible',tot.av.toFixed(0)+' h'],['HS',tot.hs.toFixed(0)+' h'],['ETP moy',(tot.av/52/35).toFixed(2)],['Coût HS',euro(tot.hs*a.costHour*a.hsCostRate)]]);if(q('hsTable'))q('hsTable').innerHTML='<tr><th>Semaine</th><th>CA</th><th>Besoin</th><th>Disponible</th><th>Écart</th><th>HS</th><th>Tension</th></tr>'+rows.map(r=>{let c=r.t==='critique'?'bad':r.t==='warning'?'warn':r.t==='sous-charge'?'warn':'ok';return `<tr><td>S${r.week}</td><td class="num">${euro(r.ca)}</td><td class="num">${r.hours.toFixed(1)}</td><td class="num">${r.av.toFixed(1)}</td><td class="num"><span class="${c}">${r.gap.toFixed(1)}</span></td><td class="num"><span class="${c}">${r.hs.toFixed(1)}</span></td><td><span class="${c}">${r.t}</span></td></tr>`}).join('')}
 function renderGuide(){if(!q('guideBox'))return;let rec=[],a=A(),avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12;if(Math.abs(avg-a.targetAbsRate)>.05)rec.push(['warning','Moyenne maladie non respectée',`Moyenne ${avg.toFixed(1)}% vs cible ${(+a.targetAbsRate).toFixed(1)}%.`]);hsRows(a).filter(x=>x.hs>20).slice(0,8).forEach(x=>rec.push(['critique',`Semaine ${x.week} en tension`,`${x.hs.toFixed(1)} h supplémentaires. Éviter les CP.`]));hsRows(a).filter(x=>x.under>35).slice(0,8).forEach(x=>rec.push(['alert',`Semaine ${x.week} favorable aux CP`,`Sous-charge ${x.under.toFixed(1)} h.`]));if(!a.employees.length)rec.unshift(['critique','Aucune équipe renseignée','Renseigner les salariés.']);q('guideBox').innerHTML=rec.map(r=>`<div class="alert ${r[0]}"><b>${r[1]}</b><br>${r[2]}</div>`).join('')||'<div class="alert">Aucune recommandation.</div>'}
 function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*a.hsCostRate,hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+gaugeRow('Résultat net / CA',netRate)+gaugeRow('Coût HS / CA',hsRate)}
@@ -1506,7 +1690,7 @@ function delEmp(i){A().employees.splice(i,1);render()}
 function addEmployee(){A().employees.push({name:'Nouveau salarié',qual:'DEA',contract:'CDI',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0});render()}
 function setPresence(w,f,v){let a=A();if(!a.presence[w])a.presence[w]={cp:0,other:0};a.presence[w][f]=+v;render()}
 function setSick(m,v){A().sick[m]=v===''?null:+v;render()}
-function applyAvg(){A().sick=Array(12).fill(+A().targetAbsRate||0);render()}
+function applyAvg(){let v=A().targetAbsRate!==null?+A().targetAbsRate:0;A().sick=Array(12).fill(v);render()}
 function setRexMode(l,v){A().rex[l].mode=v;render()}
 function setRexType(l,v){A().rex[l].chargeType=v;render()}
 function setRexKey(l,v){A().rex[l].allocationKey=v;render()}
@@ -1950,8 +2134,9 @@ function completion() {
     cal: calScore,
     team: empScore,
     presence: presScore,
-    hs: hsScore,
-    guide: guideScore,
+    rh: Math.round((empScore+presScore+hsScore)/3),
+
+
     cg: cgScore,
     rex: finScore,
     finance: finScore,
