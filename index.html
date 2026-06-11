@@ -2345,30 +2345,38 @@ function cpPlanifies(a) {
 
 function repartirCPAuto() {
   let a = A();
+  // Réinitialiser les CP existants avant de répartir
+  Object.keys(a.presence || {}).forEach(function(w) {
+    if (a.presence[w]) a.presence[w].cp = 0;
+  });
   let generes = cpGeneres(a);
-  let planifies = cpPlanifies(a);
-  let restant = Math.round((generes - planifies) * 10) / 10;
-  if (restant <= 0) { alert('Les CP sont déjà tous planifiés.'); return; }
-  // Trouver les semaines favorables (sous-charge)
-  let rows = hsRows(a);
-  let semFavorables = rows
-    .filter(function(r) { return r.t === 'sous-charge' || r.under > 10; })
-    .sort(function(a, b) { return b.under - a.under; }); // trier par sous-charge décroissante
-  if (!semFavorables.length) {
-    semFavorables = rows.filter(function(r) { return r.t === 'ok'; });
-  }
-  if (!semFavorables.length) { alert('Aucune semaine disponible pour placer des CP.'); return; }
-  // Répartir équitablement sur les semaines favorables
-  let nbSal = a.employees.filter(function(e){ return e.qual !== 'FACTURIERE'; }).length || 1;
-  let cpParSem = Math.ceil(restant / semFavorables.length * 10) / 10;
+  if (generes <= 0) { alert('Aucun CP à placer — vérifiez l\'effectif.'); return; }
+  // Calculer le CA par semaine
+  let wks = needWeeks(a);
+  // Trier par CA croissant (semaines les moins productives en priorité)
+  let sorted = wks.slice().sort(function(x, y) { return x.ca - y.ca; });
+  // Calculer les CP disponibles par salarié actif (hors REX et facturière)
+  let nbSal = a.employees.filter(function(e) {
+    return e.qual !== 'FACTURIERE' && e.qual !== 'REX';
+  }).length || 1;
+  // Répartir proportionnellement au CA inversé
+  // Plus le CA est faible, plus on place de CP
+  let totalInvCA = sorted.reduce(function(s, w) { return s + (1 / (w.ca + 1)); }, 0);
   let placed = 0;
-  semFavorables.forEach(function(r) {
-    if (placed >= restant) return;
-    let toPlace = Math.min(cpParSem, restant - placed);
-    toPlace = Math.round(toPlace * 10) / 10;
-    if (!a.presence[r.week]) a.presence[r.week] = {cp: 0, other: 0};
-    a.presence[r.week].cp = Math.round(((+a.presence[r.week].cp || 0) + toPlace) * 10) / 10;
-    placed = Math.round((placed + toPlace) * 10) / 10;
+  let restant = generes;
+  sorted.forEach(function(w, i) {
+    if (restant <= 0) return;
+    let weight = (1 / (w.ca + 1)) / totalInvCA;
+    let cpSem = i === sorted.length - 1
+      ? Math.round(restant * 10) / 10  // dernière semaine : solde
+      : Math.round(generes * weight * 10) / 10;
+    cpSem = Math.min(cpSem, restant);
+    cpSem = Math.round(cpSem * 10) / 10;
+    if (cpSem <= 0) return;
+    if (!a.presence[w.week]) a.presence[w.week] = {cp: 0, other: 0};
+    a.presence[w.week].cp = cpSem;
+    placed = Math.round((placed + cpSem) * 10) / 10;
+    restant = Math.round((restant - cpSem) * 10) / 10;
   });
   render();
 }
