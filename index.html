@@ -203,7 +203,32 @@ nav{
   padding:16px 8px;
   border-right:1px solid var(--border);
   background:var(--white);
+  width:260px;
+  min-width:260px;
+  transition:width .2s ease, min-width .2s ease;
+  overflow:hidden;
+  position:relative;
 }
+nav.collapsed{
+  width:52px;
+  min-width:52px;
+  padding:16px 4px;
+}
+.navToggle{
+  position:absolute;top:12px;right:8px;
+  width:24px;height:24px;
+  border:1px solid var(--border)!important;
+  background:var(--white)!important;
+  color:var(--ink65)!important;
+  font-size:14px!important;font-weight:700!important;
+  padding:0!important;
+  display:grid;place-items:center;
+  cursor:pointer;
+  box-shadow:none!important;
+  transition:transform .2s;
+  z-index:5;
+}
+nav.collapsed .navToggle{transform:rotate(180deg);}
 .navgroup{
   font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:.08em;
@@ -211,7 +236,12 @@ nav{
   margin:16px 8px 8px;
   padding-bottom:6px;
   border-bottom:1px solid var(--border);
+  white-space:nowrap;
+  overflow:hidden;
+  transition:opacity .15s;
 }
+nav.collapsed .navgroup{opacity:0;height:0;margin:0;padding:0;border:none;}
+nav.collapsed .navGlobalBadge{display:none!important;}
 .navbtn{
   width:100%;text-align:left;
   border:none!important;
@@ -223,6 +253,8 @@ nav{
   font-size:13px!important;font-weight:400!important;
   box-shadow:none!important;
   transition:all .15s;
+  white-space:nowrap;
+  overflow:hidden;
 }
 .navbtn:hover{background:var(--violet-light)!important;color:var(--violet)!important;}
 .navbtn.active{
@@ -233,6 +265,19 @@ nav{
   padding-left:9px;
 }
 .navbtn:active{transform:none!important;}
+/* Mode replié : afficher uniquement numéro + badge */
+nav.collapsed .navbtn{
+  padding:9px 4px!important;
+  font-size:11px!important;
+  text-align:center!important;
+  border-left:none!important;
+}
+nav.collapsed .navbtn.active{
+  border-left:3px solid var(--violet)!important;
+  padding-left:1px!important;
+}
+nav.collapsed .navbtnLabel{display:none;}
+nav.collapsed .navbtnNum{font-weight:700;color:inherit;}
 
 /* ── MAIN ── */
 main{padding:24px 28px;}
@@ -962,22 +1007,24 @@ function buildNav() {
     let g = comp.global || 0;
     let gColor = completionColor(g);
     let gBg = g >= 90 ? '#E5F2EA' : g >= 50 ? '#FFF8E1' : '#FAE8DC';
-    globalBadge = '<div style="margin:10px 8px 4px;padding:10px 12px;background:' + gBg + ';border-left:3px solid ' + gColor + '">'
+    globalBadge = '<div class="navGlobalBadge" style="margin:10px 8px 4px;padding:10px 12px;background:' + gBg + ';border-left:3px solid ' + gColor + '">'
       + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:' + gColor + '">Avancement global</div>'
       + '<div style="font-family:DM Mono,monospace;font-size:20px;font-weight:700;color:' + gColor + ';margin-top:2px">' + g + '%</div>'
       + '<div style="height:4px;background:rgba(0,0,0,.08);margin-top:6px"><div style="height:4px;background:' + gColor + ';width:' + g + '%"></div></div>'
       + '</div>';
   }
 
-  let h = '<div class="navgroup">' + groupLabel + '</div>' + globalBadge;
+  let h = '<button class="navToggle" onclick="toggleNav()" title="Réduire/Agrandir">‹</button>'
+    + '<div class="navgroup navGlobalLabel">' + groupLabel + '</div>' + globalBadge;
 
   panels.forEach((x, i) => {
     let badge = '';
     if (hasAgence && comp[x[0]] !== undefined) {
       badge = completionBadge(comp[x[0]]);
     }
-    h += '<button class="navbtn" data-p="' + x[0] + '" style="display:flex;align-items:center;gap:4px">'
-      + '<span>' + (i+1) + '. ' + x[1] + '</span>'
+    h += '<button class="navbtn" data-p="' + x[0] + '" style="display:flex;align-items:center;gap:4px" title="' + x[1] + '">'
+      + '<span class="navbtnNum">' + (i+1) + '</span>'
+      + '<span class="navbtnLabel">. ' + x[1] + '</span>'
       + badge
       + '</button>';
   });
@@ -1196,6 +1243,17 @@ function openModal(budgetId, decision, niveau) {
   q('validModalTitle').textContent = titles[decision];
   q('validModalComment').value = '';
   q('validModal').style.display = 'flex';
+}
+
+function toggleNav() {
+  let nav = document.querySelector('nav');
+  if (!nav) return;
+  nav.classList.toggle('collapsed');
+  // Adapter la grille principale
+  let app = document.querySelector('.app');
+  if (app) {
+    app.style.gridTemplateColumns = nav.classList.contains('collapsed') ? '52px 1fr' : '260px 1fr';
+  }
 }
 
 function closeModal() {
