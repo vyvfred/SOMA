@@ -656,16 +656,25 @@ tr.subtotal td{
     </div>
 
     <!-- Maladie & AT par mois -->
-    <h3 style="margin-bottom:8px">Maladie &amp; AT par mois (%)</h3>
-    <div class="tablewrap" style="margin-bottom:4px"><table id="sickTable"></table></div>
-    <div id="sickAlert" style="margin-bottom:16px"></div>
+    <div class="card" style="margin-bottom:12px">
+      <h3 style="margin-bottom:10px">Maladie &amp; AT par mois (%)</h3>
+      <div class="tablewrap"><table id="sickTable"></table></div>
+      <div id="sickAlert" style="margin-top:8px"></div>
+    </div>
 
-    <!-- Tableau hebdomadaire fusionné -->
-    <h3 style="margin-bottom:8px">Détail hebdomadaire</h3>
-    <div class="tablewrap"><table id="rhTable"></table></div>
+    <!-- Cartes mensuelles -->
+    <div id="rhMonthCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
 
-    <!-- Résumé alertes critiques -->
-    <div id="rhAlertsSummary" style="margin-top:16px"></div>
+    <!-- Détail semaines du mois sélectionné -->
+    <div id="rhWeekDetail" style="display:none" class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 id="rhWeekDetailTitle" style="margin:0">Détail semaines</h3>
+        <button class="secondary" onclick="closeWeekDetail()" style="font-size:11px;padding:5px 10px">✕ Fermer</button>
+      </div>
+      <div class="tablewrap"><table id="rhTable"></table></div>
+    </div>
+
+    <div id="rhAlertsSummary"></div>
   </div>
 </section>
 
