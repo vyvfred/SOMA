@@ -1583,50 +1583,41 @@ function renderTeam(){
 }
 function renderRH(){
   let a=A();
-  if(!q('rhTable'))return;
+  if(!q('rhKpis'))return;
 
-  // ── KPIs ──
+  // ── KPIs annuels ──
   let tot=hsTot(a);
   let hsAnn=tot.hs,hsCost=hsAnn*(+a.costHour||0)*(+a.hsCostRate||1.25);
-  let empMoy=tot.av?tot.av/52/35:0;
-  if(q('rhKpis'))q('rhKpis').innerHTML=[
+  let empMoy=tot.av>0?tot.av/52/35:0;
+  q('rhKpis').innerHTML=[
     ['CA annuel',euro(tot.ca),''],
     ['Besoin total',tot.need.toFixed(0)+' h','CA ÷ TXR'],
-    ['Dispo total',tot.av.toFixed(0)+' h','après absences'],
+    ['Dispo totale',tot.av.toFixed(0)+' h','après absences'],
     ['HS estimées',hsAnn.toFixed(0)+' h',hsAnn>500?'⚠ élevé':''],
     ['ETP moyen',empMoy.toFixed(2),'roulant'],
     ['Coût HS',euro(hsCost),'']
   ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
 
-  // ── Compteur CP ──
-  let gen = cpGeneres(a);
-  let plan = cpPlanifies(a);
-  let restant = Math.round((gen - plan) * 10) / 10;
-  if (q('cpCounter')) q('cpCounter').style.display = a.employees.length ? 'flex' : 'none';
-  if (q('cpGeneres')) q('cpGeneres').textContent = gen.toFixed(1) + ' J';
-  if (q('cpPlanifies')) q('cpPlanifies').textContent = plan.toFixed(1) + ' J';
-  if (q('cpRestant')) {
-    q('cpRestant').textContent = restant.toFixed(1) + ' J';
-    q('cpRestant').style.color = Math.abs(restant) < 1 ? 'var(--green)' : restant > 0 ? 'var(--orange)' : 'var(--orange)';
-  }
-  if (q('cpEquilibre')) {
-    if (Math.abs(restant) < 1) {
-      q('cpEquilibre').innerHTML = '<span style="color:var(--green)">✓ Équilibré</span>';
-    } else if (restant > 0) {
-      q('cpEquilibre').innerHTML = '<span style="color:var(--orange)">⚠ ' + restant.toFixed(1) + ' J à placer</span>';
-    } else {
-      q('cpEquilibre').innerHTML = '<span style="color:var(--orange)">⚠ ' + Math.abs(restant).toFixed(1) + ' J en excès</span>';
-    }
+  // ── Bandeau CP ──
+  let gen=cpGeneres(a),plan=cpPlanifies(a),rest=Math.round((gen-plan)*10)/10;
+  if(q('cpCounter'))q('cpCounter').style.display=a.employees.length?'flex':'none';
+  if(q('cpGeneres'))q('cpGeneres').textContent=gen.toFixed(1)+' J';
+  if(q('cpPlanifies'))q('cpPlanifies').textContent=plan.toFixed(1)+' J';
+  if(q('cpRestant')){q('cpRestant').textContent=rest.toFixed(1)+' J';q('cpRestant').style.color=Math.abs(rest)<1?'var(--green)':'var(--orange)';}
+  if(q('cpEquilibre')){
+    if(Math.abs(rest)<1)q('cpEquilibre').innerHTML='<span style="color:var(--green)">✓ Équilibré</span>';
+    else if(rest>0)q('cpEquilibre').innerHTML='<span style="color:var(--orange)">⚠ '+rest.toFixed(1)+' J à placer</span>';
+    else q('cpEquilibre').innerHTML='<span style="color:var(--orange)">⚠ '+Math.abs(rest).toFixed(1)+' J en excès</span>';
   }
 
-  // ── Tableau maladie ──
+  // ── Tableau maladie mensuel ──
   if(q('sickTable')){
     let filled=a.sick.filter(v=>v!==null&&v!==undefined);
     let avg=filled.length?filled.reduce((s,v)=>s+(+v||0),0)/filled.length:0;
     let diff=avg-(+a.targetAbsRate||0);
     let cls=Math.abs(diff)<0.05?'ok':'warn';
     q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Moy</th><th>Cible</th></tr>'
-      +'<tr><td><b>Maladie & AT %</b></td>'
+      +'<tr><td><b>Maladie &amp; AT %</b></td>'
       +a.sick.map(function(v,i){
         let display=v!==null&&v!==undefined?v:'';
         return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
@@ -1634,83 +1625,123 @@ function renderRH(){
       +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
       +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
     if(q('sickAlert')){
-      let msg=Math.abs(diff)>0.05?'<div class="alert"><b>Ecart Maladie & AT</b> '+pct(diff)+' vs cible <button class="secondary" onclick="applyAvg()" style="margin-left:8px">Appliquer la cible</button></div>':'';
+      let msg=Math.abs(diff)>0.05?'<div class="alert"><b>Ecart Maladie &amp; AT</b> '+pct(diff)+' vs cible <button class="secondary" onclick="applyAvg()" style="margin-left:8px">Appliquer la cible</button></div>':'';
       q('sickAlert').innerHTML=msg;
     }
   }
 
-  // ── Tableau hebdomadaire fusionné ──
-  let rows=needWeeks(a);
+  // ── Cartes mensuelles ──
   let hsR=hsRows(a);
-  // Alertes critiques pour résumé
-  let critiques=[];
+  let allWeeks=needWeeks(a);
 
+  if(q('rhMonthCards')){
+    q('rhMonthCards').innerHTML=M.map(function(mo,m){
+      // Semaines de ce mois
+      let weeksOfMonth=hsR.filter(function(r){
+        return a.cal.some(function(d){return d.week===r.week&&d.month===m;});
+      });
+      let caM=monthCA(a,m);
+      let hsM=weeksOfMonth.reduce(function(s,r){return s+(r.hs||0);},0);
+      let cpM=weeksOfMonth.reduce(function(s,r){
+        let p=a.presence[r.week]||{cp:0};return s+(+p.cp||0);
+      },0);
+      let tensions=weeksOfMonth.filter(function(r){return r.t==='critique';}).length;
+      let warnings=weeksOfMonth.filter(function(r){return r.t==='warning';}).length;
+      let cpPoss=weeksOfMonth.filter(function(r){return r.t==='sous-charge';}).length;
+      // Couleur dominante
+      let color=tensions>0?'var(--orange)':warnings>0?'#FF8F00':'var(--green)';
+      let bgColor=tensions>0?'var(--orange-light)':warnings>0?'#FFF8E1':'var(--green-light)';
+      let icon=tensions>0?'🔴':warnings>0?'🟡':'🟢';
+      // Barre de tension
+      let tensionRate=weeksOfMonth.length>0?Math.round((tensions+warnings*0.5)/weeksOfMonth.length*100):0;
+      return '<div onclick="showWeekDetail('+m+')" style="border:1px solid var(--border);padding:14px;cursor:pointer;transition:all .15s;background:var(--white);border-top:3px solid '+color+'" onmouseover="this.style.opacity=0.9" onmouseout="this.style.opacity=1">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        +'<b style="font-size:14px">'+mo+'</b>'
+        +'<span style="font-size:16px">'+icon+'</span>'
+        +'</div>'
+        +'<div style="font-family:DM Mono,monospace;font-size:13px;color:var(--ink);margin-bottom:6px">'+euro(caM)+'</div>'
+        +'<div style="height:4px;background:var(--bg2);margin-bottom:8px"><div style="height:4px;background:'+color+';width:'+tensionRate+'%"></div></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;color:var(--ink65)">'
+        +'<div>HS : <b style="color:'+(hsM>0?'var(--orange)':'var(--green)')+'">'+hsM.toFixed(0)+' h</b></div>'
+        +'<div>CP : <b>'+cpM.toFixed(1)+' J</b></div>'
+        +(tensions>0?'<div style="color:var(--orange);font-weight:700">'+tensions+' sem. critiques</div>':'')
+        +(cpPoss>0?'<div style="color:var(--blue)">'+cpPoss+' CP possibles</div>':'')
+        +'</div>'
+        +'<div style="font-size:10px;color:var(--ink30);margin-top:6px;text-align:right">Cliquer pour détail</div>'
+        +'</div>';
+    }).join('');
+  }
+
+  // ── Alertes globales ──
+  let critiques=hsR.filter(function(r){return r.t==='critique';});
+  if(q('rhAlertsSummary')){
+    if(critiques.length){
+      let lines=critiques.slice(0,5).map(function(r){
+        let m=a.cal.find(function(d){return d.week===r.week;});
+        return '• S'+r.week+(m?' ('+M[m.month]+')':'')+' : '+r.hs.toFixed(0)+' h suppl.';
+      });
+      q('rhAlertsSummary').innerHTML='<div class="alert critique" style="margin-top:0"><b>'+critiques.length+' semaine(s) en tension critique</b><br>'+lines.join('<br>')+(critiques.length>5?'<br>... et '+(critiques.length-5)+' autres':'')+'</div>';
+    } else {
+      q('rhAlertsSummary').innerHTML='<div class="alert" style="border-left-color:var(--green);background:var(--green-light);color:var(--green);margin-top:0"><b>Aucune tension critique détectée</b></div>';
+    }
+  }
+}
+
+let _activeMonth = null;
+
+function showWeekDetail(m){
+  let a=A();
+  _activeMonth=m;
+  let hsR=hsRows(a);
+  // Semaines du mois
+  let weeksOfMonth=hsR.filter(function(r){
+    return a.cal.some(function(d){return d.week===r.week&&d.month===m;});
+  });
+  if(!weeksOfMonth.length){return;}
+  if(q('rhWeekDetailTitle'))q('rhWeekDetailTitle').textContent='Détail semaines — '+M[m];
   let header='<tr>'
-    +'<th>Sem.</th><th>Mois</th>'
-    +'<th title="Heures contractuelles">Cap. (h)</th>'
+    +'<th>Sem.</th><th>Cap. (h)</th>'
     +'<th title="Congés payés en jours">CP (J)</th>'
-    +'<th title="Taux maladie et accident du travail">Mal.+AT %</th>'
-    +'<th title="Heures maladie et AT déduites">Mal.+AT (h)</th>'
+    +'<th>Mal.+AT %</th><th>Mal.+AT (h)</th>'
     +'<th title="Autres absences en jours">Autres (J)</th>'
-    +'<th title="Heures disponibles"><b>Dispo (h)</b></th>'
-    +'<th title="Heures nécessaires pour CA">Besoin (h)</th>'
-    +'<th title="Dispo - Besoin"><b>Écart</b></th>'
-    +'<th title="Heures supplémentaires"><b>HS (h)</b></th>'
+    +'<th><b>Dispo (h)</b></th><th>Besoin (h)</th>'
+    +'<th><b>Écart</b></th><th><b>HS (h)</b></th>'
     +'<th>Alerte</th>'
     +'</tr>';
-
-  let tableRows=rows.map(function(w){
-    let p=pres(a,w.week);
-    let hr=hsR.find(r=>r.week===w.week)||{hs:0,gap:0,t:'ok',hours:0};
-    // Alerte inline
-    let alertTxt='', alertStyle='';
-    if(hr.t==='critique'){
-      alertTxt='🔴 Tension';
-      alertStyle='color:var(--orange);font-weight:700;';
-      critiques.push('S'+w.week+' ('+M[p.m]+') : '+hr.hs.toFixed(0)+' h suppl. nécessaires');
-    } else if(hr.t==='warning'){
-      alertTxt='🟡 HS mod.';
-      alertStyle='color:#FF8F00;font-weight:700;';
-    } else if(hr.t==='sous-charge'){
-      alertTxt='🔵 CP possible';
-      alertStyle='color:var(--blue);';
-    } else {
-      alertTxt='🟢 OK';
-      alertStyle='color:var(--green);';
-    }
+  let rows=weeksOfMonth.map(function(hr){
+    let p=pres(a,hr.week);
+    let alertTxt='',alertStyle='';
+    if(hr.t==='critique'){alertTxt='🔴 Tension';alertStyle='color:var(--orange);font-weight:700';}
+    else if(hr.t==='warning'){alertTxt='🟡 HS mod.';alertStyle='color:#FF8F00;font-weight:700';}
+    else if(hr.t==='sous-charge'){alertTxt='🔵 CP possible';alertStyle='color:var(--blue)';}
+    else{alertTxt='🟢 OK';alertStyle='color:var(--green)';}
     let ecartCls=hr.gap<-5?'bad':hr.gap>5?'ok':'';
     return '<tr>'
-      +'<td>S'+w.week+'</td>'
-      +'<td>'+M[p.m]+'</td>'
+      +'<td>S'+hr.week+'</td>'
       +'<td class="num">'+p.base.toFixed(1)+'</td>'
-      +'<td><input type="number" value="'+(p.cp!==null&&p.cp!==undefined&&p.cp!==0?p.cp:'')+'" placeholder="0" onchange="setPresence('+w.week+',\'cp\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number" value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'cp\',this.value)" style="width:55px"></td>'
       +'<td class="num">'+pct(p.rate)+'</td>'
       +'<td class="num">'+p.mal.toFixed(1)+'</td>'
-      +'<td><input type="number" value="'+(p.other!==null&&p.other!==undefined&&p.other!==0?p.other:'')+'" placeholder="0" onchange="setPresence('+w.week+',\'other\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number" value="'+(p.other||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'other\',this.value)" style="width:55px"></td>'
       +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
       +'<td class="num">'+hr.hours.toFixed(1)+'</td>'
       +'<td class="num"><span class="'+ecartCls+'">'+hr.gap.toFixed(1)+'</span></td>'
       +'<td class="num"><b>'+(hr.hs>0?'<span style="color:var(--orange)">'+hr.hs.toFixed(1)+'</span>':'0')+'</b></td>'
-      +'<td style="'+alertStyle+'font-size:12px;white-space:nowrap">'+alertTxt+'</td>'
+      +'<td style="'+alertStyle+';font-size:12px;white-space:nowrap">'+alertTxt+'</td>'
       +'</tr>';
   }).join('');
-
-  q('rhTable').innerHTML=header+tableRows;
-
-  // ── Résumé alertes ──
-  if(q('rhAlertsSummary')){
-    if(critiques.length){
-      q('rhAlertsSummary').innerHTML='<div class="alert critique"><b>'+critiques.length+' semaine(s) en tension critique</b><br>'
-        +critiques.slice(0,5).map(c=>'• '+c).join('<br>')
-        +(critiques.length>5?'<br>... et '+(critiques.length-5)+' autres':'')
-        +'</div>';
-    } else if(hsAnn>300){
-      q('rhAlertsSummary').innerHTML='<div class="alert warning"><b>Volume HS annuel élevé</b> — '+hsAnn.toFixed(0)+' h. Vérifiez la cohérence avec votre effectif.</div>';
-    } else {
-      q('rhAlertsSummary').innerHTML='<div class="alert" style="border-left-color:var(--green);background:var(--green-light);color:var(--green)"><b>Aucune tension critique détectée</b></div>';
-    }
+  if(q('rhTable'))q('rhTable').innerHTML=header+rows;
+  if(q('rhWeekDetail')){
+    q('rhWeekDetail').style.display='block';
+    q('rhWeekDetail').scrollIntoView({behavior:'smooth',block:'start'});
   }
 }
+
+function closeWeekDetail(){
+  if(q('rhWeekDetail'))q('rhWeekDetail').style.display='none';
+  _activeMonth=null;
+}
+
 
 function renderPresence(){
   let a=A();
