@@ -621,61 +621,49 @@ tr.subtotal td{
       <span id="importMsg" style="font-family:'Caveat',cursive;font-size:15px;color:var(--green);margin-left:10px"></span>
     </div><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
 <section id="rh" class="panel">
-  <div class="card">
-    <h2>5. Présence, HS &amp; alertes</h2>
-    <p class="hint" style="margin-bottom:16px">Saisissez le taux de maladie & AT mensuel (%) et les congés payés en jours (1J = 7H). L'outil calcule les heures disponibles, les tensions et les heures supplémentaires semaine par semaine.</p>
 
-    <!-- KPIs synthétiques -->
-    <div class="kpis" id="rhKpis" style="margin-bottom:16px"></div>
-
-    <!-- Compteur CP -->
-    <div id="cpCounter" style="margin-bottom:16px;padding:14px 18px;border:1px solid var(--border);background:var(--white);gap:16px;align-items:center;flex-wrap:wrap">
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">CP générés</div>
-        <div id="cpGeneres" style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--ink)">—</div>
-        <div style="font-size:11px;color:var(--ink65)">jours (2,5J × salariés)</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">CP planifiés</div>
-        <div id="cpPlanifies" style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--ink)">—</div>
-        <div style="font-size:11px;color:var(--ink65)">jours saisis</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">Restant à placer</div>
-        <div id="cpRestant" style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700">—</div>
-        <div style="font-size:11px;color:var(--ink65)">jours</div>
-      </div>
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">Équilibre</div>
-        <div id="cpEquilibre" style="font-size:13px;font-weight:700">—</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-left:auto">
-        <button onclick="repartirCPAuto()" style="font-size:11px;padding:6px 10px;white-space:nowrap">↗ Répartir auto</button>
-        <button class="secondary" onclick="resetCP()" style="font-size:11px;padding:6px 10px;white-space:nowrap">✕ Réinitialiser</button>
+  <!-- Bandeau KPIs + CP -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">5. Présence, HS &amp; alertes</h2>
+      <div style="display:flex;gap:8px">
+        <button onclick="repartirCPAuto()" style="font-size:11px;padding:6px 12px">↗ Répartir CP auto</button>
+        <button class="secondary" onclick="resetCP()" style="font-size:11px;padding:6px 12px">✕ Reset CP</button>
       </div>
     </div>
-
-    <!-- Maladie & AT par mois -->
-    <div class="card" style="margin-bottom:12px">
-      <h3 style="margin-bottom:10px">Maladie &amp; AT par mois (%)</h3>
-      <div class="tablewrap"><table id="sickTable"></table></div>
-      <div id="sickAlert" style="margin-top:8px"></div>
+    <div class="kpis" id="rhKpis" style="margin-bottom:12px"></div>
+    <div id="cpCounter" style="padding:10px 14px;border:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:#FAFAFA">
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">CP générés </span><span id="cpGeneres" style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700">—</span></div>
+      <span style="color:var(--ink30)">→</span>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Planifiés </span><span id="cpPlanifies" style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700">—</span></div>
+      <span style="color:var(--ink30)">→</span>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Restant </span><span id="cpRestant" style="font-family:'DM Mono',monospace;font-size:15px;font-weight:700">—</span></div>
+      <div id="cpEquilibre" style="margin-left:auto;font-size:13px;font-weight:700">—</div>
     </div>
-
-    <!-- Cartes mensuelles -->
-    <div id="rhMonthCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
-
-    <!-- Détail semaines du mois sélectionné -->
-    <div id="rhWeekDetail" style="display:none" class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <h3 id="rhWeekDetailTitle" style="margin:0">Détail semaines</h3>
-        <button class="secondary" onclick="closeWeekDetail()" style="font-size:11px;padding:5px 10px">✕ Fermer</button>
-      </div>
-      <div class="tablewrap"><table id="rhTable"></table></div>
-    </div>
-
-    <div id="rhAlertsSummary"></div>
   </div>
+
+  <!-- Maladie & AT mensuel -->
+  <div class="card" style="margin-bottom:12px">
+    <h3 style="margin-bottom:10px">Maladie &amp; AT par mois (%)</h3>
+    <div class="tablewrap"><table id="sickTable"></table></div>
+    <div id="sickAlert" style="margin-top:8px"></div>
+  </div>
+
+  <!-- 12 cartes mensuelles -->
+  <div id="rhMonthCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+
+  <!-- Détail semaines (s'ouvre au clic sur une carte) -->
+  <div id="rhWeekDetail" style="display:none" class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h3 id="rhWeekDetailTitle" style="margin:0">Détail semaines</h3>
+      <button class="secondary" onclick="closeWeekDetail()" style="font-size:11px;padding:5px 10px">✕ Fermer</button>
+    </div>
+    <div class="tablewrap"><table id="rhTable"></table></div>
+  </div>
+
+  <!-- Résumé alertes globales -->
+  <div id="rhAlertsSummary"></div>
+
 </section>
 
 <!-- PANEL REFERENCES AGENCES (CG) -->
