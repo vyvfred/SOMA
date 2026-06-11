@@ -214,21 +214,7 @@ nav.collapsed{
   min-width:52px;
   padding:16px 4px;
 }
-.navToggle{
-  position:absolute;top:12px;right:8px;
-  width:24px;height:24px;
-  border:1px solid var(--border)!important;
-  background:var(--white)!important;
-  color:var(--ink65)!important;
-  font-size:14px!important;font-weight:700!important;
-  padding:0!important;
-  display:grid;place-items:center;
-  cursor:pointer;
-  box-shadow:none!important;
-  transition:transform .2s;
-  z-index:5;
-}
-nav.collapsed .navToggle{transform:rotate(180deg);}
+
 .navgroup{
   font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:.08em;
@@ -556,7 +542,7 @@ tr.subtotal td{
   </div>
 </div>
 
-<div class="app"><nav id="nav"></nav><main id="mainContent">
+<div class="app"><nav id="nav"></nav><button id="navToggleBtn" onclick="toggleNav()" title="Réduire/Agrandir la sidebar" style="position:fixed;top:50%;left:260px;transform:translateY(-50%);z-index:50;width:16px;height:48px;background:var(--violet);color:#fff;border:none;border-radius:0 6px 6px 0;cursor:pointer;font-size:12px;font-weight:900;padding:0;transition:left .2s ease;display:flex;align-items:center;justify-content:center;box-shadow:2px 0 6px rgba(0,0,0,.15)">‹</button><main id="mainContent">
 
 <!-- PANELS REX -->
 <section id="objectif" class="panel active">
@@ -1014,8 +1000,7 @@ function buildNav() {
       + '</div>';
   }
 
-  let h = '<button class="navToggle" onclick="toggleNav()" title="Réduire/Agrandir">‹</button>'
-    + '<div class="navgroup navGlobalLabel">' + groupLabel + '</div>' + globalBadge;
+  let h = '<div class="navgroup navGlobalLabel">' + groupLabel + '</div>' + globalBadge;
 
   panels.forEach((x, i) => {
     let badge = '';
@@ -1247,12 +1232,17 @@ function openModal(budgetId, decision, niveau) {
 
 function toggleNav() {
   let nav = document.querySelector('nav');
+  let btn = document.getElementById('navToggleBtn');
   if (!nav) return;
   nav.classList.toggle('collapsed');
-  // Adapter la grille principale
+  let collapsed = nav.classList.contains('collapsed');
+  // Adapter la grille
   let app = document.querySelector('.app');
-  if (app) {
-    app.style.gridTemplateColumns = nav.classList.contains('collapsed') ? '52px 1fr' : '260px 1fr';
+  if (app) app.style.gridTemplateColumns = collapsed ? '52px 1fr' : '260px 1fr';
+  // Déplacer le bouton
+  if (btn) {
+    btn.style.left = collapsed ? '52px' : '260px';
+    btn.textContent = collapsed ? '›' : '‹';
   }
 }
 
