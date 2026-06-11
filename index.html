@@ -597,7 +597,34 @@ tr.subtotal td{
     <!-- KPIs synthétiques -->
     <div class="kpis" id="rhKpis" style="margin-bottom:16px"></div>
 
-    <!-- Absentéisme maladie -->
+    <!-- Compteur CP -->
+    <div id="cpCounter" style="margin-bottom:16px;padding:14px 18px;border:1px solid var(--border);background:var(--white);gap:16px;align-items:center;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">CP générés</div>
+        <div id="cpGeneres" style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--ink)">—</div>
+        <div style="font-size:11px;color:var(--ink65)">jours (2,5J × salariés)</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">CP planifiés</div>
+        <div id="cpPlanifies" style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:var(--ink)">—</div>
+        <div style="font-size:11px;color:var(--ink65)">jours saisis</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">Restant à placer</div>
+        <div id="cpRestant" style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700">—</div>
+        <div style="font-size:11px;color:var(--ink65)">jours</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--ink65)">Équilibre</div>
+        <div id="cpEquilibre" style="font-size:13px;font-weight:700">—</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-left:auto">
+        <button onclick="repartirCPAuto()" style="font-size:11px;padding:6px 10px;white-space:nowrap">↗ Répartir auto</button>
+        <button class="secondary" onclick="resetCP()" style="font-size:11px;padding:6px 10px;white-space:nowrap">✕ Réinitialiser</button>
+      </div>
+    </div>
+
+    <!-- Maladie & AT par mois -->
     <h3 style="margin-bottom:8px">Maladie &amp; AT par mois (%)</h3>
     <div class="tablewrap" style="margin-bottom:4px"><table id="sickTable"></table></div>
     <div id="sickAlert" style="margin-bottom:16px"></div>
