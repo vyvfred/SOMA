@@ -1,5 +1,5 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOMA · ORBIS · VYV Ambulance</title>
+<title>SOMA · Budget 2027 · VYV Ambulance</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -18,6 +18,9 @@
   --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.14);
   --shadow:rgba(0,0,0,.4);
   --white:#FFFFFF;
+  --red:#C45300;
+  --ink2:#9A9BB8;
+  --ink3:#4A4B68;
 }
 
 /* ── RESET ── */
@@ -302,7 +305,7 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 <header>
   <div class="somaLogo">
     <div class="somaName">SOMA</div>
-    <div class="orbisTag">O<span class="orbisB">R</span>BIS · VYV Ambulance</div>
+    <div class="orbisTag">VYV Ambulance</div>
   </div>
   <div class="headerSep"></div>
   <div class="headerCenter">
@@ -435,6 +438,11 @@ nav.collapsed .navGlobalBadge{display:none!important;}
     </div>
   </div>
   <div class="card"><div class="kpis" id="objectiveKpis"></div></div>
+  <!-- Bloc cohérence CA/effectif -->
+  <div class="card" id="alerteCoherenceCard" style="display:none">
+    <h3 style="margin-bottom:12px">Cohérence budget / effectif</h3>
+    <div id="alerteCoherence"></div>
+  </div>
 </section>
 
 <section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan"></table></div><div id="refSaiSection"><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div></div><div id="refTPSection"><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></div></section>
@@ -493,9 +501,11 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 
   <!-- Détail semaines (s'ouvre au clic sur une carte) -->
   <div id="rhWeekDetail" style="display:none" class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <h3 id="rhWeekDetailTitle" style="margin:0">Détail semaines</h3>
-      <button class="secondary" onclick="closeWeekDetail()" style="font-size:11px;padding:5px 10px">✕ Fermer</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px">
+      <button onclick="navMois(-1)" style="font-size:12px;padding:5px 10px;flex-shrink:0">◀</button>
+      <h3 id="rhWeekDetailTitle" style="margin:0;flex:1;text-align:center">Détail semaines</h3>
+      <button onclick="navMois(1)" style="font-size:12px;padding:5px 10px;flex-shrink:0">▶</button>
+      <button class="secondary" onclick="closeWeekDetail()" style="font-size:11px;padding:5px 10px;flex-shrink:0">✕</button>
     </div>
     <div class="tablewrap"><table id="rhTable"></table></div>
   </div>
@@ -631,7 +641,7 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 </section>
 
 </main></div>
-<div class="footer">SOMA · Budget 2027 · O<span style="color:var(--orbis-blue);text-shadow:0 0 6px var(--orbis-glow)">R</span>BIS · VYV Ambulance</div>
+<div class="footer">SOMA · Budget 2027 · VYV Ambulance</div>
 </div><!-- fin appWrapper -->
 
 <!-- MODAL VALIDATION -->
@@ -957,6 +967,10 @@ async function loadBudgetFromSupabase(agence) {
     if (data.data && Object.keys(data.data).length) {
       S.agencies[S.active] = {...agency(agence), ...data.data, name: agence};
       migrateState();
+      // Restaurer le mois actif si sauvegardé
+      if (S.agencies[S.active].moisActif !== null && S.agencies[S.active].moisActif !== undefined) {
+        _activeMonth = S.agencies[S.active].moisActif;
+      }
     } else {
       // Pré-remplir les données de référence CG si budget vide
       let ref = data.data || {};
@@ -978,14 +992,42 @@ async function loadBudgetFromSupabase(agence) {
 
 async function saveBudgetToSupabase() {
   const a = A();
-  const payload = { agence: a.name, annee: 2027, data: a, statut: BUDGET_STATUT };
-  if (BUDGET_ID) {
-    await sb.from('budgets').update({data: a, updated_at: new Date()}).eq('id', BUDGET_ID);
-  } else {
-    const {data} = await sb.from('budgets').insert(payload).select().single();
-    if (data) BUDGET_ID = data.id;
+  if (!a || a.name === 'Nouvelle agence') return;
+  // Feedback visuel immédiat
+  const btn = q('btnSave');
+  if (btn) { btn.textContent = '⏳ Sauvegarde...'; btn.disabled = true; }
+  try {
+    const payload = { agence: a.name, annee: 2027, data: a, statut: BUDGET_STATUT };
+    if (BUDGET_ID) {
+      const {error} = await sb.from('budgets').update({data: a}).eq('id', BUDGET_ID);
+      if (error) throw error;
+    } else {
+      const {data, error} = await sb.from('budgets').insert(payload).select().single();
+      if (error) throw error;
+      if (data) BUDGET_ID = data.id;
+    }
+    // Succès
+    if (btn) {
+      btn.textContent = '✓ Sauvegardé';
+      btn.style.background = 'linear-gradient(135deg,var(--green),#45c87a)';
+      setTimeout(() => {
+        btn.textContent = '💾 Sauvegarder';
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 2000);
+    }
+  } catch(err) {
+    if (btn) {
+      btn.textContent = '⚠ Erreur';
+      btn.style.background = 'linear-gradient(135deg,var(--orange),#e05a00)';
+      setTimeout(() => {
+        btn.textContent = '💾 Sauvegarder';
+        btn.style.background = '';
+        btn.disabled = false;
+      }, 3000);
+    }
+    console.error('Erreur sauvegarde:', err);
   }
-  alert('Budget sauvegardé dans Supabase.');
 }
 
 async function soumettreBudget() {
@@ -1083,7 +1125,7 @@ async function renderValidation() {
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
         <b style="font-size:16px">${b.agence}</b>
         <span class="statut ${b.statut}">${statutLabel(b.statut)}</span>
-        <span style="color:var(--m);font-size:13px">CA objectif : ${euro(ca)}</span>
+        <span style="color:var(--ink65);font-size:13px">CA objectif : ${euro(ca)}</span>
       </div>
       ${histHtml}
       ${canValidate ? `
@@ -1199,7 +1241,7 @@ async function renderConsolidation() {
       <div class="num">${euro(caObj)}</div>
       <div class="num">${caBud?euro(caBud):'—'}</div>
       <div class="num ${rex<0?'bad':rex>0?'ok':''}">${caBud?euro(rex):'—'}</div>
-      <div style="font-size:11px;color:var(--m)">${new Date(b.updated_at).toLocaleDateString('fr-FR')}</div>
+      <div style="font-size:11px;color:var(--ink65)">${new Date(b.updated_at).toLocaleDateString('fr-FR')}</div>
     </div>`;
   }
   html += `<div class="consolRow" style="font-weight:900;background:#e9f5ff;border-radius:0 0 10px 10px">
@@ -1445,7 +1487,7 @@ function render(){
   else{if(q('refSaiSection'))q('refSaiSection').style.display='none';}
   if(a.actTP){refTable('refTP','tp');if(q('refTPSection'))q('refTPSection').style.display='';}
   else{if(q('refTPSection'))q('refTPSection').style.display='none';}
-  renderCal();renderTeam();renderRH();renderPrevisionnel();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
+  renderCal();renderTeam();renderRH();renderPrevisionnel();renderCoherence();renderDashboard();renderCG();renderControl();renderREX();renderFinance();
   updateStatutBar();
   setTimeout(animateCounters, 100);
   // Formatage milliers sur tous les tableaux
@@ -1664,7 +1706,7 @@ function renderRH(){
           + '</div>';
       } else {
         btns = '<div style="display:flex;gap:6px;margin-top:8px">'
-          + '<button onclick="ouvrirMois('+m+')" style="flex:1;font-size:10px;padding:5px 6px;color:var(--orbis-blue);background:rgba(74,158,255,.08);border:1px solid rgba(74,158,255,.3)">✎ Travailler</button>'
+          + '<button onclick="ouvrirMois('+m+')" style="flex:1;font-size:10px;padding:5px 6px;color:var(--blue2);background:var(--blue-light);border:1px solid var(--blue2)">✎ Travailler</button>'
           + '</div>';
       }
 
@@ -1793,59 +1835,113 @@ function showWeekDetail(m){
   }
 }
 
+function navMois(delta) {
+  if (_activeMonth === null || _activeMonth === undefined) return;
+  let a = A();
+  let newM = _activeMonth + delta;
+  if (newM < 0) newM = 11;
+  if (newM > 11) newM = 0;
+  // Passer le mois verrouillé si on veut aller au suivant en mode saisie
+  ouvrirMois(newM);
+}
+
 function closeWeekDetail(){
   if(q('rhWeekDetail'))q('rhWeekDetail').style.display='none';
   _activeMonth=null;
 }
 
 
-function renderPresence(){
+// renderPresence supprimée (fusionnée dans renderRH)
+// renderHS supprimée (fusionnée dans renderRH)
+// renderGuide supprimée (fusionnée dans renderRH)
+function renderCoherence(){
   let a=A();
-  if(q('sickTable')){
-    let filled=a.sick.filter(v=>v!==null&&v!==undefined);
-    let avg=filled.length?filled.reduce((s,v)=>s+(+v||0),0)/filled.length:0;
-    let diff=avg-(+a.targetAbsRate||0);
-    let cls=Math.abs(diff)<0.05?'ok':'warn';
-    q('sickTable').innerHTML='<tr><th>Mois</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Moy</th><th>Cible</th></tr>'
-      +'<tr><td><b>Maladie & AT %</b></td>'
-      +a.sick.map(function(v,i){
-        let display=v!==null&&v!==undefined?v:'';
-        return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
-      }).join('')
-      +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
-      +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
-    if(q('sickAlert'))q('sickAlert').innerHTML='<div class="alert"><b>Contrôle maladie</b> — écart '+pct(diff)+' <button class="secondary" onclick="applyAvg()">Répartir la moyenne cible</button></div>';
+  let card=q('alerteCoherenceCard');
+  let box=q('alerteCoherence');
+  if(!card||!box)return;
+
+  // Prérequis : effectif + targetCA + targetTXR saisis
+  let baseHebdo=baseH(a);
+  let txr=+a.targetTXR||0;
+  let caObj=+a.targetCA||0;
+  let tauxMalMoy=a.sick.filter(v=>v!==null).reduce(function(s,v){return s+(+v||0);},0)/(a.sick.filter(v=>v!==null).length||12);
+
+  if(!baseHebdo||!txr){
+    card.style.display='none';
+    return;
   }
-  if(q('presenceTable')){
-    let header='<tr>'
-      +'<th>Semaine</th><th>Mois</th>'
-      +'<th title="Heures contractuelles hebdo">Capacité (h)</th>'
-      +'<th title="Congés payés en jours — 1J = 7H">CP (J)</th>'
-      +'<th title="Taux maladie du mois">Maladie %</th>'
-      +'<th title="Heures maladie déduites">Maladie (h)</th>'
-      +'<th title="Autres absences en jours — 1J = 7H">Autres abs. (J)</th>'
-      +'<th title="Heures disponibles après déductions">Disponible (h)</th>'
-      +'<th>ETP</th>'
-      +'</tr>';
-    let rows=needWeeks(a).map(function(w){
-      let p=pres(a,w.week);
-      return '<tr>'
-        +'<td>S'+w.week+'</td>'
-        +'<td>'+M[p.m]+'</td>'
-        +'<td class="num">'+p.base.toFixed(1)+'</td>'
-        +'<td><input type="number" value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+w.week+',\'cp\',this.value)" style="width:60px" title="Jours de CP (1J=7H)"></td>'
-        +'<td class="num">'+pct(p.rate)+'</td>'
-        +'<td class="num">'+p.mal.toFixed(1)+'</td>'
-        +'<td><input type="number" value="'+(p.other||'')+'" placeholder="0" onchange="setPresence('+w.week+',\'other\',this.value)" style="width:60px" title="Autres absences en jours (1J=7H)"></td>'
-        +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
-        +'<td class="num">'+p.etp.toFixed(2)+'</td>'
-        +'</tr>';
-    }).join('');
-    q('presenceTable').innerHTML=header+rows;
-  }
+  card.style.display='';
+
+  // Capacité annuelle
+  let dispoHebdoMoy=baseHebdo*(1-tauxMalMoy/100);
+  let caMaxSansHS=Math.round(dispoHebdoMoy*txr*52);
+  let caMaxAvecHS20=Math.round(caMaxSansHS*1.20);
+  let caMaxAvecHS10=Math.round(caMaxSansHS*1.10);
+
+  // Taux de charge
+  let tauxCharge=caObj&&caMaxSansHS?Math.round(caObj/caMaxSansHS*100):0;
+
+  // Référence CA journalier cohérente
+  let nbRoulants=a.employees.filter(function(e){return isRoulant(e.qual);}).length;
+  let caJourCible=nbRoulants>0?Math.round(dispoHebdoMoy/5*txr):0; // CA moyen d'un jour de semaine
+
+  // Couleur selon tension
+  let couleur=tauxCharge>115?'var(--orange)':tauxCharge>100?'#FF8F00':tauxCharge>85?'var(--orbis-blue)':'var(--green)';
+  let icone=tauxCharge>115?'🔴':tauxCharge>100?'🟡':tauxCharge>85?'🔵':'🟢';
+  let message=tauxCharge>115
+    ?'Objectif difficile à atteindre sans recours massif aux HS. Vérifiez vos références CA.'
+    :tauxCharge>100
+    ?'Objectif atteignable avec un recours modéré aux HS (≤ 20%).'
+    :tauxCharge>85
+    ?'Objectif coherent. Quelques semaines tendues possibles.'
+    :'Objectif confortable. Capacité disponible suffisante.';
+
+  box.innerHTML=
+    // Jauge de charge
+    '<div style="margin-bottom:16px">'
+    +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink65);margin-bottom:6px">'
+    +'<span>Taux de charge de l\'effectif</span>'
+    +'<span style="font-weight:700;color:'+couleur+'">'+tauxCharge+'%</span>'
+    +'</div>'
+    +'<div style="height:10px;background:var(--bg3);border:1px solid var(--border);overflow:hidden">'
+    +'<div style="height:100%;width:'+Math.min(tauxCharge,100)+'%;background:'+couleur+';transition:width .6s ease"></div>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--ink30);margin-top:3px">'
+    +'<span>0%</span><span>Capacité max sans HS</span><span>100%</span>'
+    +'</div>'
+    +'</div>'
+
+    // 3 indicateurs
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">'
+    +'<div style="padding:12px;background:var(--bg3);border:1px solid var(--border)">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65);margin-bottom:6px">Capacité max sans HS</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:16px;font-weight:700;color:var(--ink)">'+euro(caMaxSansHS)+'</div>'
+    +'<div style="font-size:11px;color:var(--ink65);margin-top:3px">'+baseHebdo.toFixed(0)+' h/sem × '+txr+'€ × 52 sem.</div>'
+    +'</div>'
+    +'<div style="padding:12px;background:var(--bg3);border:1px solid var(--border)">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65);margin-bottom:6px">Capacité max avec 10% HS</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:16px;font-weight:700;color:var(--orbis-blue)">'+euro(caMaxAvecHS10)+'</div>'
+    +'<div style="font-size:11px;color:var(--ink65);margin-top:3px">Volume HS raisonnable</div>'
+    +'</div>'
+    +'<div style="padding:12px;background:var(--bg3);border:1px solid var(--border)">'
+    +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65);margin-bottom:6px">Capacité max avec 20% HS</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:16px;font-weight:700;color:var(--orange)">'+euro(caMaxAvecHS20)+'</div>'
+    +'<div style="font-size:11px;color:var(--ink65);margin-top:3px">Limite haute à ne pas dépasser</div>'
+    +'</div>'
+    +'</div>'
+
+    // Message et référence CA jour
+    +'<div style="padding:10px 14px;border-left:3px solid '+couleur+';background:rgba(0,0,0,.15);font-size:13px">'
+    +'<span style="margin-right:8px">'+icone+'</span>'
+    +'<b>'+message+'</b>'
+    +'</div>'
+
+    +(caJourCible>0?'<div style="margin-top:12px;font-size:12px;color:var(--ink65);padding:8px 12px;background:var(--bg3);border:1px solid var(--border)">'
+    +'&#128161; <b>Reference CA coherente pour une journee de semaine normale :</b> environ <b style="color:var(--orbis-blue)">'+euro(caJourCible)+'</b> '
+    +'('+dispoHebdoMoy.toFixed(0)+' h dispo ÷ 5 jours × '+txr+' €/h). '
+    +'Si vos références CA dépassent significativement ce montant, des tensions HS apparaîtront.</div>':'');
 }
-function renderHS(){let a=A(),rows=hsRows(a),tot=hsTot(a);kpis('hsKpis',[['CA',euro(tot.ca)],['Besoin',tot.need.toFixed(0)+' h'],['Disponible',tot.av.toFixed(0)+' h'],['HS',tot.hs.toFixed(0)+' h'],['ETP moy',(tot.av/52/35).toFixed(2)],['Coût HS',euro(tot.hs*a.costHour*a.hsCostRate)]]);if(q('hsTable'))q('hsTable').innerHTML='<tr><th>Semaine</th><th>CA</th><th>Besoin</th><th>Disponible</th><th>Écart</th><th>HS</th><th>Tension</th></tr>'+rows.map(r=>{let c=r.t==='critique'?'bad':r.t==='warning'?'warn':r.t==='sous-charge'?'warn':'ok';return `<tr><td>S${r.week}</td><td class="num">${euro(r.ca)}</td><td class="num">${r.hours.toFixed(1)}</td><td class="num">${r.av.toFixed(1)}</td><td class="num"><span class="${c}">${r.gap.toFixed(1)}</span></td><td class="num"><span class="${c}">${r.hs.toFixed(1)}</span></td><td><span class="${c}">${r.t}</span></td></tr>`}).join('')}
-function renderGuide(){if(!q('guideBox'))return;let rec=[],a=A(),avg=a.sick.reduce((s,v)=>s+(+v||0),0)/12;if(Math.abs(avg-a.targetAbsRate)>.05)rec.push(['warning','Moyenne maladie non respectée',`Moyenne ${avg.toFixed(1)}% vs cible ${(+a.targetAbsRate).toFixed(1)}%.`]);hsRows(a).filter(x=>x.hs>20).slice(0,8).forEach(x=>rec.push(['critique',`Semaine ${x.week} en tension`,`${x.hs.toFixed(1)} h supplémentaires. Éviter les CP.`]));hsRows(a).filter(x=>x.under>35).slice(0,8).forEach(x=>rec.push(['alert',`Semaine ${x.week} favorable aux CP`,`Sous-charge ${x.under.toFixed(1)} h.`]));if(!a.employees.length)rec.unshift(['critique','Aucune équipe renseignée','Renseigner les salariés.']);q('guideBox').innerHTML=rec.map(r=>`<div class="alert ${r[0]}"><b>${r[1]}</b><br>${r[2]}</div>`).join('')||'<div class="alert">Aucune recommandation.</div>'}
+
 function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*a.hsCostRate,hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+gaugeRow('Résultat net / CA',netRate)+gaugeRow('Coût HS / CA',hsRate)}
 
 function cgBadgeType(x){return x.chargeType==='fixe'?'<span class="badgeFixe">fixe</span>':'<span class="badgeVar">variable</span>'}
@@ -1966,7 +2062,12 @@ function migrateState(){S.agencies.forEach(a=>{
   }));if(!a.sick)a.sick=Array(12).fill(+a.targetAbsRate||5);if(!a.presence)a.presence={};if(!a.employees)a.employees=[];if(!a.rex)a.rex={};T.forEach(r=>{if(r.type!=='subtotal'&&!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0};if(a.rex[r.label]){let x=a.rex[r.label];if(!x.values)x.values=Array(12).fill(null);if(!x.mode)x.mode='month';if(!x.allocationKey)x.allocationKey='monthly12';if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe'}})})}
 
 // Sauvegarde : Supabase en priorité, localStorage en fallback
-function save(){saveBudgetToSupabase()}
+function save(){
+  // Sync moisActif avant sauvegarde
+  let a = A();
+  if (a) a.moisActif = _activeMonth;
+  saveBudgetToSupabase();
+}
 function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='budget_2027_v48.json';a.click()}
 
 // ═══════════════════════════════════════════════
