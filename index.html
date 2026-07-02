@@ -2253,23 +2253,13 @@ function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'applic
 // ADMIN
 // ═══════════════════════════════════════════════
 async function renderAdmin() {
-  // Remplir le select agences
+  // Remplir le select agences (opérationnelles uniquement, sans hors-réseau)
   if (q('adminAgence')) {
-    q('adminAgence').innerHTML = agences.filter(function(a){return !a.type;})
-      .map(function(a){return '<option>'+a.nom+'</option>';}).join('');
+    q('adminAgence').innerHTML = '<option value="">-- Choisir une agence --</option>'
+      + agences.filter(function(a){return !a.type;})
+        .map(function(a){return '<option value="'+a.nom+'">'+a.nom+'</option>';}).join('');
   }
   toggleAdminAgence();
-  // Peupler le select agences
-  if (q('adminAgence')) {
-    q('adminAgence').innerHTML = '<option value="">-- Choisir --</option>' +
-      agences.map(a => `<option value="${a.nom}">${a.nom}</option>`).join('');
-  }
-  if (q('adminRole')) {
-    q('adminRole').onchange = () => {
-      if (q('adminAgenceZone')) q('adminAgenceZone').style.display = q('adminRole').value === 'rex' ? '' : 'none';
-    };
-    q('adminAgenceZone').style.display = 'none';
-  }
   await renderAdminUsers();
   await renderAdminBudgets();
 }
