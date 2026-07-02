@@ -3279,7 +3279,8 @@ function chargesReport2028(a) {
 
 initParticles();
 init();
-</script></body></html>function renderPeriodes(){
+
+function renderPeriodes(){
   let a = A();
   if (!q('periodesTable')) return;
 
@@ -3311,8 +3312,8 @@ init();
     let isTrimestre = p.nbSem === 5;
     return '<tr style="' + (isTrimestre ? 'background:rgba(74,158,255,.05)' : '') + '">'
       + '<td><b>' + p.mois + '</b>' + (isTrimestre ? ' <span style="font-size:10px;color:var(--blue2);font-weight:700">5 sem.</span>' : '') + '</td>'
-      + '<td><input type="date" value="' + p.debut + '" onchange="setPeriodeDate(' + i + ','debut',this.value)" style="width:150px;font-size:12px"></td>'
-      + '<td><input type="date" value="' + p.fin + '" onchange="setPeriodeDate(' + i + ','fin',this.value)" style="width:150px;font-size:12px"></td>'
+      + '<td><input type="date" value="' + p.debut + '" data-i="' + i + '" onchange="setPeriodeDate(+this.dataset.i,\'debut\',this.value)" style="width:150px;font-size:12px"></td>'
+      + '<td><input type="date" value="' + p.fin + '" data-i="' + i + '" onchange="setPeriodeDate(+this.dataset.i,\'fin\',this.value)" style="width:150px;font-size:12px"></td>'
       + '<td style="text-align:center;font-family:DM Mono,monospace">' + p.nbSem + '</td>'
       + '<td class="num"><b>' + msStr + '</b></td>'
       + '<td class="num" style="color:var(--blue2)">' + dec2026 + '</td>'
@@ -3721,3 +3722,5 @@ function kpiHtml(label,val,note){
 }
 
 
+
+</script></body></html>
