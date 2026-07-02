@@ -268,7 +268,7 @@ nav.collapsed .navGlobalBadge{display:none!important;}
   <div class="authLeft">
     <div style="margin-bottom:20px">
       <div style="font-family:Space Grotesk,sans-serif;font-size:58px;font-weight:700;color:#fff;letter-spacing:.1em;line-height:1;text-transform:uppercase">SOMA</div>
-      <div style="font-family:Space Grotesk,sans-serif;font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.22em;text-transform:uppercase;margin-top:6px">O<span style="color:#4A9EFF;text-shadow:0 0 10px rgba(74,158,255,.5)">R</span>BIS &nbsp;·&nbsp; VYV Ambulance</div>
+      <div style="font-family:Space Grotesk,sans-serif;font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.22em;text-transform:uppercase;margin-top:6px">VYV Ambulance</div>
     </div>
     <div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:400;color:rgba(255,255,255,.55);margin-bottom:40px">Construction budgétaire · 2027</div>
     <div class="authTagline">
@@ -1062,6 +1062,7 @@ function show(id) {
   if (id === 'periodes') renderPeriodes();
   if (id === 'consolidation') renderConsolidation();
   if (id === 'affectation') renderAffectation();
+  if (id === 'admin') renderAdmin();
   render();
 }
 
@@ -1298,12 +1299,13 @@ function simulerRole(role) {
   } else {
     PROFILE = {...PROFILE, role};
     if (q('simulationBadge')) {
-      let labels = {rex:'REX Exploitation',cg:'Contrôleur de gestion',dr:'Directeur Régional',df:'Directeur Financier',dg:'Directeur Général',pdg:'PDG'};
+      let labels = {rex:'REX Exploitation',cg:'Controleur de gestion',dr:'Dir. Regional',df:'Dir. Financier',dg:'Dir. General',pdg:'PDG'};
       q('simulationBadge').style.display = '';
-      q('simulationBadge').textContent = '⚠ Simulation active : vue ' + (labels[role]||role) + '. Cliquez Revenir Admin pour reprendre votre acces normal.';
+      q('simulationBadge').textContent = 'Simulation : vue ' + (labels[role]||role) + '. Cliquez Revenir Admin pour reprendre.';
     }
   }
   setupUI();
+ setupUI();
 }
 
 function toggleAdminAgence() {
@@ -2253,22 +2255,22 @@ function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'applic
 // ADMIN
 // ═══════════════════════════════════════════════
 async function renderAdmin() {
-  // Remplir le select agences (opérationnelles uniquement, sans hors-réseau)
+  // Remplir le select agences
   if (q('adminAgence')) {
     q('adminAgence').innerHTML = '<option value="">-- Choisir une agence --</option>'
       + agences.filter(function(a){return !a.type;})
         .map(function(a){return '<option value="'+a.nom+'">'+a.nom+'</option>';}).join('');
   }
   toggleAdminAgence();
-  await renderAdminUsers();
-  await renderAdminBudgets();
+  // Charger utilisateurs et budgets en parallèle
+  await Promise.all([renderAdminUsers(), renderAdminBudgets()]);
 }
 
 async function renderAdminUsers() {
   if (!q('adminUsersTable')) return;
-  q('adminUsersLoading').style.display = '';
+  if (q('adminUsersLoading')) q('adminUsersLoading').style.display = '';
   const {data: users} = await sb.from('profiles').select('*').order('nom');
-  q('adminUsersLoading').style.display = 'none';
+  if (q('adminUsersLoading')) q('adminUsersLoading').style.display = 'none';
   if (!users || !users.length) { q('adminUsersTable').innerHTML = ''; return; }
   let html = '<tr><th>Nom</th><th>Email</th><th>Role</th><th>Agence</th><th>Actions</th></tr>';
   for (const u of users) {
