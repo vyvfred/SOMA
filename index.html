@@ -7,8 +7,8 @@
 /* ── VARIABLES ── */
 :root{
   --violet:#472683;--violet2:#82368C;--violet-light:rgba(71,38,131,.12);--violet-glow:rgba(71,38,131,.4);
-  --orbis-blue:#4A9EFF;
-  --orbis-glow:rgba(74,158,255,.35);
+  --accent-blue:#4A9EFF;
+  --accent-glow:rgba(74,158,255,.35);
   --blue:#007C9E;--blue2:#3CBCD7;--blue-light:rgba(0,124,158,.12);
   --orange:#C45300;--orange-light:rgba(196,83,0,.12);
   --green:#298651;--green-light:rgba(41,134,81,.12);
@@ -67,8 +67,8 @@ body{font-family:Space Grotesk,system-ui,sans-serif;background:var(--bg);color:v
 header{position:sticky;top:0;z-index:10;background:rgba(8,13,20,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:16px;}
 .somaLogo{display:flex;flex-direction:column;justify-content:center;line-height:1;}
 .somaName{font-family:Space Grotesk,sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:.08em;text-transform:uppercase;}
-.orbisTag{font-family:Space Grotesk,sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,.35);letter-spacing:.18em;text-transform:uppercase;margin-top:2px;}
-.orbisB{color:var(--orbis-blue);text-shadow:0 0 8px var(--orbis-glow),0 0 16px var(--orbis-glow);}
+.somaTag{font-family:Space Grotesk,sans-serif;font-size:9px;font-weight:400;color:rgba(255,255,255,.35);letter-spacing:.18em;text-transform:uppercase;margin-top:2px;}
+.somaAccent{color:var(--accent-blue);text-shadow:0 0 8px var(--accent-glow),0 0 16px var(--accent-glow);}
 .headerSep{width:1px;height:32px;background:var(--border);margin:0 8px;}
 h1{font-family:Space Grotesk,sans-serif;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.2px;}
 .headerCenter{display:flex;flex-direction:column;gap:2px;}
@@ -305,7 +305,7 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 <header>
   <div class="somaLogo">
     <div class="somaName">SOMA</div>
-    <div class="orbisTag">VYV Ambulance</div>
+    <div class="somaTag">VYV Ambulance</div>
   </div>
   <div class="headerSep"></div>
   <div class="headerCenter">
@@ -367,7 +367,12 @@ nav.collapsed .navGlobalBadge{display:none!important;}
     </div>
   </div>
   <div class="card">
-    <h2>1. Analyse &amp; objectif annuel</h2><div class="perso"><svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">1. Analyse &amp; objectif annuel</h2>
+      <div id="cgLockedBadge" style="display:none;font-size:11px;padding:4px 10px;border:1px solid var(--blue2);color:var(--blue2);background:var(--blue-light)">
+        🔒 Données historiques verrouillées par le CG
+      </div>
+    </div><div class="perso"><svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Corps ambulancier REX -->
   <circle cx="60" cy="28" r="20" fill="#472683"/>
   <circle cx="60" cy="28" r="16" fill="#9B7FD4"/>
@@ -518,19 +523,69 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 <!-- PANEL REFERENCES AGENCES (CG) -->
 <section id="refagences" class="panel">
   <div class="card">
-    <h2>Données de référence par agence</h2>
-    <div class="hint">Ces données sont pré-remplies automatiquement pour chaque REX à l'ouverture de son agence.</div>
-    <br>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <div>
+        <h2 style="margin:0">Données de référence par agence</h2>
+        <p class="hint" style="margin-top:4px">Pré-remplies automatiquement pour chaque REX à l'ouverture de son agence.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button onclick="triggerImportRefAgences()" style="background:var(--blue);color:#fff;border:none;font-weight:700">📥 Importer depuis Excel</button>
+        <button onclick="saveRefAgences()" style="background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border:none;font-weight:700">💾 Enregistrer toutes les agences</button>
+        <input type="file" id="refAgencesFileInput" accept=".xlsx" style="display:none" onchange="handleRefAgencesImport(event)">
+        <span id="refAgencesImportMsg" style="font-size:13px;color:var(--green)"></span>
+        <span id="refAgencesSaveMsg" style="font-size:13px;color:var(--green)"></span>
+      </div>
+    </div>
     <div id="refAgencesLoading" class="loading">Chargement...</div>
     <div class="tablewrap"><table id="refAgencesTable"></table></div>
-    <br>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button onclick="saveRefAgences()" style="background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border:none;font-weight:700">💾 Enregistrer toutes les agences</button>
-      <button class="secondary" onclick="triggerImportRefAgences()">📥 Importer depuis Excel</button>
-      <input type="file" id="refAgencesFileInput" accept=".xlsx" style="display:none" onchange="handleRefAgencesImport(event)">
-      <span id="refAgencesImportMsg" style="font-size:13px;color:var(--green)"></span>
+  </div>
+</section>
+
+<!-- PANEL COMPARATIVE -->
+<section id="comparative" class="panel">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <h2 style="margin:0">Vue comparative inter-agences</h2>
+      <button onclick="renderComparative()" style="font-size:11px;padding:6px 12px">↺ Actualiser</button>
     </div>
-    <span id="refAgencesSaveMsg" style="margin-left:14px;font-family:Outfit,sans-serif;font-size:15px;color:var(--green)"></span>
+    <p class="hint" style="margin-bottom:14px">Indicateurs clés par agence. Les valeurs en orange s'écartent significativement de la médiane réseau.</p>
+    <div id="comparativeKpis" class="kpis" style="margin-bottom:16px"></div>
+    <div id="comparativeLoading" class="loading" style="display:none">Chargement...</div>
+    <div class="tablewrap"><table id="comparativeTable"></table></div>
+  </div>
+</section>
+
+<!-- PANEL PÉRIODES DE PAIE -->
+<section id="periodes" class="panel">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="margin:0">Calendrier des périodes de paie 2027</h2>
+        <p class="hint" style="margin-top:4px">Périodes de collecte des variables utilisées pour le calcul comptable de la masse salariale. Modifiables si les dates réelles diffèrent.</p>
+      </div>
+      <button onclick="resetPeriodesPaie()" class="secondary" style="font-size:11px;padding:6px 12px">↺ Réinitialiser par défaut</button>
+    </div>
+
+    <!-- Paie janvier spéciale -->
+    <div style="padding:14px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);margin-bottom:16px">
+      <h3 style="margin-bottom:10px;color:var(--blue2)">Paie de Janvier 2027 — Variables décembre 2026</h3>
+      <p class="hint" style="margin-bottom:10px">La première paie de 2027 inclut des heures travaillées en décembre 2026. Saisissez le montant global des charges salariales de cette période (issu du réalisé décembre 2026).</p>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="margin:0">Charges variables décembre 2026 incluses en paie janvier 2027 :</label>
+        <input id="variablesDec2026" type="text" placeholder="ex : 45 000" style="width:160px" onchange="setVariablesDec2026(this.value)">
+        <span style="font-size:13px;color:var(--ink65)">€</span>
+      </div>
+    </div>
+
+    <!-- Tableau des périodes -->
+    <div class="tablewrap"><table id="periodesTable"></table></div>
+
+    <!-- Charges à reporter 2028 -->
+    <div id="report2028" style="margin-top:14px;padding:14px;background:rgba(196,83,0,.08);border:1px solid var(--orange);display:none">
+      <h3 style="margin-bottom:8px;color:var(--orange)">Charges à reporter sur paie Janvier 2028</h3>
+      <p class="hint" style="margin-bottom:8px">La période du 06/12/2027 au 31/12/2027 ne sera pas comptabilisée en 2027. Ces charges apparaîtront en paie de janvier 2028.</p>
+      <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--orange)" id="report2028Amount">—</div>
+    </div>
   </div>
 </section>
 
@@ -588,7 +643,7 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 <section id="previsionnel" class="panel">
   <div class="card">
     <h2>6. Prévisionnel budgétaire</h2>
-    <p class="hint" style="margin-bottom:16px">Tableau de résultat prévisionnel calculé à partir de vos données et des charges saisies par le contrôleur de gestion. Vue en lecture seule.</p>
+    <p class="hint" style="margin-bottom:16px">Tableau de résultat prévisionnel calculé à partir de vos données et des charges saisies par le contrôleur de gestion. Vue en lecture seule.</p><div id="prevPaieBadge" style="display:none;padding:6px 12px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:12px;color:var(--blue2);margin-bottom:12px">ℹ La ligne <b>Charges de personnel</b> est calculée selon les périodes de paie 2027 (et non par mois civil). Les mois 5 semaines ont une charge plus élevée.</div>
     <div class="kpis" id="prevKpis" style="margin-bottom:16px"></div>
     <div class="tablewrap"><table id="prevTable"></table></div>
   </div>
@@ -614,45 +669,76 @@ nav.collapsed .navGlobalBadge{display:none!important;}
 
 <!-- PANEL ADMIN -->
 <section id="admin" class="panel">
-  <div class="card">
-    <h2>Administration</h2>
-    <div class="grid c3" style="margin-bottom:20px">
+
+  <!-- Voir en tant que... -->
+  <div class="card" style="margin-bottom:12px">
+    <h2 style="margin-bottom:12px">👁 Voir en tant que...</h2>
+    <p class="hint" style="margin-bottom:14px">Simulez la vue d'un utilisateur sans vous déconnecter. Utile pour tester l'interface avant de la déployer.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="simulerRole('rex')" style="background:var(--violet);color:#fff;border:none;font-weight:700">REX Exploitation</button>
+      <button onclick="simulerRole('cg')" style="background:var(--blue);color:#fff;border:none;font-weight:700">Contrôleur de gestion</button>
+      <button onclick="simulerRole('dr')" style="background:#2C3E7A;color:#fff;border:none;font-weight:700">Directeur Régional</button>
+      <button onclick="simulerRole('df')" style="background:#4A235A;color:#fff;border:none;font-weight:700">Directeur Financier</button>
+      <button onclick="simulerRole('dg')" style="background:#1A5276;color:#fff;border:none;font-weight:700">Directeur Général</button>
+      <button onclick="simulerRole('pdg')" style="background:#784212;color:#fff;border:none;font-weight:700">PDG</button>
+      <button onclick="simulerRole('admin')" class="secondary">↩ Revenir Admin</button>
+    </div>
+    <div id="simulationBadge" style="display:none;margin-top:10px;padding:8px 14px;background:rgba(196,83,0,.1);border:1px solid var(--orange);font-size:12px;color:var(--orange)"></div>
+  </div>
+
+  <!-- Créer un compte -->
+  <div class="card" style="margin-bottom:12px">
+    <h2 style="margin-bottom:4px">➕ Créer un compte</h2>
+    <p class="hint" style="margin-bottom:14px">Le compte sera créé dans Supabase Authentication. Copiez le SQL généré pour finaliser la création du profil.</p>
+    <div class="grid c3" style="margin-bottom:12px">
       <div><label>Nom complet</label><input id="adminNom" type="text" placeholder="NOM Prénom"></div>
       <div><label>Email</label><input id="adminEmail" type="email" placeholder="prenom.nom@vyv-ambulance.com"></div>
       <div><label>Rôle</label>
-        <select id="adminRole">
+        <select id="adminRole" onchange="toggleAdminAgence()">
           <option value="rex">REX</option>
-          <option value="dr">Directeur Régional</option>
+          <option value="dr">Dir. Régional</option>
           <option value="cg">Contrôleur de gestion</option>
-          <option value="df">Direction Financière</option>
-          <option value="dg">Direction Générale</option>
+          <option value="df">Dir. Financier</option>
+          <option value="dg">Dir. Général</option>
           <option value="pdg">PDG</option>
           <option value="admin">Admin</option>
         </select>
       </div>
-      <div id="adminAgenceZone"><label>Agence (si REX)</label><select id="adminAgence"><option value="">-- Choisir --</option></select></div>
-      <div><label>&nbsp;</label><button onclick="adminCreateUser()">Créer le compte</button></div>
     </div>
-    <div id="adminMsg" style="margin-bottom:16px"></div>
+    <div id="adminAgenceRow" style="margin-bottom:12px">
+      <label>Agence (REX uniquement)</label>
+      <select id="adminAgence"></select>
+    </div>
+    <button onclick="adminCreateUser()" style="background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border:none;font-weight:700">Créer le compte</button>
+    <div id="adminMsg" style="margin-top:10px"></div>
   </div>
+
+  <!-- Liste des utilisateurs -->
   <div class="card">
-    <h2>Utilisateurs</h2>
+    <h2 style="margin-bottom:14px">👥 Utilisateurs</h2>
     <div id="adminUsersLoading" class="loading">Chargement...</div>
     <div class="tablewrap"><table id="adminUsersTable"></table></div>
   </div>
-  <div class="card">
-    <h2>Tous les budgets</h2>
-    <div class="hint">En tant qu'admin, vous pouvez forcer le statut de n'importe quel budget et l'ouvrir en modification.</div>
-    <br>
+
+  <!-- Liste des budgets -->
+  <div class="card" style="margin-top:12px">
+    <h2 style="margin-bottom:14px">📋 Tous les budgets</h2>
     <div id="adminBudgetsLoading" class="loading">Chargement...</div>
     <div class="tablewrap"><table id="adminBudgetsTable"></table></div>
   </div>
+
 </section>
 
 <!-- PANEL CONSOLIDATION (DF / DG / CG) -->
 <section id="consolidation" class="panel">
   <div class="card">
-    <h2>Consolidation réseau</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <h2 style="margin:0">Consolidation réseau</h2>
+      <div style="display:flex;gap:8px">
+        <button onclick="renderConsolidation()" style="font-size:11px;padding:6px 12px">↺ Actualiser</button>
+        <button onclick="exportConsolidation()" style="font-size:11px;padding:6px 12px;background:linear-gradient(135deg,var(--green),#45c87a);color:#fff;border:none;font-weight:700">📥 Export Excel</button>
+      </div>
+    </div>
     <div id="consolidationContent"><div class="loading">Chargement...</div></div>
   </div>
 </section>
@@ -695,7 +781,7 @@ let PENDING_DECISION = null; // {decision, niveau}
 const M=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
 const T=[{"label":"Chiffre d'affaires","type":"product"},{"label":"Achats Matières premières et sous traitance","type":"charge"},{"label":"Variations stock marchandises et autres approvisionnements","type":"charge"},{"label":"MARGE BRUTE GLOBALE","type":"subtotal"},{"label":"Electricité - eau - chauffage","type":"charge"},{"label":"Matériels ambulances","type":"charge"},{"label":"Carburant","type":"charge"},{"label":"Entretiens petits équipements","type":"charge"},{"label":"Fourniture bureau - vêtements","type":"charge"},{"label":"Sous traitance","type":"charge"},{"label":"Crédit bail et location véhicules","type":"charge"},{"label":"Location téléphonie - informatique - mobilité","type":"charge"},{"label":"Location immobilières et charges locatives","type":"charge"},{"label":"Entretiens véhicules - batîment","type":"charge"},{"label":"Maintenance informatique","type":"charge"},{"label":"Assurance","type":"charge"},{"label":"Formation - documentation","type":"charge"},{"label":"Honoraires et prestations de services","type":"charge"},{"label":"Publicité - cadeaux","type":"charge"},{"label":"Frais de déplacement - missions réceptions","type":"charge"},{"label":"Péages","type":"charge"},{"label":"Affranchissement","type":"charge"},{"label":"Téléphonie - internet","type":"charge"},{"label":"Frais bancaires et cotisations","type":"charge"},{"label":"Autres Achats et charges externes","type":"subtotal"},{"label":"VALEUR AJOUTEE","type":"subtotal"},{"label":"Subventions d'exploitation","type":"product"},{"label":"Impôts, taxes et versements assimilés","type":"charge"},{"label":"Charges de personnel","type":"charge"},{"label":"EXCEDENT BRUT D'EXPLOITATION","type":"subtotal"},{"label":"Reprises s/ charges et transferts","type":"product"},{"label":"Autres produits","type":"product"},{"label":"Dotations amortissements et provisions","type":"charge"},{"label":"Autres charges","type":"charge"},{"label":"RESULTAT D'EXPLOITATION","type":"subtotal"},{"label":"Produits financiers","type":"product"},{"label":"Charges financières","type":"charge"},{"label":"RESULTAT FINANCIER","type":"subtotal"},{"label":"RESULTAT COURANT AVANT IMPOT","type":"subtotal"},{"label":"Produits exceptionnels","type":"product"},{"label":"Charges exceptionnelles","type":"charge"},{"label":"RESULTAT EXCEPTIONNEL","type":"subtotal"},{"label":"RESULTAT NET","type":"subtotal"}];
 const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['previsionnel','Prévisionnel'],['finance','Synthèse']];
-const panelsCG=[['objectif','Sélection agence'],['refagences','Données agences'],['cg','Charges CG'],['affectation','Affectation DR'],['controle','Contrôles'],['rex','Prévisionnel'],['finance','Synthèse'],['consolidation','Consolidation']];
+const panelsCG=[['objectif','Sélection agence'],['refagences','Données agences'],['comparative','Vue comparative'],['periodes','Périodes de paie'],['cg','Charges CG'],['affectation','Affectation DR'],['controle','Contrôles'],['rex','Prévisionnel'],['finance','Synthèse'],['consolidation','Consolidation']];
 const panelsDR=[['validation','Mes agences'],['consolidation','Consolidation région']];
 const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau']];
 const agences=[
@@ -887,6 +973,8 @@ function setupUI() {
 // NAVIGATION
 // ═══════════════════════════════════════════════
 function buildNav() {
+  // Admin a sa propre navigation
+  if (PROFILE.role === 'admin') { buildNavAdmin(); return; }
   const isCG = PROFILE.role === 'cg';
   const panels = isCG ? panelsCG : panelsREX;
   const groupLabel = isCG ? 'Contrôleur de gestion' : 'REX exploitation';
@@ -970,6 +1058,8 @@ function show(id) {
   if (id === 'validation') renderValidation();
   if (id === 'rh') renderRH();
   if (id === 'refagences') renderRefAgences();
+  if (id === 'comparative') renderComparative();
+  if (id === 'periodes') renderPeriodes();
   if (id === 'consolidation') renderConsolidation();
   if (id === 'affectation') renderAffectation();
   render();
@@ -1194,6 +1284,34 @@ function toggleNav() {
   }
 }
 
+// ═══════════════════════════════════════════════
+// SIMULATION DE RÔLE (ADMIN)
+// ═══════════════════════════════════════════════
+let _originalProfile = null;
+
+function simulerRole(role) {
+  if (!_originalProfile) _originalProfile = {...PROFILE};
+  if (role === 'admin') {
+    PROFILE = {..._originalProfile};
+    _originalProfile = null;
+    if (q('simulationBadge')) q('simulationBadge').style.display = 'none';
+  } else {
+    PROFILE = {...PROFILE, role};
+    if (q('simulationBadge')) {
+      let labels = {rex:'REX Exploitation',cg:'Contrôleur de gestion',dr:'Directeur Régional',df:'Directeur Financier',dg:'Directeur Général',pdg:'PDG'};
+      q('simulationBadge').style.display = '';
+      q('simulationBadge').textContent = '⚠ Simulation active : vue ' + (labels[role]||role) + '. Cliquez Revenir Admin pour reprendre votre acces normal.';
+    }
+  }
+  setupUI();
+}
+
+function toggleAdminAgence() {
+  let role = q('adminRole') ? q('adminRole').value : '';
+  let row = q('adminAgenceRow');
+  if (row) row.style.display = role === 'rex' ? '' : 'none';
+}
+
 function closeModal() {
   q('validModal').style.display = 'none';
   PENDING_DECISION = null;
@@ -1241,44 +1359,7 @@ async function confirmDecision() {
 // ═══════════════════════════════════════════════
 // CONSOLIDATION
 // ═══════════════════════════════════════════════
-async function renderConsolidation() {
-  if (!q('consolidationContent')) return;
-  q('consolidationContent').innerHTML = '<div class="loading">Chargement...</div>';
-  let query = sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027);
-  if (PROFILE.role === 'dr') {
-    const {data: ag} = await sb.from('agences').select('nom').eq('region_id',PROFILE.region_id);
-    if (ag) query = query.in('agence', ag.map(a=>a.nom));
-  }
-  const {data: budgets} = await query.order('agence');
-  if (!budgets || !budgets.length) {
-    q('consolidationContent').innerHTML = '<div class="hint">Aucun budget disponible.</div>'; return;
-  }
-  let html = '<div class="consolRow header"><div>Agence</div><div>Statut</div><div>CA Objectif</div><div>CA Budget</div><div>REX</div><div>Mis à jour</div></div>';
-  let totObj=0, totCA=0, totREX=0;
-  for (const b of budgets) {
-    const d = b.data || {};
-    const caObj = +d.targetCA||0;
-    const caBud = d._caBudget||0;
-    const rex = d._rex||0;
-    totObj+=caObj; totCA+=caBud; totREX+=rex;
-    html += `<div class="consolRow">
-      <div><b>${b.agence}</b></div>
-      <div><span class="statut ${b.statut}">${statutLabel(b.statut)}</span></div>
-      <div class="num">${euro(caObj)}</div>
-      <div class="num">${caBud?euro(caBud):'—'}</div>
-      <div class="num ${rex<0?'bad':rex>0?'ok':''}">${caBud?euro(rex):'—'}</div>
-      <div style="font-size:11px;color:var(--ink65)">${new Date(b.updated_at).toLocaleDateString('fr-FR')}</div>
-    </div>`;
-  }
-  html += `<div class="consolRow" style="font-weight:900;background:#e9f5ff;border-radius:0 0 10px 10px">
-    <div>TOTAL</div><div></div>
-    <div class="num">${euro(totObj)}</div>
-    <div class="num">${euro(totCA)}</div>
-    <div class="num ${totREX<0?'bad':'ok'}">${euro(totREX)}</div>
-    <div></div>
-  </div>`;
-  q('consolidationContent').innerHTML = html;
-}
+// renderConsolidation supprimée (doublon)
 
 // ═══════════════════════════════════════════════
 // AFFECTATION DR (CG uniquement)
@@ -1341,7 +1422,10 @@ async function saveAffectation(agenceNom, drUserId) {
 // MOTEUR DE CALCUL (identique V47)
 // ═══════════════════════════════════════════════
 function refs(){return Array.from({length:12},()=>({semaine:null,vacances:null,samedi:null,dimanche:null,ferie:null}))}
-function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),tauxHoraireBrut:null,tauxChargePatronal:null,costHour:null,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
+function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,cgLocked:false,
+  // Calendrier des périodes de paie 2027
+  // Format : [{mois:'Janvier', debut:'2026-12-07', fin:'2027-01-10', semaines:5}...]
+  periodesPaie:null,variablesDec2026:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),tauxHoraireBrut:null,tauxChargePatronal:null,costHour:null,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
 function A(){return S.agencies[S.active]}
 function between(d,s,e){return d>=s&&d<=e}
 function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
@@ -1390,6 +1474,12 @@ function refAgenceSeuilsBase(a) {
 }
 function hsTot(a){return hsRows(a).reduce((o,r)=>{o.ca+=r.ca;o.need+=r.hours;o.av+=r.av;o.hs+=r.hs;return o},{ca:0,need:0,av:0,hs:0})}
 function payrollMonth(a,m){
+  // Si les périodes de paie sont configurées, utiliser le calcul comptable
+  if(a.periodesPaie && a.periodesPaie.length && a.costHour && a.cal && a.cal.length){
+    return payrollPayMonth(a, m);
+  }
+  // Sinon fallback sur le calcul mois civil
+function payrollMonthCivil(a,m){
   // MS roulante : heures disponibles x cout horaire + HS x coef
   let msRoulant = hsRows(a).reduce((s,r)=>{
     let daysWeek=a.cal.filter(d=>d.week===r.week).length||7;
@@ -1418,6 +1508,9 @@ function payrollMonth(a,m){
     return s+(+e.coutJour||0)*joursActifs;
   },0);
   return msRoulant+msNonRoulant+msDR+msREX;
+}
+// fin payrollMonthCivil
+  return payrollMonthCivil(a,m);
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
 function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
@@ -1482,6 +1575,12 @@ function bind(){
     let e=q(id);if(!e)return;
     if(e.type==='checkbox'){e.checked=!!a[id];}else{e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
     e.oninput=ev=>{
+    // Vérifier si le champ est verrouillé par le CG
+    let cgLockedFields=['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxChargePatronal','costHour'];
+    if(a.cgLocked && cgLockedFields.includes(id) && PROFILE && PROFILE.role==='rex'){
+      ev.target.value=a[id]!==null&&a[id]!==undefined?a[id]:'';
+      return; // annuler la modification
+    }
     let v=ev.target.value;
     a[id]=(id==='perspectives'||id==='schoolZone')?v:(id==='actSan'||id==='actSai'||id==='actTP')?ev.target.checked:v===''?null:parseFr(v);
     if(id==='schoolZone'||id==='actSai'||id==='actTP')genCal(a);
@@ -1491,6 +1590,15 @@ function bind(){
   });
   // Attacher formatage milliers sur les champs montants
   ['histCA2025','histCA','targetCA','histTXR','targetTXR','targetAbsRate','tauxHoraireBrut','tauxChargePatronal','costHour'].forEach(attachFmt);
+  // Afficher badge CG locked + griser les champs verrouillés
+  if(q('cgLockedBadge')){
+    let locked=a.cgLocked&&PROFILE&&PROFILE.role==='rex';
+    q('cgLockedBadge').style.display=locked?'':'none';
+    ['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxChargePatronal','costHour'].forEach(function(fid){
+      let el=q(fid);
+      if(el){el.readOnly=locked;el.style.background=locked?'var(--bg2)':'';el.style.color=locked?'var(--ink65)':'';el.title=locked?'Verrouillé par le contrôleur de gestion':'';}
+    });
+  }
   // Afficher le hint costHour si données présentes
   if(a.tauxHoraireBrut&&a.tauxChargePatronal&&a.costHour){
     if(q('costHour'))q('costHour').value=(+a.costHour).toLocaleString('fr-FR');
@@ -1691,7 +1799,7 @@ function renderRH(){
       return s;
     },0);
     let cpLibres = Math.round((cpGen - cpVerrouilles)*10)/10;
-    progressHTML += '<div style="font-size:12px;color:var(--ink65)">CP restants à répartir : <b style="color:'+(Math.abs(cpLibres)<1?'var(--green)':'var(--orbis-blue)')+'">'+cpLibres.toFixed(1)+' J</b></div>'
+    progressHTML += '<div style="font-size:12px;color:var(--ink65)">CP restants à répartir : <b style="color:'+(Math.abs(cpLibres)<1?'var(--green)':'var(--accent-blue)')+'">'+cpLibres.toFixed(1)+' J</b></div>'
       + '</div>';
 
     q('rhMonthCards').innerHTML = progressHTML + M.map(function(mo,m){
@@ -1726,7 +1834,7 @@ function renderRH(){
       let colorTension = txHsM > 0.20 ? 'var(--orange)' : txHsM > 0.10 ? '#FF8F00' : 'var(--green)';
       let color = estVerrouille ? 'var(--green)' : colorTension;
       let bgCard = estVerrouille ? 'background:rgba(41,134,81,.08);' : estActif ? 'background:rgba(74,158,255,.06);' : '';
-      let borderTop = estVerrouille ? 'border-top:2px solid var(--green)' : estActif ? 'border-top:2px solid var(--orbis-blue)' : 'border-top:2px solid '+color;
+      let borderTop = estVerrouille ? 'border-top:2px solid var(--green)' : estActif ? 'border-top:2px solid var(--accent-blue)' : 'border-top:2px solid '+color;
       let icon = estVerrouille ? '🔒' : txHsM>0.20 ? '🔴' : txHsM>0.10 ? '🟡' : '🟢';
       let tensionRate = weeksOfMonth.length>0 ? Math.round((tensions+warnings*0.5)/weeksOfMonth.length*100) : 0;
       let barColor = estVerrouille ? 'var(--green)' : color;
@@ -1757,10 +1865,10 @@ function renderRH(){
         + '<div style="height:3px;background:var(--bg3);margin-bottom:8px"><div style="height:3px;background:'+barColor+';width:'+tensionRate+'%"></div></div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:11px;color:var(--ink65)">'
         + '<div>HS : <b style="color:'+(hsM>0?'var(--orange)':'var(--green)')+'">'+hsM.toFixed(0)+' h</b></div>'
-        + '<div>CP : <b style="color:var(--orbis-blue)">'+cpM.toFixed(1)+' J</b></div>'
+        + '<div>CP : <b style="color:var(--accent-blue)">'+cpM.toFixed(1)+' J</b></div>'
         + (coutHsM>0?'<div style="grid-column:1/-1;color:var(--orange);font-size:10px">Coût HS : '+euro(coutHsM)+'</div>':'')
         + (tensions>0?'<div style="color:var(--orange)">'+tensions+' sem. critiques</div>':'')
-        + (cpPoss>0&&!estVerrouille?'<div style="color:var(--orbis-blue)">'+cpPoss+' CP possibles</div>':'')
+        + (cpPoss>0&&!estVerrouille?'<div style="color:var(--accent-blue)">'+cpPoss+' CP possibles</div>':'')
         + '</div>'
         + btns
         + (estVerrouille?'':'<div style="font-size:9px;color:var(--ink30);margin-top:6px;text-align:right">Cliquer pour détail →</div>')
@@ -1852,7 +1960,7 @@ function showWeekDetail(m){
     + '<span style="font-weight:700;color:var(--ink65);text-transform:uppercase;letter-spacing:.06em;font-size:10px">Impact de ce mois</span>'
     + '<span>HS : <b style="color:'+(hsM>0?'var(--orange)':'var(--green)')+'">'+hsM.toFixed(1)+' h</b></span>'
     + '<span>Coût HS : <b style="color:'+(coutHSM>0?'var(--orange)':'var(--green)')+'">'+euro(coutHSM)+'</b></span>'
-    + '<span>CP posés : <b style="color:var(--orbis-blue)">'+cpM.toFixed(1)+' J</b></span>'
+    + '<span>CP posés : <b style="color:var(--accent-blue)">'+cpM.toFixed(1)+' J</b></span>'
     + '<span>'+critM+' sem. critique(s) / '+okM+' OK</span>'
     + '</div>';
 
@@ -1923,7 +2031,7 @@ function renderCoherence(){
   let caJourCible=nbRoulants>0?Math.round(dispoHebdoMoy/5*txr):0; // CA moyen d'un jour de semaine
 
   // Couleur selon tension
-  let couleur=tauxCharge>115?'var(--orange)':tauxCharge>100?'#FF8F00':tauxCharge>85?'var(--orbis-blue)':'var(--green)';
+  let couleur=tauxCharge>115?'var(--orange)':tauxCharge>100?'#FF8F00':tauxCharge>85?'var(--accent-blue)':'var(--green)';
   let icone=tauxCharge>115?'🔴':tauxCharge>100?'🟡':tauxCharge>85?'🔵':'🟢';
   let message=tauxCharge>115
     ?'Objectif difficile à atteindre sans recours massif aux HS. Vérifiez vos références CA.'
@@ -1957,7 +2065,7 @@ function renderCoherence(){
     +'</div>'
     +'<div style="padding:12px;background:var(--bg3);border:1px solid var(--border)">'
     +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65);margin-bottom:6px">Capacité max avec 10% HS</div>'
-    +'<div style="font-family:DM Mono,monospace;font-size:16px;font-weight:700;color:var(--orbis-blue)">'+euro(caMaxAvecHS10)+'</div>'
+    +'<div style="font-family:DM Mono,monospace;font-size:16px;font-weight:700;color:var(--accent-blue)">'+euro(caMaxAvecHS10)+'</div>'
     +'<div style="font-size:11px;color:var(--ink65);margin-top:3px">Volume HS raisonnable</div>'
     +'</div>'
     +'<div style="padding:12px;background:var(--bg3);border:1px solid var(--border)">'
@@ -1974,7 +2082,7 @@ function renderCoherence(){
     +'</div>'
 
     +(caJourCible>0?'<div style="margin-top:12px;font-size:12px;color:var(--ink65);padding:8px 12px;background:var(--bg3);border:1px solid var(--border)">'
-    +'&#128161; <b>Reference CA coherente pour une journee de semaine normale :</b> environ <b style="color:var(--orbis-blue)">'+euro(caJourCible)+'</b> '
+    +'&#128161; <b>Reference CA coherente pour une journee de semaine normale :</b> environ <b style="color:var(--accent-blue)">'+euro(caJourCible)+'</b> '
     +'('+dispoHebdoMoy.toFixed(0)+' h dispo ÷ 5 jours × '+txr+' €/h). '
     +'Si vos références CA dépassent significativement ce montant, des tensions HS apparaîtront.</div>':'');
 }
@@ -1993,6 +2101,10 @@ function renderControl(){if(!q('auditKpis'))return;let a=A(),s=chargesSummary(a)
 function renderREX(){let a=A(),ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");kpis('rexKpis',[['CA',euro(ca)],['Charges personnel',euro(ann(a,"Charges de personnel")),pct(ca?ann(a,"Charges de personnel")/ca*100:0)],['VA',euro(ann(a,"VALEUR AJOUTEE"))],['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION"))],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)]]);if(q('rexTable'))q('rexTable').innerHTML='<tr><th>Rubrique officielle</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th><th>% CA</th></tr>'+T.map(r=>{let total=ann(a,r.label),cls=r.type==='subtotal'?'subtotal':r.type;return `<tr class="${cls}"><td><b>${r.label}</b></td>`+M.map((_,m)=>`<td class="num">${euro(amount(a,r.label,m))}</td>`).join('')+`<td class="num"><b>${euro(total)}</b></td><td class="num">${pct(ca?total/ca*100:0)}</td></tr>`}).join('')}
 function renderPrevisionnel(){
   let a=A();
+  if(q('prevPaieBadge')){
+    let hasPaie=a&&a.periodesPaie&&a.periodesPaie.length&&a.costHour&&a.cal&&a.cal.length;
+    q('prevPaieBadge').style.display=hasPaie?'':'none';
+  }
   if(!q('prevTable'))return;
   let ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");
   // KPIs
@@ -2068,7 +2180,7 @@ function setRexVal(l,m,v){let x=A().rex[l];if(x.mode==='pct')x.pct=v===''?null:+
 function setRexAnnual(l,v){A().rex[l].annual=+v;render()}
 function prefillCharges(){let a=A(),ca=annualCA(a),set=(l,mode,val)=>{if(a.rex[l]){a.rex[l].mode=mode==='pct'?'pct':'annual';a.rex[l].chargeType='variable';a.rex[l].allocationKey=mode==='pct'?'ca':'monthly12';if(mode==='pct')a.rex[l].pct=val;else a.rex[l].annual=Math.round(val)}};set('Carburant','pct',5.2);set('Crédit bail et location véhicules','annual',ca*.05);set('Location immobilières et charges locatives','annual',ca*.028);set('Assurance','annual',ca*.018);set('Impôts, taxes et versements assimilés','annual',ca*.048);set('Honoraires et prestations de services','annual',ca*.026);set('Péages','annual',ca*.013);set('Charges financières','annual',ca*.002);render()}
 
-function openAgency(){
+async function openAgency(){
   let name=q('agencySel').value;
   if(!name)return alert('Choisis une agence');
   let idx=S.agencies.findIndex(a=>a.name===name);
@@ -2076,10 +2188,13 @@ function openAgency(){
   S.active=idx;
   if(q('start'))q('start').style.display='none';
   if(q('btnChangeAgency'))q('btnChangeAgency').style.display='';
-  loadBudgetFromSupabase(name).then(()=>{
-    // Après chargement : si CG, aller directement sur l'interface charges
-    if(PROFILE && PROFILE.role==='cg') show('cg');
-  });
+  await loadBudgetFromSupabase(name);
+  // Après chargement : si CG, aller directement sur l'interface charges
+  if(PROFILE && PROFILE.role==='cg') show('cg');
+  // Si alertes CG à afficher
+  if(PROFILE && PROFILE.role==='cg' && BUDGET_STATUT && BUDGET_STATUT.includes('soumis')){
+    setTimeout(afficherAlertesCG, 500);
+  }
 }
 function addAgency(){let n=prompt('Nom agence');if(!n)return;S.agencies.push(agency(n));S.active=S.agencies.length-1;render()}
 function changeAgency(){if(q('start'))q('start').style.display='';show('objectif')}
@@ -2093,6 +2208,9 @@ function migrateState(){S.agencies.forEach(a=>{
     a.costHour=Math.round(+a.tauxHoraireBrut*(1+(+a.tauxChargePatronal||0)/100)*100)/100;
   }
   if(!a.moisVerrouilles)a.moisVerrouilles=[];
+  if(a.cgLocked===undefined)a.cgLocked=false;
+  if(!a.periodesPaie)a.periodesPaie=buildPeriodesPaie();
+  if(a.variablesDec2026===undefined)a.variablesDec2026=null;
   if(a.moisActif===undefined)a.moisActif=null;
   if(a.actSan===undefined)a.actSan=true;
   if(a.actSai===undefined)a.actSai=false;
@@ -2135,6 +2253,12 @@ function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'applic
 // ADMIN
 // ═══════════════════════════════════════════════
 async function renderAdmin() {
+  // Remplir le select agences
+  if (q('adminAgence')) {
+    q('adminAgence').innerHTML = agences.filter(function(a){return !a.type;})
+      .map(function(a){return '<option>'+a.nom+'</option>';}).join('');
+  }
+  toggleAdminAgence();
   // Peupler le select agences
   if (q('adminAgence')) {
     q('adminAgence').innerHTML = '<option value="">-- Choisir --</option>' +
@@ -2320,17 +2444,24 @@ async function renderRefAgences() {
   const map = {};
   (budgets || []).forEach(b => { map[b.agence] = b.data || {}; });
   q('refAgencesLoading').style.display = 'none';
-  let html = '<tr><th>Agence</th><th>Zone</th><th>CA 2025</th><th>CA 2026</th><th>TXR moyen réalisé 2026</th><th>Absentéisme moyen cible %</th></tr>';
+  let html = '<tr><th>Agence</th><th>Zone</th><th>CA 2025</th><th>CA 2026</th><th>TXR 2026 (€/h)</th><th>Absent. cible %</th><th>Taux brut (€/h)</th><th>Charges pat. %</th><th>Coût horaire (€/h)</th></tr>';
   agences.forEach(ag => {
     const d = map[ag.nom] || {};
-    html += `<tr>
-      <td><b>${ag.nom}</b></td>
-      <td style="text-align:center">${ag.zone}</td>
-      <td><input type="number" value="${d.histCA2025||''}" placeholder="0" onchange="setRefAgence('${ag.nom}','histCA2025',this.value)" style="width:130px"></td>
-      <td><input type="number" value="${d.histCA||''}" placeholder="0" onchange="setRefAgence('${ag.nom}','histCA',this.value)" style="width:130px"></td>
-      <td><input type="number" value="${d.histTXR2026||40}" placeholder="40" onchange="setRefAgence('${ag.nom}','histTXR2026',this.value)" style="width:100px"></td>
-      <td><input type="number" value="${d.targetAbsRate||5}" placeholder="5" onchange="setRefAgence('${ag.nom}','targetAbsRate',this.value)" style="width:100px"></td>
-    </tr>`;
+    const cout = (d.tauxHoraireBrut && d.tauxChargePatronal)
+      ? Math.round(+d.tauxHoraireBrut*(1+(+d.tauxChargePatronal||0)/100)*100)/100
+      : (d.costHour || '');
+    let n=ag.nom;
+    html += '<tr>'
+      + '<td><b>'+n+'</b></td>'
+      + '<td style="text-align:center">'+(ag.zone||'—')+'</td>'
+      + '<td><input type="number" value="'+(d.histCA2025||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'histCA2025\',this.value)" data-n="'+n+'" style="width:120px"></td>'
+      + '<td><input type="number" value="'+(d.histCA||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'histCA\',this.value)" data-n="'+n+'" style="width:120px"></td>'
+      + '<td><input type="number" value="'+(d.histTXR2026||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'histTXR2026\',this.value)" data-n="'+n+'" style="width:80px"></td>'
+      + '<td><input type="number" value="'+(d.targetAbsRate||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'targetAbsRate\',this.value)" data-n="'+n+'" style="width:80px"></td>'
+      + '<td><input type="number" value="'+(d.tauxHoraireBrut||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'tauxHoraireBrut\',this.value)" data-n="'+n+'" style="width:90px"></td>'
+      + '<td><input type="number" value="'+(d.tauxChargePatronal||'')+'" placeholder="—" onchange="setRefAgencePatronal(this.dataset.n,this.value)" data-n="'+n+'" style="width:80px"></td>'
+      + '<td style="font-weight:700;color:var(--violet2);font-family:DM Mono,monospace;padding:0 8px">'+(cout?cout+' €/h':'—')+'</td>'
+      + '</tr>';
     // Mettre en cache
     if (!REF_AGENCES[ag.nom]) REF_AGENCES[ag.nom] = {};
     REF_AGENCES[ag.nom].histCA2025    = d.histCA2025    || 0;
@@ -2341,6 +2472,17 @@ async function renderRefAgences() {
   q('refAgencesTable').innerHTML = html;
 }
 
+function setRefAgencePatronal(nom, val) {
+  if (!REF_AGENCES[nom]) REF_AGENCES[nom] = {};
+  REF_AGENCES[nom].tauxChargePatronal = +val;
+  // Recalculer costHour si les deux composantes sont là
+  let brut = REF_AGENCES[nom].tauxHoraireBrut;
+  if (brut && +val) {
+    REF_AGENCES[nom].costHour = Math.round(brut * (1 + +val/100) * 100) / 100;
+  }
+  renderRefAgences();
+}
+
 function setRefAgence(nom, field, value) {
   if (!REF_AGENCES[nom]) REF_AGENCES[nom] = {};
   REF_AGENCES[nom][field] = +value;
@@ -2348,20 +2490,30 @@ function setRefAgence(nom, field, value) {
 
 async function saveRefAgences() {
   let count = 0;
+  const btn = document.querySelector('[onclick="saveRefAgences()"]');
+  if (btn) { btn.textContent = '⏳ Enregistrement...'; btn.disabled = true; }
   for (const [nom, data] of Object.entries(REF_AGENCES)) {
-    // Upsert dans budgets : créer ou mettre à jour le champ data
+    // Calculer costHour si pas déjà dans data
+    if (!data.costHour && data.tauxHoraireBrut && data.tauxChargePatronal) {
+      data.costHour = Math.round(+data.tauxHoraireBrut * (1 + +data.tauxChargePatronal/100) * 100) / 100;
+    }
     const {data: existing} = await sb.from('budgets').select('id,data').eq('agence', nom).eq('annee', 2027).single().catch(() => ({data:null}));
     if (existing) {
-      const merged = {...existing.data, ...data};
+      const merged = {...existing.data, ...data, cgLocked: true};
       await sb.from('budgets').update({data: merged}).eq('id', existing.id);
     } else {
-      await sb.from('budgets').insert({agence: nom, annee: 2027, data, statut: 'brouillon'});
+      await sb.from('budgets').insert({agence: nom, annee: 2027, data: {...data, cgLocked: true}, statut: 'brouillon'});
     }
     count++;
   }
-  if (q('refAgencesSaveMsg')) {
-    q('refAgencesSaveMsg').textContent = count + ' agences enregistrées !';
-    setTimeout(() => { if(q('refAgencesSaveMsg')) q('refAgencesSaveMsg').textContent = ''; }, 3000);
+  if (btn) {
+    btn.textContent = '✓ ' + count + ' agences enregistrées';
+    btn.style.background = 'linear-gradient(135deg,var(--green),#45c87a)';
+    setTimeout(() => {
+      btn.textContent = '💾 Enregistrer toutes les agences';
+      btn.style.background = '';
+      btn.disabled = false;
+    }, 2500);
   }
 }
 
@@ -3018,9 +3170,451 @@ function afficherAlertesCG(){
   }
 }
 
+// ═══════════════════════════════════════════════
+// CALENDRIER PÉRIODES DE PAIE 2027
+// ═══════════════════════════════════════════════
+
+function buildPeriodesPaie() {
+  // Règle : 5 semaines en début de trimestre (jan/avr/juil/oct), 4 semaines les autres mois
+  // Calcul basé sur la même logique que le calendrier 2026 fourni
+  return [
+    {mois:'Janvier',  debut:'2026-12-07', fin:'2027-01-10', nbSem:5},
+    {mois:'Février',  debut:'2027-01-11', fin:'2027-02-07', nbSem:4},
+    {mois:'Mars',     debut:'2027-02-08', fin:'2027-03-07', nbSem:4},
+    {mois:'Avril',    debut:'2027-03-08', fin:'2027-04-11', nbSem:5},
+    {mois:'Mai',      debut:'2027-04-12', fin:'2027-05-09', nbSem:4},
+    {mois:'Juin',     debut:'2027-05-10', fin:'2027-06-06', nbSem:4},
+    {mois:'Juillet',  debut:'2027-06-07', fin:'2027-07-11', nbSem:5},
+    {mois:'Août',     debut:'2027-07-12', fin:'2027-08-08', nbSem:4},
+    {mois:'Septembre',debut:'2027-08-09', fin:'2027-09-05', nbSem:4},
+    {mois:'Octobre',  debut:'2027-09-06', fin:'2027-10-10', nbSem:5},
+    {mois:'Novembre', debut:'2027-10-11', fin:'2027-11-07', nbSem:4},
+    {mois:'Décembre', debut:'2027-11-08', fin:'2027-12-05', nbSem:4},
+  ];
+  // NB: période 06/12/2027 → 31/12/2027 = variables à reporter sur paie jan 2028
+}
+
+// Calcul de la masse salariale par mois de PAIE (pas mois civil)
+function payrollPayMonth(a, moisIdx) {
+  // moisIdx : 0=janvier...11=décembre
+  let periodes = a.periodesPaie || buildPeriodesPaie();
+  let periode = periodes[moisIdx];
+  if (!periode) return 0;
+
+  let debut = new Date(periode.debut);
+  let fin = new Date(periode.fin);
+
+  // Heures roulantes disponibles sur cette période
+  // Pour janvier : ajouter le montant décembre 2026 si saisi
+  let msJan2026 = moisIdx === 0 ? (+a.variablesDec2026 || 0) : 0;
+
+  // Agréger les semaines ISO dont la majorité des jours tombe dans la période
+  let hsR = hsRows(a);
+  let ms = msJan2026;
+
+  hsR.forEach(function(r) {
+    // Trouver les jours de cette semaine dans le calendrier
+    let daysOfWeek = a.cal.filter(function(d) { return d.week === r.week; });
+    if (!daysOfWeek.length) return;
+
+    // Calculer combien de jours de cette semaine tombent dans la période de paie
+    let daysInPeriode = daysOfWeek.filter(function(d) {
+      let dt = new Date(2027, d.month, d.day);
+      return dt >= debut && dt <= fin;
+    }).length;
+
+    let daysTotal = daysOfWeek.length;
+    if (daysTotal === 0) return;
+
+    let ratio = daysInPeriode / daysTotal;
+    if (ratio <= 0) return;
+
+    // Coût pro-ratisé de cette semaine
+    let coutSem = (r.av * (+a.costHour || 0)) + (r.hs * (+a.costHour || 0) * (+a.hsCostRate || 1.25));
+    ms += coutSem * ratio;
+  });
+
+  // Masse salariale non-roulants et DR : répartie sur la période (approximation pro-rata)
+  let nbJoursPeriode = Math.round((fin - debut) / (1000*60*60*24)) + 1;
+  let nbJoursAn = 365;
+
+  // Non-roulants (régulateurs, REX)
+  let msNonRoulants = a.employees
+    ? a.employees.filter(function(e) {
+        return !['DEA','AA','TAXI','TPMR','FACTURIERE'].includes(e.qual);
+      }).reduce(function(s, e) {
+        return s + (+e.coutJour || 0) * (nbJoursPeriode * (+e.joursSem || 5) / 7);
+      }, 0)
+    : 0;
+
+  // DR pro-rata
+  let msDR = (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 * (nbJoursPeriode / nbJoursAn);
+
+  return ms + msNonRoulants + msDR;
+}
+
+// Calcul de la période non couverte (charges à reporter sur 2028)
+function chargesReport2028(a) {
+  // Période du 06/12/2027 au 31/12/2027
+  let debut = new Date(2027, 11, 6);  // 6 décembre 2027
+  let fin   = new Date(2027, 11, 31); // 31 décembre 2027
+  let nbJours = 26;
+  let hsR = hsRows(a);
+  let ms = 0;
+
+  hsR.forEach(function(r) {
+    let daysOfWeek = a.cal.filter(function(d) { return d.week === r.week; });
+    let daysInPeriode = daysOfWeek.filter(function(d) {
+      let dt = new Date(2027, d.month, d.day);
+      return dt >= debut && dt <= fin;
+    }).length;
+    if (!daysOfWeek.length) return;
+    let ratio = daysInPeriode / daysOfWeek.length;
+    if (ratio <= 0) return;
+    let coutSem = (r.av * (+a.costHour || 0)) + (r.hs * (+a.costHour || 0) * (+a.hsCostRate || 1.25));
+    ms += coutSem * ratio;
+  });
+
+  // Non-roulants pro-rata
+  ms += (a.employees || [])
+    .filter(function(e) { return !['DEA','AA','TAXI','TPMR','FACTURIERE'].includes(e.qual); })
+    .reduce(function(s, e) { return s + (+e.coutJour || 0) * nbJours * (+e.joursSem || 5) / 7; }, 0);
+
+  ms += (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 * (nbJours / 365);
+
+  return Math.round(ms);
+}
+
 initParticles();
 init();
-</script></body></html>function renderConsolidation(){
+</script></body></html>function renderPeriodes(){
+  let a = A();
+  if (!q('periodesTable')) return;
+
+  // S'assurer que les périodes sont initialisées
+  if (!a.periodesPaie || !a.periodesPaie.length) {
+    a.periodesPaie = buildPeriodesPaie();
+  }
+
+  // Champ variables déc 2026
+  if (q('variablesDec2026')) {
+    q('variablesDec2026').value = a.variablesDec2026 !== null && a.variablesDec2026 !== undefined
+      ? (+a.variablesDec2026).toLocaleString('fr-FR') : '';
+  }
+
+  // Tableau des périodes
+  let header = '<tr>'
+    + '<th>Mois de paie</th>'
+    + '<th>Début période</th>'
+    + '<th>Fin période</th>'
+    + '<th>Nb semaines</th>'
+    + '<th>MS calculée</th>'
+    + '<th>dont variables déc. 2026</th>'
+    + '</tr>';
+
+  let rows = a.periodesPaie.map(function(p, i) {
+    let ms = payrollPayMonth(a, i);
+    let msStr = a.costHour && a.cal && a.cal.length ? euro(Math.round(ms)) : '—';
+    let dec2026 = i === 0 && a.variablesDec2026 ? euro(+a.variablesDec2026) : '';
+    let isTrimestre = p.nbSem === 5;
+    return '<tr style="' + (isTrimestre ? 'background:rgba(74,158,255,.05)' : '') + '">'
+      + '<td><b>' + p.mois + '</b>' + (isTrimestre ? ' <span style="font-size:10px;color:var(--blue2);font-weight:700">5 sem.</span>' : '') + '</td>'
+      + '<td><input type="date" value="' + p.debut + '" onchange="setPeriodeDate(' + i + ','debut',this.value)" style="width:150px;font-size:12px"></td>'
+      + '<td><input type="date" value="' + p.fin + '" onchange="setPeriodeDate(' + i + ','fin',this.value)" style="width:150px;font-size:12px"></td>'
+      + '<td style="text-align:center;font-family:DM Mono,monospace">' + p.nbSem + '</td>'
+      + '<td class="num"><b>' + msStr + '</b></td>'
+      + '<td class="num" style="color:var(--blue2)">' + dec2026 + '</td>'
+      + '</tr>';
+  }).join('');
+
+  q('periodesTable').innerHTML = header + rows;
+
+  // Charges à reporter sur 2028
+  if (q('report2028') && a.costHour && a.cal && a.cal.length) {
+    let report = chargesReport2028(a);
+    q('report2028').style.display = report > 0 ? '' : 'none';
+    if (q('report2028Amount')) q('report2028Amount').textContent = euro(report);
+  }
+
+  // Total annuel MS selon périodes paie
+  if (a.costHour && a.cal && a.cal.length) {
+    let totalMS = a.periodesPaie.reduce(function(s, _, i) { return s + payrollPayMonth(a, i); }, 0);
+    // Ajouter un pied de tableau avec le total
+    let tfoot = q('periodesTable').querySelector('tfoot');
+    if (!tfoot) {
+      tfoot = document.createElement('tfoot');
+      q('periodesTable').appendChild(tfoot);
+    }
+    tfoot.innerHTML = '<tr style="background:var(--bg2)">'
+      + '<td colspan="4"><b>Total masse salariale 2027 (selon périodes de paie)</b></td>'
+      + '<td class="num"><b style="color:var(--violet2)">' + euro(Math.round(totalMS)) + '</b></td>'
+      + '<td></td></tr>';
+  }
+}
+
+function setPeriodeDate(idx, field, val) {
+  let a = A();
+  if (!a.periodesPaie || !a.periodesPaie[idx]) return;
+  a.periodesPaie[idx][field] = val;
+  renderPeriodes();
+}
+
+function setVariablesDec2026(val) {
+  let a = A();
+  a.variablesDec2026 = val === '' ? null : parseFr(val);
+  renderPeriodes();
+}
+
+function resetPeriodesPaie() {
+  if (!confirm('Réinitialiser le calendrier avec les dates par défaut ?')) return;
+  A().periodesPaie = buildPeriodesPaie();
+  renderPeriodes();
+}
+
+async function renderComparative(){
+  let box=q('comparativeTable');
+  let loading=q('comparativeLoading');
+  if(!box)return;
+  if(loading)loading.style.display='';
+
+  // Charger tous les budgets depuis Supabase
+  let {data:budgets}=await sb.from('budgets').select('agence,statut,data').eq('annee',2027);
+  if(loading)loading.style.display='none';
+  let map={};
+  (budgets||[]).forEach(function(b){map[b.agence]=b.data||{};});
+
+  // Agences opérationnelles uniquement
+  let ops=agences.filter(function(a){return !a.type;});
+
+  // Calculer les indicateurs pour chaque agence
+  let rows=ops.map(function(ag){
+    let d=map[ag.nom]||{};
+    let txr=+d.histTXR2026||null;
+    let mal=+d.targetAbsRate||null;
+    let ch=+d.costHour||null;
+    // ETP roulant
+    let etp=0;
+    if(d.employees&&d.employees.length){
+      etp=d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+        .reduce(function(s,e){return s+(+e.hours||0)*(+e.pctRoulant||100)/100/35;},0);
+      etp=Math.round(etp*100)/100;
+    }
+    // Taux HS/CA
+    let tauxHS=null;
+    if(d.cal&&d.cal.length&&d.targetTXR){
+      let baseHs=d.employees?d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+        .reduce(function(s,e){return s+(+e.hours||0)*(+e.pctRoulant||100)/100;},0):0;
+      let caB=d.cal.reduce(function(s,day){return s+(day.total||0);},0);
+      let caMax=baseHs*(1-(+d.targetAbsRate||8)/100)*(+d.histTXR2026||+d.targetTXR||40)*52;
+      tauxHS=caMax>0?Math.round(Math.max(0,(caB-caMax)/caMax*100)):null;
+    }
+    // Statut
+    let statut=(budgets||[]).find(function(b){return b.agence===ag.nom;});
+    return {nom:ag.nom,zone:ag.zone,txr,mal,ch,etp,tauxHS,statut:statut?statut.statut:'—',hasData:!!(txr||mal||ch||etp)};
+  });
+
+  // Calculer médianes réseau (agences avec données)
+  let withData=rows.filter(function(r){return r.hasData;});
+  function median(arr,fn){
+    let vals=arr.map(fn).filter(function(v){return v!==null&&!isNaN(v);}).sort(function(a,b){return a-b;});
+    if(!vals.length)return null;
+    return vals[Math.floor(vals.length/2)];
+  }
+  let mTXR=median(withData,function(r){return r.txr;});
+  let mMal=median(withData,function(r){return r.mal;});
+  let mCH=median(withData,function(r){return r.ch;});
+  let mETP=median(withData,function(r){return r.etp;});
+  let mHS=median(withData,function(r){return r.tauxHS;});
+
+  // KPIs médianes réseau
+  if(q('comparativeKpis')){
+    q('comparativeKpis').innerHTML=[
+      ['TXR médian réseau',mTXR?mTXR.toFixed(1)+' €/h':'—','2026'],
+      ['Absentéisme médian',mMal?mMal.toFixed(1)+' %':'—','cible'],
+      ['Coût horaire médian',mCH?mCH.toFixed(2)+' €/h':'—',''],
+      ['ETP roulant médian',mETP?mETP.toFixed(2):'—',''],
+      ['Taux HS/CA médian',mHS!==null?mHS+'%':'—','budgété'],
+      ['Agences avec données',withData.length+'/'+rows.length,''],
+    ].map(function(x){return '<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>';}).join('');
+  }
+
+  // Tableau comparatif
+  function cellVal(val,median,unit,higherIsBad){
+    if(val===null||val===undefined||isNaN(val))return '<td style="color:var(--ink30);text-align:right">—</td>';
+    let ecart=median?Math.abs(val-median)/Math.abs(median)*100:0;
+    let isBad=(higherIsBad&&val>median*1.15)||(!higherIsBad&&val<median*0.85);
+    let isGood=(!higherIsBad&&val>median*1.10)||(higherIsBad&&val<median*0.85);
+    let color=isBad?'var(--orange)':isGood?'var(--green)':'var(--ink)';
+    let indicator=isBad?' ▲':isGood?' ▼':'';
+    return '<td style="text-align:right;font-family:DM Mono,monospace;color:'+color+';font-weight:'+(isBad||isGood?'700':'400')+'">'+val+unit+indicator+'</td>';
+  }
+
+  let header='<tr>'
+    +'<th>Agence</th><th>Zone</th><th>Statut</th>'
+    +'<th title="TXR moyen réalisé 2026">TXR 2026</th>'
+    +'<th title="Taux absentéisme cible">Absent.</th>'
+    +'<th title="Coût horaire moyen agence">Coût h.</th>'
+    +'<th title="ETP roulants">ETP</th>'
+    +'<th title="Taux HS / capacité max budgétée">HS/CA</th>'
+    +'</tr>';
+
+  let tableRows=rows.map(function(r){
+    let statutClass=r.statut==='—'?'brouillon':r.statut;
+    return '<tr>'
+      +'<td><b>'+r.nom+'</b></td>'
+      +'<td style="text-align:center">'+r.zone+'</td>'
+      +'<td><span class="statut '+statutClass+'">'+statutLabel(r.statut==='—'?'brouillon':r.statut)+'</span></td>'
+      +cellVal(r.txr,mTXR,' €/h',false)
+      +cellVal(r.mal,mMal,' %',true)
+      +cellVal(r.ch,mCH,' €/h',true)
+      +cellVal(r.etp,mETP,'',false)
+      +cellVal(r.tauxHS,mHS,' %',true)
+      +'</tr>';
+  }).join('');
+
+  box.innerHTML=header+tableRows;
+}
+
+async function exportConsolidation(){
+  let btn = document.querySelector('[onclick="exportConsolidation()"]');
+  if(btn){btn.textContent='⏳ Génération...';btn.disabled=true;}
+
+  // Charger tous les budgets
+  let {data:budgets} = await sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027);
+  let map = {};
+  (budgets||[]).forEach(function(b){map[b.agence]=b;});
+
+  let ops = agences.filter(function(a){return !a.type;});
+  let date = new Date().toLocaleDateString('fr-FR');
+
+  // Construire le workbook avec SheetJS
+  let wb = XLSX.utils.book_new();
+
+  // ── Feuille 1 : Consolidation ──
+  let wsData = [];
+
+  // En-tête
+  wsData.push([
+    'Agence','Zone','Statut','Mis à jour',
+    'CA 2025','CA 2026','TXR 2026 (€/h)',
+    'Absentéisme cible %','Taux brut (€/h)','Charges pat. %','Coût horaire (€/h)',
+    'CA budgété','Capacité max','Taux charge %',
+    'HS estimées (h)','ETP roulant','CP générés (J)','CP planifiés (J)',
+    'Nbre salariés roulants'
+  ]);
+
+  ops.forEach(function(ag){
+    let b = map[ag.nom];
+    let d = b ? (b.data||{}) : {};
+    let statut = b ? statutLabel(b.statut) : 'Non commencé';
+    let dateStr = b && b.updated_at ? new Date(b.updated_at).toLocaleDateString('fr-FR') : '—';
+
+    // Indicateurs RH
+    let baseHebdo = 0, etp = 0, nbRoulants = 0;
+    if(d.employees && d.employees.length){
+      d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+        .forEach(function(e){
+          let h = (+e.hours||0)*(+e.pctRoulant||100)/100;
+          baseHebdo += h;
+          etp += h/35;
+          nbRoulants++;
+        });
+      etp = Math.round(etp*100)/100;
+    }
+
+    // CA et HS
+    let caB = 0;
+    if(d.cal && d.cal.length) caB = d.cal.reduce(function(s,day){return s+(day.total||0);},0);
+    let txr = +d.histTXR2026 || +d.targetTXR || 0;
+    let mal = +d.targetAbsRate || 8;
+    let caMax = txr > 0 ? Math.round(baseHebdo*(1-mal/100)*txr*52) : 0;
+    let txCharge = caMax > 0 ? Math.round(caB/caMax*100) : 0;
+    let hs = txr > 0 ? Math.round(Math.max(0, caB/txr - baseHebdo*(1-mal/100)*52)) : 0;
+
+    // CP
+    let nbSal = d.employees ? d.employees.filter(function(e){return e.qual!=='FACTURIERE';}).length : 0;
+    let cpGen = Math.round(nbSal*2.5*12*10)/10;
+    let cpPlan = d.presence ? Math.round(Object.values(d.presence).reduce(function(s,p){return s+(+p.cp||0);},0)*10)/10 : 0;
+
+    wsData.push([
+      ag.nom, ag.zone, statut, dateStr,
+      d.histCA2025||'', d.histCA||'', d.histTXR2026||'',
+      d.targetAbsRate||'', d.tauxHoraireBrut||'', d.tauxChargePatronal||'', d.costHour||'',
+      caB||'', caMax||'', txCharge||'',
+      hs||'', etp||'', cpGen||'', cpPlan||'',
+      nbRoulants||''
+    ]);
+  });
+
+  let ws1 = XLSX.utils.aoa_to_sheet(wsData);
+
+  // Largeurs colonnes
+  ws1['!cols'] = [
+    {wch:26},{wch:6},{wch:18},{wch:12},
+    {wch:14},{wch:14},{wch:12},
+    {wch:14},{wch:12},{wch:12},{wch:14},
+    {wch:14},{wch:14},{wch:12},
+    {wch:14},{wch:10},{wch:12},{wch:12},
+    {wch:14}
+  ];
+  XLSX.utils.book_append_sheet(wb, ws1, 'Consolidation');
+
+  // ── Feuille 2 : Statuts ──
+  let wsStatuts = [['Agence','Zone','Statut','Date dépôt']];
+  ops.forEach(function(ag){
+    let b = map[ag.nom];
+    wsStatuts.push([
+      ag.nom, ag.zone,
+      b ? statutLabel(b.statut) : 'Non commencé',
+      b && b.updated_at ? new Date(b.updated_at).toLocaleDateString('fr-FR') : '—'
+    ]);
+  });
+  let ws2 = XLSX.utils.aoa_to_sheet(wsStatuts);
+  ws2['!cols'] = [{wch:26},{wch:6},{wch:22},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Statuts');
+
+  // ── Feuille 3 : Vue comparative ──
+  let wsComp = [['Agence','Zone','TXR 2026 (€/h)','Absentéisme %','Coût horaire (€/h)','ETP roulant','Taux HS/CA %']];
+  ops.forEach(function(ag){
+    let b = map[ag.nom];
+    let d = b ? (b.data||{}) : {};
+    let baseHebdo = 0;
+    if(d.employees){
+      d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+        .forEach(function(e){baseHebdo+=(+e.hours||0)*(+e.pctRoulant||100)/100;});
+    }
+    let etp = Math.round(baseHebdo/35*100)/100;
+    let caB = d.cal ? d.cal.reduce(function(s,day){return s+(day.total||0);},0) : 0;
+    let txr = +d.histTXR2026||+d.targetTXR||0;
+    let mal = +d.targetAbsRate||8;
+    let caMax = txr>0?Math.round(baseHebdo*(1-mal/100)*txr*52):0;
+    let tauxHS = caMax>0?Math.round(Math.max(0,(caB-caMax)/caMax*100)):null;
+    wsComp.push([
+      ag.nom, ag.zone,
+      d.histTXR2026||'', d.targetAbsRate||'', d.costHour||'',
+      etp||'', tauxHS!==null?tauxHS:''
+    ]);
+  });
+  let ws3 = XLSX.utils.aoa_to_sheet(wsComp);
+  ws3['!cols'] = [{wch:26},{wch:6},{wch:14},{wch:14},{wch:16},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws3, 'Indicateurs');
+
+  // Générer et télécharger
+  let filename = 'SOMA_Consolidation_'+date.replace(/\//g,'-')+'.xlsx';
+  XLSX.writeFile(wb, filename);
+
+  if(btn){
+    btn.textContent='✓ Exporté';
+    btn.style.background='linear-gradient(135deg,var(--green),#45c87a)';
+    setTimeout(function(){
+      btn.textContent='📥 Export Excel';
+      btn.style.background='';
+      btn.disabled=false;
+    },2000);
+  }
+}
+
+function renderConsolidation(){
   let box=q('consolidationContent');
   if(!box)return;
   box.innerHTML='<div class="loading">Chargement...</div>';
@@ -3108,7 +3702,7 @@ init();
           }).join('')
           :'<span style="color:var(--green);font-size:11px">✓ OK</span>';
 
-        let txChargeColor=txCharge>115?'var(--orange)':txCharge>100?'#FF8F00':txCharge>85?'var(--orbis-blue)':'var(--green)';
+        let txChargeColor=txCharge>115?'var(--orange)':txCharge>100?'#FF8F00':txCharge>85?'var(--accent-blue)':'var(--green)';
         let dateStr=b.updated_at?new Date(b.updated_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
 
         html+='<tr>'
