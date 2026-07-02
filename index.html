@@ -524,7 +524,12 @@ nav.collapsed .navGlobalBadge{display:none!important;}
     <div id="refAgencesLoading" class="loading">Chargement...</div>
     <div class="tablewrap"><table id="refAgencesTable"></table></div>
     <br>
-    <button onclick="saveRefAgences()">Enregistrer toutes les données</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button onclick="saveRefAgences()" style="background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border:none;font-weight:700">💾 Enregistrer toutes les agences</button>
+      <button class="secondary" onclick="triggerImportRefAgences()">📥 Importer depuis Excel</button>
+      <input type="file" id="refAgencesFileInput" accept=".xlsx" style="display:none" onchange="handleRefAgencesImport(event)">
+      <span id="refAgencesImportMsg" style="font-size:13px;color:var(--green)"></span>
+    </div>
     <span id="refAgencesSaveMsg" style="margin-left:14px;font-family:Outfit,sans-serif;font-size:15px;color:var(--green)"></span>
   </div>
 </section>
@@ -535,7 +540,19 @@ nav.collapsed .navGlobalBadge{display:none!important;}
     <h2>8. Interface contrôleur de gestion</h2>
     <p class="hint" style="margin-bottom:16px">📝 Saisissez les charges pour l'agence <b id="cgAgenceName"></b>. Choisissez le mode de saisie (mensuel, annuel ou % CA) et le type de charge (fixe ou variable) pour chaque poste. Les lignes CA et Charges de personnel sont calculées automatiquement.</p>
     <div class="grid c3">
-      <div><label>Coût horaire moyen agence</label><input id="costHour" type="number"></div>
+      <div>
+        <label>Taux horaire moyen brut (€/h)</label>
+        <input id="tauxHoraireBrut" type="text" placeholder="ex : 12,50" onchange="recalcCostHour()">
+      </div>
+      <div>
+        <label>Taux de charge patronal (%)</label>
+        <input id="tauxChargePatronal" type="text" placeholder="ex : 45" onchange="recalcCostHour()">
+      </div>
+      <div>
+        <label>Coût horaire moyen agence (€/h) <span style="font-size:10px;color:var(--ink65)">(calculé automatiquement)</span></label>
+        <input id="costHour" type="text" placeholder="calculé" style="background:var(--bg2);color:var(--ink65)" readonly>
+        <div id="costHourHint" style="font-size:11px;color:var(--ink65);margin-top:4px"></div>
+      </div>
       <div><label>Coefficient HS</label><input id="hsCostRate" type="number"></div>
       <div><label>&nbsp;</label><button onclick="prefillCharges()">Pré-remplir standards</button></div>
     </div>
@@ -688,7 +705,12 @@ const agences=[
   {nom:'BRIVE',zone:'A'},{nom:'TULLE',zone:'A'},{nom:'SAINT GILLES CROIX DE VIE',zone:'B'},
   {nom:'NANTES',zone:'B'},{nom:'ANGERS',zone:'B'},{nom:'LAVAL',zone:'B'},{nom:'LE MANS',zone:'B'},
   {nom:'RENNES',zone:'B'},{nom:'VANNES',zone:'B'},{nom:'EVREUX',zone:'B'},{nom:'TOURS',zone:'B'},
-  {nom:'CAHORS',zone:'C'},{nom:'MOISSAC',zone:'C'},{nom:'TOULOUSE',zone:'C'}
+  {nom:'CAHORS',zone:'C'},{nom:'MOISSAC',zone:'C'},{nom:'TOULOUSE',zone:'C'},
+  // Entités hors agences opérationnelles
+  {nom:'SIEGE',zone:'B',type:'hors-agence'},
+  {nom:'CENTRE DE FORMATION',zone:'B',type:'hors-agence'},
+  {nom:'EXCEPTIONNEL',zone:'B',type:'hors-agence'},
+  {nom:'RESEAU ADHERENT',zone:'B',type:'hors-agence'}
 ];
 const SGCV_DATA = [{"name": "ARNAUD EDWIGE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "ARNOULT NATHALIE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "AUROYER SANDRA", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "AVERTY Jean", "qual": "DEA", "contract": "CDI", "hours": 17.5, "hoursM": 0, "hsTarget": 1.75, "pctRoulant": 100, "joursSem": 3}, {"name": "BARREAU Cyril", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "BIGUET JEAN-SEBASTIEN", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "BRISSEAU DAVID", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "CHAILLOU ERIC", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "CHEVRIER Jean-Luc", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 70, "joursSem": 4}, {"name": "COLPIN Alexis", "qual": "DEA", "contract": "CDD", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DELANEF Ines", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DUMONTIER Nathalie", "qual": "AA", "contract": "CDI", "hours": 24, "hoursM": 0, "hsTarget": 1, "pctRoulant": 100, "joursSem": 3}, {"name": "DUPARC CHRISTELLE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DUPONT ANNIE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "DURANTEAU RODRIGUE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "GAUTIER Fabrice", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "GOICHON Aurelie", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "GOUAS Cyril", "qual": "REGULATEUR", "contract": "CDI", "hours": 35, "hoursM": 3, "hsTarget": 0, "pctRoulant": 30, "joursSem": 5}, {"name": "HELBECQUE Clara", "qual": "DEA", "contract": "CDD", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "HOFLACK JEROME", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "JASSELIN DORINE", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "JULIEN Adeline", "qual": "REGULATEUR", "contract": "CDI", "hours": 35, "hoursM": 3, "hsTarget": 0, "pctRoulant": 30, "joursSem": 5}, {"name": "LONGUEIRA VANESSA", "qual": "TAXI", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "MATHE Pascal", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "MAURIER Romain", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "MICHAUD GUYLAINE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "NUNES COIMBRA Fernando", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PADUA CHRISTOPHE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PASQUIER Mireille", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PENARD AUDREY", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "PERDRIEL LOIC", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "RENAUD Christine", "qual": "AA", "contract": "CDI", "hours": 24, "hoursM": 0, "hsTarget": 1, "pctRoulant": 100, "joursSem": 3}, {"name": "ROBIN Celine", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "SAGOT Alexis", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "SARRAZIN Florent", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 70, "joursSem": 5}, {"name": "SAUCET NATHALIE", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "SOURON SANDRA", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "TAVARD DENIS", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "TROMEUR Isabelle", "qual": "AA", "contract": "CDI", "hours": 35, "hoursM": 3, "hsTarget": 0, "pctRoulant": 90, "joursSem": 5}, {"name": "VIALLARD JEROME", "qual": "DEA", "contract": "CDI", "hours": 35, "hoursM": 0, "hsTarget": 3, "pctRoulant": 100, "joursSem": 5}, {"name": "BARANGER Fabien", "qual": "REX", "contract": "CDI", "hours": 0, "hoursM": 0, "hsTarget": 0, "pctRoulant": 0, "joursSem": 5}];
 // Jours feries 2027 - source officielle (Code du travail / calendrier civil)
@@ -983,6 +1005,10 @@ async function loadBudgetFromSupabase(agence) {
   } else {
     BUDGET_ID = null;
     BUDGET_STATUT = 'brouillon';
+  }
+  // Si CG et budget soumis → afficher alertes de contrôle
+  if(PROFILE&&PROFILE.role==='cg'&&BUDGET_STATUT&&BUDGET_STATUT.includes('soumis')){
+    setTimeout(function(){ afficherAlertesCG(); }, 500);
   }
   if (q('start')) q('start').style.display = 'none';
   if (q('btnChangeAgency')) q('btnChangeAgency').style.display = '';
@@ -1315,7 +1341,7 @@ async function saveAffectation(agenceNom, drUserId) {
 // MOTEUR DE CALCUL (identique V47)
 // ═══════════════════════════════════════════════
 function refs(){return Array.from({length:12},()=>({semaine:null,vacances:null,samedi:null,dimanche:null,ferie:null}))}
-function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),costHour:28.5,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
+function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),tauxHoraireBrut:null,tauxChargePatronal:null,costHour:null,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
 function A(){return S.agencies[S.active]}
 function between(d,s,e){return d>=s&&d<=e}
 function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
@@ -1452,13 +1478,24 @@ function gaugeRow(label,value){let v=Math.max(0,Math.min(100,Number(value)||0));
 
 function bind(){
   let a=A();
-  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','costHour','hsCostRate','actSan','actSai','actTP'].forEach(id=>{
+  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxChargePatronal','costHour','hsCostRate','actSan','actSai','actTP'].forEach(id=>{
     let e=q(id);if(!e)return;
     if(e.type==='checkbox'){e.checked=!!a[id];}else{e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
-    e.oninput=ev=>{let v=ev.target.value;a[id]=(id==='perspectives'||id==='schoolZone')?v:(id==='actSan'||id==='actSai'||id==='actTP')?ev.target.checked:v===''?null:parseFr(v);if(id==='schoolZone'||id==='actSai'||id==='actTP')genCal(a);render()}
+    e.oninput=ev=>{
+    let v=ev.target.value;
+    a[id]=(id==='perspectives'||id==='schoolZone')?v:(id==='actSan'||id==='actSai'||id==='actTP')?ev.target.checked:v===''?null:parseFr(v);
+    if(id==='schoolZone'||id==='actSai'||id==='actTP')genCal(a);
+    if(id==='tauxHoraireBrut'||id==='tauxChargePatronal')recalcCostHour();
+    render();
+  }
   });
   // Attacher formatage milliers sur les champs montants
-  ['histCA2025','histCA','targetCA','histTXR','targetTXR','targetAbsRate','costHour'].forEach(attachFmt);
+  ['histCA2025','histCA','targetCA','histTXR','targetTXR','targetAbsRate','tauxHoraireBrut','tauxChargePatronal','costHour'].forEach(attachFmt);
+  // Afficher le hint costHour si données présentes
+  if(a.tauxHoraireBrut&&a.tauxChargePatronal&&a.costHour){
+    if(q('costHour'))q('costHour').value=(+a.costHour).toLocaleString('fr-FR');
+    if(q('costHourHint'))q('costHourHint').innerHTML='= '+a.tauxHoraireBrut.toLocaleString('fr-FR')+' € × (1 + '+a.tauxChargePatronal+'%) = <b>'+a.costHour.toLocaleString('fr-FR')+' €/h</b>';
+  }
   if(q('agencySel')){
     // REX : uniquement son agence. CG : toutes.
     if(PROFILE && PROFILE.role==='rex'){
@@ -2049,6 +2086,12 @@ function changeAgency(){if(q('start'))q('start').style.display='';show('objectif
 
 function migrateState(){S.agencies.forEach(a=>{
   if(a.drCostAnnual===undefined)a.drCostAnnual=0;
+  if(a.tauxHoraireBrut===undefined)a.tauxHoraireBrut=null;
+  if(a.tauxChargePatronal===undefined)a.tauxChargePatronal=null;
+  // Recalculer costHour si les deux composantes sont renseignées
+  if(a.tauxHoraireBrut!==null&&a.tauxChargePatronal!==null&&a.costHour===null){
+    a.costHour=Math.round(+a.tauxHoraireBrut*(1+(+a.tauxChargePatronal||0)/100)*100)/100;
+  }
   if(!a.moisVerrouilles)a.moisVerrouilles=[];
   if(a.moisActif===undefined)a.moisActif=null;
   if(a.actSan===undefined)a.actSan=true;
@@ -2062,6 +2105,21 @@ function migrateState(){S.agencies.forEach(a=>{
   }));if(!a.sick)a.sick=Array(12).fill(+a.targetAbsRate||5);if(!a.presence)a.presence={};if(!a.employees)a.employees=[];if(!a.rex)a.rex={};T.forEach(r=>{if(r.type!=='subtotal'&&!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0};if(a.rex[r.label]){let x=a.rex[r.label];if(!x.values)x.values=Array(12).fill(null);if(!x.mode)x.mode='month';if(!x.allocationKey)x.allocationKey='monthly12';if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe'}})})}
 
 // Sauvegarde : Supabase en priorité, localStorage en fallback
+function recalcCostHour(){
+  let a=A();
+  let brut=parseFr(q('tauxHoraireBrut')?q('tauxHoraireBrut').value:'');
+  let charge=parseFr(q('tauxChargePatronal')?q('tauxChargePatronal').value:'');
+  if(brut>0&&charge>0){
+    let cout=Math.round(brut*(1+charge/100)*100)/100;
+    a.costHour=cout;
+    a.tauxHoraireBrut=brut;
+    a.tauxChargePatronal=charge;
+    if(q('costHour'))q('costHour').value=cout.toLocaleString('fr-FR');
+    if(q('costHourHint'))q('costHourHint').innerHTML='= '+brut.toLocaleString('fr-FR')+' € × (1 + '+charge+'%) = <b>'+cout.toLocaleString('fr-FR')+' €/h</b>';
+    render();
+  }
+}
+
 function save(){
   // Sync moisActif avant sauvegarde
   let a = A();
@@ -2831,6 +2889,249 @@ async function doChangePwdAndLogin() {
   if (data.user) await afterLogin(data.user);
 }
 
+// ═══════════════════════════════════════════════
+// IMPORT EXCEL DONNÉES AGENCES (CG)
+// ═══════════════════════════════════════════════
+function triggerImportRefAgences(){
+  if(q('refAgencesFileInput'))q('refAgencesFileInput').click();
+}
+
+async function handleRefAgencesImport(event){
+  let file=event.target.files[0];
+  if(!file)return;
+  let reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      let data=new Uint8Array(e.target.result);
+      let wb=XLSX.read(data,{type:'array'});
+      let sheetName=wb.SheetNames.find(function(n){return n.toLowerCase().includes('agence')||n.toLowerCase().includes('donn');}) || wb.SheetNames[0];
+      let ws=wb.Sheets[sheetName];
+      let rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      // Trouver la ligne d'en-tête (contient "Agence")
+      let headerRow=-1;
+      for(let i=0;i<rows.length;i++){
+        if(rows[i].some(function(c){return (c+'').toLowerCase().includes('agence');})){
+          headerRow=i;break;
+        }
+      }
+      if(headerRow<0){showRefAgencesMsg('En-tête non trouvée.','bad');return;}
+      let headers=rows[headerRow].map(function(h){return (h+'').toLowerCase().trim();});
+      let idx={
+        nom:headers.findIndex(function(h){return h.includes('agence');}),
+        ca2025:headers.findIndex(function(h){return h.includes('2025');}),
+        ca2026:headers.findIndex(function(h){return h.includes('2026')&&!h.includes('obj');}),
+        txr:headers.findIndex(function(h){return h.includes('txr');}),
+        abs:headers.findIndex(function(h){return h.includes('abs')||h.includes('absent');}),
+        brut:headers.findIndex(function(h){return h.includes('brut');}),
+        charges:headers.findIndex(function(h){return h.includes('charge')&&h.includes('patron');}),
+        cout:headers.findIndex(function(h){return h.includes('cout')||h.includes('coût');}),
+        caObj:headers.findIndex(function(h){return h.includes('objectif')||h.includes('obj');}),
+      };
+      let count=0,errors=[];
+      for(let i=headerRow+1;i<rows.length;i++){
+        let row=rows[i];
+        let nom=(row[idx.nom]||'').toString().trim().toUpperCase();
+        if(!nom)continue;
+        // Chercher si agence existe
+        let ag=agences.find(function(a){return a.nom===nom||nom.includes(a.nom)||a.nom.includes(nom);});
+        if(!ag){errors.push(nom);continue;}
+        // Construire les données
+        let d={};
+        if(idx.ca2025>=0&&row[idx.ca2025])d.histCA2025=+row[idx.ca2025]||null;
+        if(idx.ca2026>=0&&row[idx.ca2026])d.histCA=+row[idx.ca2026]||null;
+        if(idx.txr>=0&&row[idx.txr])d.histTXR2026=+row[idx.txr]||null;
+        if(idx.abs>=0&&row[idx.abs])d.targetAbsRate=+row[idx.abs]||null;
+        if(idx.brut>=0&&row[idx.brut])d.tauxHoraireBrut=+row[idx.brut]||null;
+        if(idx.charges>=0&&row[idx.charges])d.tauxChargePatronal=+row[idx.charges]||null;
+        if(idx.cout>=0&&row[idx.cout]&&+row[idx.cout]>0)d.costHour=+row[idx.cout];
+        else if(d.tauxHoraireBrut&&d.tauxChargePatronal)d.costHour=Math.round(d.tauxHoraireBrut*(1+d.tauxChargePatronal/100)*100)/100;
+        if(idx.caObj>=0&&row[idx.caObj])d.targetCA=+row[idx.caObj]||null;
+        // Upsert dans Supabase
+        let existing=await sb.from('budgets').select('id,data').eq('agence',ag.nom).eq('annee',2027).single().catch(function(){return {data:null};});
+        if(existing.data){
+          let merged=Object.assign({},existing.data.data||{},d);
+          await sb.from('budgets').update({data:merged}).eq('id',existing.data.id);
+        } else {
+          await sb.from('budgets').insert({agence:ag.nom,annee:2027,data:d,statut:'brouillon'});
+        }
+        count++;
+      }
+      event.target.value='';
+      let msg=count+' agence(s) mises à jour';
+      if(errors.length)msg+=' ('+errors.length+' non trouvées: '+errors.slice(0,3).join(', ')+')';
+      showRefAgencesMsg(msg,'ok');
+      renderRefAgences();
+    }catch(err){showRefAgencesMsg('Erreur : '+err.message,'bad');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showRefAgencesMsg(msg,type){
+  let el=q('refAgencesImportMsg');
+  if(!el)return;
+  el.style.color=type==='ok'?'var(--green)':'var(--orange)';
+  el.textContent=msg;
+  setTimeout(function(){if(q('refAgencesImportMsg'))q('refAgencesImportMsg').textContent='';},5000);
+}
+
+// ═══════════════════════════════════════════════
+// ALERTES CG SUR BUDGET SOUMIS
+// ═══════════════════════════════════════════════
+function afficherAlertesCG(){
+  let a=A();
+  if(!a)return;
+  let alertes=[];
+  // Coût horaire
+  if(!a.costHour)alertes.push({t:'warn',m:'Coût horaire moyen non renseigné — les calculs de masse salariale sont incomplets.'});
+  // CA vs capacité
+  let baseHebdo=baseH(a),txr=+a.targetTXR||0;
+  if(baseHebdo>0&&txr>0){
+    let caMax=Math.round(baseHebdo*txr*52);
+    let caB=ann(a,"Chiffre d'affaires");
+    if(caB>caMax*1.15)alertes.push({t:'crit',m:'CA budgete ('+euro(caB)+') depasse de plus de 15% la capacite max ('+euro(caMax)+'). Verifier les references CA.'});
+    else if(caB>caMax)alertes.push({t:'warn',m:'CA budgété supérieur à la capacité max sans HS. Des heures supplémentaires importantes sont nécessaires.'});
+  }
+  // CP équilibre
+  let cpGen=cpGeneres(a),cpPlan=cpPlanifies(a),tol=Math.max(0.5,cpGen*0.05);
+  if(Math.abs(cpGen-cpPlan)>tol)alertes.push({t:'warn',m:'CP non équilibrés : '+cpGen.toFixed(1)+' J générés, '+cpPlan.toFixed(1)+' J planifiés (écart: '+(cpGen-cpPlan).toFixed(1)+' J).'});
+  // TXR manquant
+  if(!a.targetTXR)alertes.push({t:'info',m:'TXR cible non renseigne — calcul du besoin en heures impossible.'});
+  // Afficher
+  if(alertes.length){
+    let existing=document.getElementById('cgAlertesBanner');
+    if(existing)existing.remove();
+    let banner=document.createElement('div');
+    banner.id='cgAlertesBanner';
+    banner.style.cssText='position:fixed;top:70px;right:16px;width:380px;z-index:150;display:flex;flex-direction:column;gap:6px';
+    banner.innerHTML='<div style="background:var(--card);border:1px solid var(--border2);padding:12px 16px;border-top:3px solid var(--orange)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+      +'<b style="font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--orange)">⚠ Anomalies détectées</b>'
+      +'<button onclick="this.parentElement.parentElement.parentElement.remove()" style="font-size:11px;padding:2px 8px;background:transparent;border:1px solid var(--border);color:var(--ink65)">✕</button>'
+      +'</div>'
+      +alertes.map(function(al){
+        let col=al.t==='crit'?'var(--orange)':al.t==='warn'?'#FF8F00':'var(--blue2)';
+        return '<div style="font-size:12px;color:'+col+';padding:4px 0;border-bottom:1px solid var(--border)">'+al.m+'</div>';
+      }).join('')
+      +'</div>';
+    document.body.appendChild(banner);
+    setTimeout(function(){if(document.getElementById('cgAlertesBanner'))document.getElementById('cgAlertesBanner').remove();},15000);
+  }
+}
+
 initParticles();
 init();
-</script></body></html>
+</script></body></html>function renderConsolidation(){
+  let box=q('consolidationContent');
+  if(!box)return;
+  box.innerHTML='<div class="loading">Chargement...</div>';
+  sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027)
+    .then(function(res){
+      let budgets=res.data||[];
+      let map={};
+      budgets.forEach(function(b){map[b.agence]=b;});
+      
+      // KPIs globaux
+      let total=agences.filter(function(a){return !a.type;}).length;
+      let deposes=budgets.filter(function(b){return b.statut!=='brouillon';}).length;
+      let valides=budgets.filter(function(b){return b.statut==='valide_pdg';}).length;
+      let brouillons=budgets.filter(function(b){return b.statut==='brouillon';}).length;
+      let nonDeposes=total-budgets.length;
+
+      let html='<div class="kpis" style="margin-bottom:16px">'
+        +kpiHtml('Agences réseau',total,'')
+        +kpiHtml('Budgets déposés',deposes,Math.round(deposes/total*100)+'%')
+        +kpiHtml('En brouillon',brouillons,'')
+        +kpiHtml('Non commencés',nonDeposes,'')
+        +kpiHtml('Validés PDG',valides,'')
+        +kpiHtml('En cours validation',budgets.filter(function(b){return b.statut.includes('soumis');}).length,'')
+        +'</div>';
+
+      // Tableau détaillé avec alertes
+      html+='<div class="tablewrap"><table><tr>'
+        +'<th>Agence</th><th>Statut</th><th>CA budgété</th>'
+        +'<th>Capacité max</th><th>Taux charge</th>'
+        +'<th>HS estimées</th><th>CP équilibre</th>'
+        +'<th>Alertes</th><th>Mis à jour</th></tr>';
+
+      agences.filter(function(a){return !a.type;}).forEach(function(ag){
+        let b=map[ag.nom];
+        if(!b){
+          html+='<tr><td><b>'+ag.nom+'</b></td>'
+            +'<td><span class="statut brouillon">Non commencé</span></td>'
+            +'<td colspan="7" style="color:var(--ink30);font-size:12px">Aucune donnée</td></tr>';
+          return;
+        }
+        let d=b.data||{};
+        let statut=b.statut||'brouillon';
+        
+        // Calculs indicateurs
+        let caB=0,caMax=0,txCharge=0,hsAnn=0,cpEq='—';
+        let alertes=[];
+
+        // CA budgété depuis calendrier
+        if(d.cal&&d.cal.length){caB=d.cal.reduce(function(s,day){return s+(day.total||0);},0);}
+        
+        // Capacité max
+        let baseH=0;
+        if(d.employees&&d.employees.length){
+          baseH=d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+            .reduce(function(s,e){return s+(+e.hours||0)*(+e.pctRoulant||100)/100;},0);
+        }
+        let txr=+d.targetTXR||0;
+        let malMoy=d.sick?d.sick.filter(function(v){return v!==null;}).reduce(function(s,v){return s+(+v||0);},0)/(d.sick.filter(function(v){return v!==null;}).length||12):8;
+        caMax=Math.round(baseH*(1-malMoy/100)*txr*52);
+        txCharge=caMax>0?Math.round(caB/caMax*100):0;
+
+        // HS annuelles (approximation)
+        let caObj=+d.targetCA||caB;
+        hsAnn=txr>0?Math.round(Math.max(0,(caB-caMax*txr/txr))):0;
+
+        // CP équilibre
+        let nbSal=d.employees?d.employees.filter(function(e){return e.qual!=='FACTURIERE';}).length:0;
+        let cpGen=Math.round(nbSal*2.5*12*10)/10;
+        let cpPlan=d.presence?Object.values(d.presence).reduce(function(s,p){return s+(+p.cp||0);},0):0;
+        let cpEcart=Math.round((cpGen-cpPlan)*10)/10;
+        cpEq=cpGen>0?cpEcart.toFixed(1)+' J'+'restant':'—';
+
+        // Alertes
+        if(!d.costHour) alertes.push({t:'warn',m:'Coût horaire manquant'});
+        if(txCharge>115) alertes.push({t:'crit',m:'CA > capacité max (+15%)'});
+        else if(txCharge>100) alertes.push({t:'warn',m:'CA > capacité (HS requises)'});
+        if(Math.abs(cpEcart)>cpGen*0.1&&cpGen>0) alertes.push({t:'warn',m:'CP non équilibrés'});
+        if(!d.targetTXR) alertes.push({t:'info',m:'TXR non renseigné'});
+        if(statut.includes('soumis')&&alertes.length>0) alertes.unshift({t:'crit',m:'Anomalies détectées'});
+
+        let alertHtml=alertes.length
+          ?alertes.map(function(al){
+            let col=al.t==='crit'?'var(--orange)':al.t==='warn'?'#FF8F00':'var(--blue2)';
+            return '<span style="display:block;font-size:10px;color:'+col+'">⚠ '+al.m+'</span>';
+          }).join('')
+          :'<span style="color:var(--green);font-size:11px">✓ OK</span>';
+
+        let txChargeColor=txCharge>115?'var(--orange)':txCharge>100?'#FF8F00':txCharge>85?'var(--orbis-blue)':'var(--green)';
+        let dateStr=b.updated_at?new Date(b.updated_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'}):'—';
+
+        html+='<tr>'
+          +'<td><b>'+ag.nom+'</b><br><span style="font-size:10px;color:var(--ink65)">Zone '+ag.zone+'</span></td>'
+          +'<td><span class="statut '+statut+'">'+statutLabel(statut)+'</span></td>'
+          +'<td class="num">'+(caB>0?euro(caB):'—')+'</td>'
+          +'<td class="num">'+(caMax>0?euro(caMax):'—')+'</td>'
+          +'<td class="num" style="color:'+txChargeColor+';font-weight:700">'+(txCharge>0?txCharge+'%':'—')+'</td>'
+          +'<td class="num">'+(hsAnn>0?'<span style="color:var(--orange)">'+hsAnn+' h</span>':'—')+'</td>'
+          +'<td class="num" style="font-size:11px">'+(cpGen>0?cpEcart.toFixed(1)+' J':' —')+'</td>'
+          +'<td>'+alertHtml+'</td>'
+          +'<td style="font-size:11px;color:var(--ink65)">'+dateStr+'</td>'
+          +'</tr>';
+      });
+      html+='</table></div>';
+      box.innerHTML=html;
+    }).catch(function(e){box.innerHTML='<div class="alert critique">Erreur : '+e.message+'</div>';});
+}
+
+function kpiHtml(label,val,note){
+  return '<div class="kpi"><div class="label">'+label+'</div>'
+    +'<div class="value">'+val+'</div>'
+    +'<div class="note">'+note+'</div></div>';
+}
+
+
