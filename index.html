@@ -466,12 +466,13 @@ nav.collapsed .navGlobalBadge{display:none!important;}
   </div>
 </section>
 <section id="team" class="panel"><div class="card"><h2>4. Équipe &amp; contrats</h2><p class="hint" style="margin-bottom:14px">👥 <b>Renseignez tous vos salariés</b> présents au 1er janvier 2027 : CDI, CDD, apprentis et intérimaires réguliers. Le nombre d'heures hebdomadaires est celui du contrat (35h, 39h...). Ces données alimentent le calcul des heures disponibles et des heures supplémentaires.</p><div style="display:flex;gap:10px;margin-bottom:14px">
-      <button onclick="addEmployee()">+ Ajouter salarié</button>
+      <button onclick="addEmployee()">+ Ajouter salarié</button> <button onclick="addPostePrevisionnel()" style="background:var(--orange-light);color:var(--orange);border:1px solid var(--orange)">+ Poste prévisionnel (CDD/saison)</button>
       <button class="secondary" onclick="triggerImportExcel()">📥 Importer depuis Excel</button>
       <button class="secondary" onclick="importSGCV()" style="font-size:11px;opacity:.6">Test Saint-Gilles</button>
       <input type="file" id="excelFileInput" accept=".xlsx" style="display:none" onchange="handleExcelImport(event)">
       <span id="importMsg" style="font-family:Outfit,sans-serif;font-size:15px;color:var(--green);margin-left:10px"></span>
-    </div><br><br><div class="tablewrap"><table id="empTable"></table></div></div></section>
+    </div><br><br><div class="tablewrap"><table id="empTable"></table></div>
+    <div id="teamEvolution" class="card" style="display:none;margin-top:16px"></div></div></section>
 <section id="rh" class="panel">
 
   <!-- Bandeau KPIs + CP -->
@@ -529,9 +530,11 @@ nav.collapsed .navGlobalBadge{display:none!important;}
         <p class="hint" style="margin-top:4px">Pré-remplies automatiquement pour chaque REX à l'ouverture de son agence.</p>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <button onclick="triggerImportRefAgences()" style="background:var(--blue);color:#fff;border:none;font-weight:700">📥 Importer depuis Excel</button>
-        <button onclick="saveRefAgences()" style="background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border:none;font-weight:700">💾 Enregistrer toutes les agences</button>
+        <button onclick="triggerImportRegistre()" style="background:linear-gradient(135deg,var(--green),#45c87a);color:#fff;border:none;font-weight:700">👥 Importer registre RH</button>
+        <button onclick="triggerImportRefAgences()" style="background:var(--blue);color:#fff;border:none;font-weight:700">📥 Importer données agences</button>
+        <button onclick="saveRefAgences()" style="background:linear-gradient(135deg,var(--violet),var(--violet2));color:#fff;border:none;font-weight:700">💾 Enregistrer</button>
         <input type="file" id="refAgencesFileInput" accept=".xlsx" style="display:none" onchange="handleRefAgencesImport(event)">
+        <input type="file" id="registreFileInput" accept=".xlsx" style="display:none" onchange="handleRegistreImport(event)">
         <span id="refAgencesImportMsg" style="font-size:13px;color:var(--green)"></span>
         <span id="refAgencesSaveMsg" style="font-size:13px;color:var(--green)"></span>
       </div>
@@ -1439,11 +1442,50 @@ function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
 function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>x.week-y.week)}
 function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
 function isRoulant(qual){return ['DEA','AA','TAXI','TPMR'].includes((qual||'').toUpperCase())}
-function baseH(a){return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*(+e.pctRoulant||100)/100,0)}
+// Un salarié est-il présent à une date donnée (selon dateEntree/dateSortie) ?
+function empPresent(e, dateISO){
+  if(e.dateEntree){
+    if(dateISO < e.dateEntree) return false;
+  }
+  if(e.dateSortie){
+    if(dateISO > e.dateSortie) return false;
+  }
+  return true;
+}
+// Date de référence d'une semaine ISO (le mercredi, jour médian)
+function weekRefDate(a, week){
+  let days=a.cal.filter(d=>d.week===week);
+  if(!days.length) return null;
+  // Prendre le jour médian
+  let mid=days[Math.floor(days.length/2)];
+  let m=String(mid.month+1).padStart(2,'0');
+  let d=String(mid.day).padStart(2,'0');
+  return '2027-'+m+'-'+d;
+}
+// Capacité roulante à une semaine donnée (tient compte des entrées/sorties)
+function baseHWeek(a, week){
+  let dateRef = week!==undefined ? weekRefDate(a, week) : null;
+  return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>{
+    if(dateRef && !empPresent(e, dateRef)) return s;
+    return s+(+e.hours||0)*(+e.pctRoulant||100)/100;
+  },0);
+}
+// Capacité roulante moyenne annuelle (pour les KPIs globaux)
+function baseH(a){
+  // Moyenne sur toutes les semaines si dates présentes, sinon calcul simple
+  let hasMovements = a.employees.some(e=>e.dateEntree||e.dateSortie);
+  if(!hasMovements || !a.cal || !a.cal.length){
+    return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*(+e.pctRoulant||100)/100,0);
+  }
+  let weeks=needWeeks(a);
+  if(!weeks.length) return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*(+e.pctRoulant||100)/100,0);
+  let total=weeks.reduce((s,w)=>s+baseHWeek(a,w.week),0);
+  return total/weeks.length;
+}
 function baseHNonRoulant(a){return a.employees.filter(e=>!isRoulant(e.qual)&&e.qual!=='REX').reduce((s,e)=>s+(+e.hours||0),0)}
 function mainMonth(a,w){let c={};a.cal.filter(d=>d.week==w).forEach(d=>c[d.month]=(c[d.month]||0)+1);return +(Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||0)}
 function pres(a,w){
-  let base=baseH(a);
+  let base=baseHWeek(a,w);
   let p=a.presence[w]||{cp:0,other:0};
   let m=mainMonth(a,w);
   let rate=a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]:0;
@@ -1698,34 +1740,78 @@ function renderTeam(){
   let a=A();
   let quals=['DEA','AA','TAXI','TPMR','REGULATEUR','REX'];
   let contracts=['CDI','CDD','APPRENTI','INTERIM'];
-  let header='<tr><th>Nom</th><th>Qualification</th><th>Contrat</th><th>H. base</th><th>H. majorées</th><th>% roulant</th><th>Jours/sem</th><th>ETP roulant</th><th>Coût/jour <span style="font-weight:400;color:var(--ink2)">(non-roulants)</span></th><th></th></tr>';
+  let header='<tr><th>Nom</th><th>Qualif.</th><th>Contrat</th><th>H. base</th><th>% roul.</th><th>Jours/sem</th>'
+    +'<th title="Laisser vide si présent depuis le début 2027">Entrée 2027</th>'
+    +'<th title="Laisser vide si présent toute l\'année">Sortie 2027</th>'
+    +'<th>ETP</th><th>Coût/jour</th><th></th></tr>';
   let rows=a.employees.map((e,i)=>{
+    let nom = e.name || e.nom || '';
+    let contrat = e.contract || e.contrat || 'CDI';
     let qualOpts=quals.map(q=>('<option value="'+q+'"'+(e.qual===q?' selected':'')+'>'+q+'</option>')).join('');
-    let contractOpts=contracts.map(c=>('<option'+(e.contract===c?' selected':'')+'>'+c+'</option>')).join('');
+    let contractOpts=contracts.map(c=>('<option'+(contrat===c?' selected':'')+'>'+c+'</option>')).join('');
     let etp=isRoulant(e.qual)?((+e.hours||0)/35).toFixed(2):'—';
-    let coutJourCell=!isRoulant(e.qual)&&e.qual!=='REX'||e.qual==='REX'
-      ?'<td><input type="number" value="'+(e.coutJour||0)+'" style="width:90px" onchange="setEmp('+i+',\'coutJour\',this.value)" placeholder="€/jour"></td>'
+    let coutJourCell=(!isRoulant(e.qual))
+      ?'<td><input type="number" value="'+(e.coutJour||0)+'" style="width:80px" onchange="setEmp('+i+',\'coutJour\',this.value)" placeholder="€/j"></td>'
       :'<td style="color:var(--ink3);text-align:center">—</td>';
-    return '<tr><td><input type="text" value="'+e.name+'" onchange="setEmp('+i+',\'name\',this.value)" style="width:180px"></td>'
-      +'<td><select onchange="setEmp('+i+',\'qual\',this.value)" style="width:100px">'+qualOpts+'</select></td>'
+    // Badge CDD saisonnier
+    let badge = (contrat==='CDD' && (e.dateEntree||e.dateSortie))
+      ? ' <span style="font-size:9px;background:var(--orange);color:#fff;padding:1px 4px">CDD</span>' : '';
+    return '<tr><td><input type="text" value="'+nom+'" onchange="setEmp('+i+',\'name\',this.value)" style="width:160px">'+badge+'</td>'
+      +'<td><select onchange="setEmp('+i+',\'qual\',this.value)" style="width:90px">'+qualOpts+'</select></td>'
       +'<td><select onchange="setEmp('+i+',\'contract\',this.value)" style="width:70px">'+contractOpts+'</select></td>'
-      +'<td><input type="number" value="'+(e.hours||0)+'" style="width:70px" onchange="setEmp('+i+',\'hours\',this.value)"></td>'
-      +'<td><input type="number" value="'+(e.hoursM||0)+'" style="width:70px" onchange="setEmp('+i+',\'hoursM\',this.value)"></td>'
-      +'<td><input type="number" value="'+(e.pctRoulant||0)+'" style="width:70px" onchange="setEmp('+i+',\'pctRoulant\',this.value)" min="0" max="100">%</td>'
-      +'<td><input type="number" value="'+(e.joursSem||5)+'" style="width:60px" onchange="setEmp('+i+',\'joursSem\',this.value)" min="1" max="7"></td>'
+      +'<td><input type="number" value="'+(e.hours||0)+'" style="width:60px" onchange="setEmp('+i+',\'hours\',this.value)"></td>'
+      +'<td><input type="number" value="'+(e.pctRoulant||0)+'" style="width:55px" onchange="setEmp('+i+',\'pctRoulant\',this.value)" min="0" max="100">%</td>'
+      +'<td><input type="number" value="'+(e.joursSem||5)+'" style="width:50px" onchange="setEmp('+i+',\'joursSem\',this.value)" min="1" max="7"></td>'
+      +'<td><input type="date" value="'+(e.dateEntree||'')+'" min="2027-01-01" max="2027-12-31" onchange="setEmp('+i+',\'dateEntree\',this.value)" style="width:140px;font-size:11px"></td>'
+      +'<td><input type="date" value="'+(e.dateSortie||'')+'" min="2027-01-01" max="2027-12-31" onchange="setEmp('+i+',\'dateSortie\',this.value)" style="width:140px;font-size:11px"></td>'
       +'<td class="num">'+etp+'</td>'
       +coutJourCell
       +'<td><button class="danger" style="padding:4px 8px;font-size:11px" onclick="delEmp('+i+')">X</button></td>'
       +'</tr>';
   }).join('');
   // Ligne DR en bas
-  let drRow='<tr style="background:var(--blue2)"><td colspan="6"><b>Quote-part Directeur Régional</b></td>'
+  let drRow='<tr style="background:var(--blue-light)"><td colspan="6"><b>Quote-part Directeur Régional</b></td>'
     +'<td colspan="2"><label style="font-size:10px">Coût annuel DR (€)</label>'
-    +'<input type="number" value="'+(a.drCostAnnual||0)+'" style="width:130px" onchange="setDR(\'drCostAnnual\',this.value)"></td>'
-    +'<td colspan="2"><label style="font-size:10px">% affecté à cette agence</label>'
-    +'<input type="number" value="'+(a.drPct||0)+'" style="width:90px" onchange="setDR(\'drPct\',this.value)" min="0" max="100">%</td>'
+    +'<input type="number" value="'+(a.drCostAnnual||0)+'" style="width:120px" onchange="setDR(\'drCostAnnual\',this.value)"></td>'
+    +'<td colspan="3"><label style="font-size:10px">% affecté à cette agence</label>'
+    +'<input type="number" value="'+(a.drPct||0)+'" style="width:80px" onchange="setDR(\'drPct\',this.value)" min="0" max="100">%</td>'
     +'</tr>';
   q('empTable').innerHTML=header+rows+drRow;
+
+  // Indicateur d'évolution de l'effectif roulant dans l'année (si mouvements)
+  let hasMovements = a.employees.some(e=>e.dateEntree||e.dateSortie);
+  let evoBox = q('teamEvolution');
+  if(evoBox){
+    if(hasMovements && a.cal && a.cal.length){
+      // Calculer l'ETP roulant par mois
+      let etpParMois = M.map(function(_, m){
+        let semainesMois = needWeeks(a).filter(function(w){
+          return a.cal.some(function(d){return d.week===w.week && d.month===m;});
+        });
+        if(!semainesMois.length) return 0;
+        let etpMoyen = semainesMois.reduce(function(s,w){
+          return s + baseHWeek(a, w.week)/35;
+        },0)/semainesMois.length;
+        return Math.round(etpMoyen*10)/10;
+      });
+      let maxEtp = Math.max.apply(null, etpParMois.concat([1]));
+      evoBox.style.display='';
+      evoBox.innerHTML='<h3 style="margin-bottom:10px">Évolution de l\'effectif roulant 2027</h3>'
+        +'<p class="hint" style="margin-bottom:12px">Nombre d\'ETP roulants présents chaque mois, selon les dates d\'entrée et de sortie saisies.</p>'
+        +'<div style="display:flex;align-items:end;gap:6px;height:120px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:0 8px">'
+        + etpParMois.map(function(etp,m){
+            let h=maxEtp>0?Math.round(etp/maxEtp*100):0;
+            return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:end">'
+              +'<div style="font-size:9px;color:var(--ink65);margin-bottom:2px">'+etp.toFixed(0)+'</div>'
+              +'<div style="width:100%;background:linear-gradient(to top,var(--violet),var(--violet2));height:'+h+'%;min-height:2px"></div>'
+              +'<div style="font-size:9px;color:var(--ink65);margin-top:3px">'+M[m].slice(0,3)+'</div>'
+              +'</div>';
+          }).join('')
+        +'</div>';
+    } else {
+      evoBox.style.display='none';
+    }
+  }
 }
 function renderRH(){
   let a=A();
@@ -2142,7 +2228,11 @@ function setRef(act,m,t,v){A().refs[act][m][t]=v===''?null:+v;genCal(A());render
 function setAct(field,val){A()[field]=val;render()}
 function setEmp(i,f,v){
   let numFields=['hours','hoursM','hsTarget','pctRoulant','joursSem','coutJour'];
-  A().employees[i][f]=numFields.includes(f)?+v:v;
+  let e=A().employees[i];
+  e[f]=numFields.includes(f)?+v:v;
+  // Harmoniser name/nom et contract/contrat pour compat import registre
+  if(f==='name')e.nom=v;
+  if(f==='contract')e.contrat=v;
   render();
 }
 function setDR(f,v){A()[f]=+v;render()}
@@ -2154,7 +2244,8 @@ function importSGCV(){
   render();
 }
 function delEmp(i){A().employees.splice(i,1);render()}
-function addEmployee(){A().employees.push({name:'Nouveau salarié',qual:'DEA',contract:'CDI',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0});render()}
+function addEmployee(){A().employees.push({name:'Nouveau salarié',qual:'DEA',contract:'CDI',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0,dateEntree:'',dateSortie:''});render()}
+function addPostePrevisionnel(){A().employees.push({name:'Poste prévisionnel',qual:'DEA',contract:'CDD',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0,dateEntree:'2027-06-01',dateSortie:'2027-09-30'});render()}
 function setPresence(w,f,v){
   let a=A();
   if(!a.presence[w])a.presence[w]={cp:0,other:0};
@@ -2322,12 +2413,13 @@ async function adminCreateUser() {
   const role = q('adminRole').value;
   const agence = role === 'rex' ? q('adminAgence').value : null;
   if (!nom || !email) { showAdminMsg('Nom et email obligatoires.', 'bad'); return; }
-  if (role === 'rex' && !agence) { showAdminMsg('Selectionnez une agence pour ce REX.', 'bad'); return; }
+  if (role === 'rex' && (!agence || agence === '' || agence === '-- Choisir une agence --')) { showAdminMsg('Selectionnez une agence pour ce REX.', 'bad'); return; }
   const {data: existing} = await sb.from('profiles').select('id').eq('email', email).single().catch(() => ({data:null}));
   if (existing) { showAdminMsg('Un compte avec cet email existe deja.', 'bad'); return; }
   const agenceField = agence ? ', agence' : '';
   const agenceVal = agence ? `, '${agence}'` : '';
   const sql = `INSERT INTO public.profiles (id, email, nom, role${agenceField})\nSELECT id, email, '${nom}', '${role}'${agenceVal}\nFROM auth.users WHERE email = '${email}';`;
+  console.log('adminCreateUser: ouvre modale pour', nom, email, role, agence);
   showCreateModal(nom, email, sql);
 }
 
@@ -2417,8 +2509,10 @@ async function adminOpenBudget(agenceNom, budgetId) {
 
 function showAdminMsg(msg, type) {
   if (!q('adminMsg')) return;
-  q('adminMsg').innerHTML = `<div class="alertLine ${type==='ok'?'info':type==='bad'?'critique':'warning'}">${msg}</div>`;
-  setTimeout(() => { if(q('adminMsg')) q('adminMsg').innerHTML = ''; }, 4000);
+  let cls = type==='ok' ? 'info' : type==='bad' ? 'critique' : 'warning';
+  q('adminMsg').innerHTML = '<div class="alertLine '+cls+'" style="margin-top:10px;font-weight:600">'+msg+'</div>';
+  q('adminMsg').scrollIntoView({behavior:'smooth',block:'nearest'});
+  setTimeout(function(){ if(q('adminMsg')) q('adminMsg').innerHTML = ''; }, 5000);
 }
 
 // ═══════════════════════════════════════════════
@@ -2703,17 +2797,19 @@ function completionBadge(score) {
 // GESTION CP
 // ═══════════════════════════════════════════════
 function cpGeneres(a) {
-  // CP générés : chaque salarié génère 2.5J/mois sauf les mois avec AM
-  // On considère que le taux maladie mensuel réduit le stock proportionnellement
+  // CP générés : chaque salarié génère 2.5J par mois de PRÉSENCE (hors AM)
+  // Un CDD saisonnier présent 4 mois ne génère que ~10J, pas 30J
   let salaries = a.employees.filter(e => e.qual !== 'FACTURIERE');
-  let nbSal = salaries.length;
-  if (!nbSal) return 0;
+  if (!salaries.length) return 0;
   let totalJ = 0;
   M.forEach(function(_, m) {
     let tauxMal = a.sick[m] !== null && a.sick[m] !== undefined ? +a.sick[m] / 100 : 0;
-    // Chaque salarié génère 2.5J moins la part en AM
+    // Date de référence du mois (le 15)
+    let dateRef = '2027-' + String(m+1).padStart(2,'0') + '-15';
+    // Compter les salariés présents ce mois-là
+    let nbPresents = salaries.filter(function(e){ return empPresent(e, dateRef); }).length;
     let jMois = 2.5 * (1 - tauxMal);
-    totalJ += nbSal * jMois;
+    totalJ += nbPresents * jMois;
   });
   return Math.round(totalJ * 10) / 10;
 }
@@ -3036,6 +3132,137 @@ async function doChangePwdAndLogin() {
 // ═══════════════════════════════════════════════
 // IMPORT EXCEL DONNÉES AGENCES (CG)
 // ═══════════════════════════════════════════════
+function triggerImportRegistre(){
+  if(q('registreFileInput'))q('registreFileInput').click();
+}
+
+// Mapping agences registre → agences SOMA
+const AGENCE_MAP = {
+  'ANGERS':'ANGERS','ANGOULEME':'ANGOULEME','ANNECY':'ANNECY',
+  'BOURG-EN-BRESSE':'BOURG EN BRESSE','BRIVE':'BRIVE','CAHORS':'CAHORS',
+  'CHAMBERY':'CHAMBERY','CHATELLERAULT':'CHATELLERAULT','CLERMONT':'CLERMONT',
+  'COGNAC':'COGNAC','DIJON':'DIJON','EVREUX':'EVREUX','LAVAL':'LAVAL',
+  'LE MANS':'LE MANS','LIMOGES':'LIMOGES','MOISSAC':'MOISSAC','NANTES':'NANTES',
+  'PARTHENAY':'PARTHENAY','POITIERS':'POITIERS','RENNES':'RENNES','SIEGE':'SIEGE',
+  'ST GILLES':'SAINT GILLES CROIX DE VIE','THYEZ':'THYEZ','TOULOUSE':'TOULOUSE',
+  'TOURS':'TOURS','TULLE':'TULLE','VANNES':'VANNES'
+};
+
+// Mapping libellé emploi → qualification SOMA + roulant
+function mapEmploi(libelle){
+  let l=(libelle||'').toUpperCase().trim();
+  // Roulants
+  if(l.includes('AMBULANCIER DIPLOME')||l==='AMBULANCIER DIPLOME D\'ETAT')return {qual:'DEA',roulant:true};
+  if(l.includes('AUXILIAIRE AMBULANCIER'))return {qual:'AA',roulant:true};
+  if(l.includes('CONDUCTEUR AMBULANCIER'))return {qual:'AA',roulant:true};
+  if(l.includes('CHAUFFEUR DE TAXI'))return {qual:'TAXI',roulant:true};
+  if(l.includes('MOBILITE REDUITE')||l.includes('TPMR'))return {qual:'TPMR',roulant:true};
+  if(l.includes('CONDUCTEUR SCOLAIRE'))return {qual:'TPMR',roulant:true};
+  if(l.includes('CONDUCTEUR DE PERSONNE'))return {qual:'TPMR',roulant:true};
+  // Non-roulants
+  if(l.includes('REGULATEUR')||l.includes('REGULATION'))return {qual:'REGULATEUR',roulant:false};
+  if(l.includes('RESPONSABLE EXPLOITATION')||l.includes('RESPONSABLE D\'EXPLOITATION'))return {qual:'REX',roulant:false};
+  if(l.includes('DIRECTEUR REGIONAL'))return {qual:'DR',roulant:false};
+  if(l.includes('FACTURATION')||l.includes('FACTURI'))return {qual:'FACTURIERE',roulant:false};
+  // Administratif divers → non-roulant générique (exclu des roulants)
+  return {qual:'ADMIN',roulant:false};
+}
+
+async function handleRegistreImport(event){
+  let file=event.target.files[0];
+  if(!file)return;
+  showRefAgencesMsg('Lecture du registre...','ok');
+  let reader=new FileReader();
+  reader.onload=async function(e){
+    try{
+      let data=new Uint8Array(e.target.result);
+      let wb=XLSX.read(data,{type:'array'});
+      let ws=wb.Sheets[wb.SheetNames[0]];
+      let rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rows.length<2){showRefAgencesMsg('Fichier vide.','bad');return;}
+
+      // Colonnes attendues (index)
+      // 0:Agence 1:Bureau 2:Matricule 3:Nom 4:Prenom 5:Date_entree 6:Date_sortie
+      // 7:Motifobs 8:Type Contrat 9:Libelle_emploi 10:Qualification 11:Diplome 12:Horaire_Mensuel
+      let header=rows[0].map(function(h){return (h+'').toLowerCase();});
+      let iAg=header.findIndex(function(h){return h.includes('agence');});
+      let iNom=header.findIndex(function(h){return h==='nom';});
+      let iPrenom=header.findIndex(function(h){return h.includes('prenom');});
+      let iSortie=header.findIndex(function(h){return h.includes('sortie');});
+      let iContrat=header.findIndex(function(h){return h.includes('contrat');});
+      let iEmploi=header.findIndex(function(h){return h.includes('libelle');});
+      let iHoraire=header.findIndex(function(h){return h.includes('horaire');});
+
+      // Grouper par agence avec fill-down
+      let parAgence={};
+      let lastAgence=null;
+      for(let i=1;i<rows.length;i++){
+        let row=rows[i];
+        let agRaw=(row[iAg]||'').toString().trim();
+        if(agRaw)lastAgence=agRaw;
+        if(!lastAgence)continue;
+        // Ignorer lignes de total
+        if(lastAgence.toLowerCase().includes('total'))continue;
+        let nom=(row[iNom]||'').toString().trim();
+        if(!nom||nom.toLowerCase()==='total')continue;
+        // Exclure les sortis
+        let sortie=(row[iSortie]||'').toString().trim();
+        if(sortie)continue;
+
+        let agSoma=AGENCE_MAP[lastAgence.toUpperCase()];
+        if(!agSoma)continue;
+
+        let prenom=(row[iPrenom]||'').toString().trim();
+        let emploi=(row[iEmploi]||'').toString();
+        let contrat=(row[iContrat]||'').toString().includes('C.D.D')?'CDD':'CDI';
+        let horaireMensuel=+row[iHoraire]||152;
+        let heuresHebdo=Math.round(horaireMensuel/4.33*10)/10;
+
+        let m=mapEmploi(emploi);
+        // Exclure facturières et purement administratifs du personnel budgété roulant
+        // mais on les garde en base avec leur qualif
+        if(!parAgence[agSoma])parAgence[agSoma]=[];
+        parAgence[agSoma].push({
+          nom:(nom+' '+prenom).trim(),
+          qual:m.qual,
+          contrat:contrat,
+          hours:m.roulant?heuresHebdo:0,
+          hoursMal:0,
+          hoursHS:0,
+          pctRoulant:m.roulant?100:0,
+          joursSem:5,
+          coutJour:0
+        });
+      }
+
+      // Sauvegarder dans Supabase pour chaque agence
+      let count=0,totalSal=0;
+      for(let agNom in parAgence){
+        let employees=parAgence[agNom];
+        // Filtrer : exclure ADMIN pur (garder roulants + REX + REGULATEUR + FACTURIERE)
+        let filtered=employees.filter(function(emp){
+          return ['DEA','AA','TAXI','TPMR','REGULATEUR','REX','FACTURIERE'].includes(emp.qual);
+        });
+        let existing=await sb.from('budgets').select('id,data').eq('agence',agNom).eq('annee',2027).single().catch(function(){return {data:null};});
+        if(existing.data){
+          let merged=Object.assign({},existing.data.data||{});
+          merged.employees=filtered;
+          await sb.from('budgets').update({data:merged}).eq('id',existing.data.id);
+        } else {
+          await sb.from('budgets').insert({agence:agNom,annee:2027,data:{employees:filtered},statut:'brouillon'});
+        }
+        count++;
+        totalSal+=filtered.length;
+      }
+
+      event.target.value='';
+      showRefAgencesMsg(count+' agences mises à jour ('+totalSal+' salariés importés)','ok');
+      renderRefAgences();
+    }catch(err){showRefAgencesMsg('Erreur : '+err.message,'bad');console.error(err);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
 function triggerImportRefAgences(){
   if(q('refAgencesFileInput'))q('refAgencesFileInput').click();
 }
