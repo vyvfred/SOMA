@@ -803,6 +803,48 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   background:var(--orange); color:#fff;
   font-size:11px; font-weight:700; border-radius:9px;
 }
+
+/* ═══ Guidage écran Présence (état vide) ═══ */
+.rhEmptyGuide{
+  display:flex; align-items:flex-start; gap:var(--sp-4);
+  padding:var(--sp-5); margin-bottom:var(--sp-4);
+  background:var(--violet-light); border:1px solid var(--violet2);
+  border-radius:var(--radius); font-size:14px; line-height:1.5;
+}
+.rhGuideIcon{ font-size:28px; flex-shrink:0; }
+
+/* ═══ Carte Activités (écran Objectif) ═══ */
+.objActivites{
+  padding:var(--sp-4); margin-bottom:var(--sp-4);
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+}
+.objActivitesLabel{
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.05em; color:var(--ink65); margin-bottom:var(--sp-3);
+}
+.objActivitesOpts{ display:flex; gap:var(--sp-3); flex-wrap:wrap; }
+.objActChip{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 14px; border:1px solid var(--border2); border-radius:20px;
+  font-size:13px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:500;
+  transition:all var(--dur) var(--ease);
+}
+.objActChip:hover{ border-color:var(--violet2); }
+.objActChip input{ width:auto!important; margin:0!important; border:none!important; padding:0!important; }
+.objActChip span{ color:var(--ink30); font-size:11px; }
+.objActChip.checked{ background:var(--violet-light); border-color:var(--violet2); }
+
+/* Valeurs à zéro dans le prévisionnel (à remplir) */
+.num.zeroVal{ color:var(--ink30); font-style:italic; }
+
+/* Aide contextuelle Présence (comment travailler) */
+.rhHelp{
+  display:flex; align-items:flex-start; gap:10px;
+  padding:10px 14px; margin-bottom:12px;
+  background:var(--blue-light); border:1px solid var(--blue2);
+  border-radius:var(--radius-sm); font-size:12.5px; line-height:1.5; color:var(--ink);
+}
+.rhHelp span:first-child{ flex-shrink:0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head><body>
@@ -994,6 +1036,16 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       </div>
     </div>
 
+    <!-- Activités de l'agence : notion structurelle, visible -->
+    <div class="objActivites">
+      <div class="objActivitesLabel">Activités de l'agence</div>
+      <div class="objActivitesOpts">
+        <label class="objActChip checked"><input type="checkbox" id="actSan" checked disabled> Sanitaire <span>obligatoire</span></label>
+        <label class="objActChip"><input type="checkbox" id="actSai" onchange="setAct('actSai',this.checked)"> Saisonnier</label>
+        <label class="objActChip"><input type="checkbox" id="actTP" onchange="setAct('actTP',this.checked)"> Transport de personnes</label>
+      </div>
+    </div>
+
     <!-- Réalisé passé : rappel discret sur une ligne -->
     <div class="objRecall" id="objRecall">
       <span class="objRecallLabel">Réalisé</span>
@@ -1020,18 +1072,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
           <div>
             <label>Zone vacances scolaires</label>
             <select id="schoolZone"><option>A</option><option>B</option><option>C</option></select>
-            <label style="margin-top:14px">Activités de l'agence</label>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
-              <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:400">
-                <input type="checkbox" id="actSan" checked disabled style="width:auto;border:none;padding:0"> Sanitaire <span style="color:var(--ink30);font-size:11px">(obligatoire)</span>
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:400">
-                <input type="checkbox" id="actSai" style="width:auto;border:none;padding:0" onchange="setAct('actSai',this.checked)"> Saisonnier
-              </label>
-              <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;font-weight:400">
-                <input type="checkbox" id="actTP" style="width:auto;border:none;padding:0" onchange="setAct('actTP',this.checked)"> Transport de personnes
-              </label>
-            </div>
+            <!-- activités déplacées en carte visible -->
           </div>
         </div>
       </div>
@@ -1108,6 +1149,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-4);flex-wrap:wrap;gap:8px">
       <h2 style="margin:0">Présence &amp; heures supplémentaires</h2>
     </div>
+    <div id="rhEmptyGuide" class="rhEmptyGuide" style="display:none"></div>
     <div class="kpis" id="rhKpis" style="margin-bottom:var(--sp-4)"></div>
     <div class="objInsight" id="rhInsight" style="display:none">
       <span class="objInsightIcon">💬</span>
@@ -1144,7 +1186,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   <div id="rhAlertsSummary" style="margin-bottom:12px"></div>
 
   <!-- SAISIES OCCASIONNELLES : repliables, fermées par défaut -->
-  <details class="objCollapse" id="collapseSick">
+  <details class="objCollapse" id="collapseSick" open>
     <summary>Taux de maladie &amp; AT par mois</summary>
     <div class="objCollapseBody">
       <div class="tablewrap"><table id="sickTable"></table></div>
@@ -1152,7 +1194,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     </div>
   </details>
 
-  <details class="objCollapse" id="collapseIndemnites">
+  <details class="objCollapse" id="collapseIndemnites" open>
     <summary>Indemnités (repas et dimanche/jour férié)</summary>
     <div class="objCollapseBody">
       <p class="hint" style="margin-bottom:12px">Saisissez pour chaque semaine le montant total des indemnités, en euros, séparément pour le personnel roulant et non-roulant. Ces montants sont intégrés à la masse salariale du prévisionnel.</p>
@@ -1161,7 +1203,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     </div>
   </details>
 
-  <details class="objCollapse" id="collapseImproductif">
+  <details class="objCollapse" id="collapseImproductif" open>
     <summary>Personnel improductif (régulateurs, responsables)</summary>
     <div class="objCollapseBody">
       <p class="hint" style="margin-bottom:12px">Les improductifs sont payés au coût journalier (salaire mensualisé). Renseignez leur taux d'absentéisme propre et, si besoin, leurs heures supplémentaires par semaine (majorées à 1,25). Leurs congés n'ont pas d'impact sur la production.</p>
@@ -1398,7 +1440,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     </div>
 
     <!-- Détail SIG : repliable, pour vérifier ligne à ligne -->
-    <details class="objCollapse" id="prevCollapse">
+    <details class="objCollapse" id="prevCollapse" open>
       <summary>Détail du compte de résultat (SIG, 12 mois)</summary>
       <div class="objCollapseBody">
         <div id="prevPaieBadge" style="display:none;padding:6px 12px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:12px;color:var(--blue2);margin-bottom:12px;border-radius:var(--radius-sm)">ℹ La ligne <b>Charges de personnel</b> est calculée selon les périodes de paie 2027 (et non par mois civil). Les mois 5 semaines ont une charge plus élevée.</div>
@@ -1445,7 +1487,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       </div>
     </details>
 
-    <details class="objCollapse" id="synthCollapseKpis">
+    <details class="objCollapse" id="synthCollapseKpis" open>
       <summary>Tous les indicateurs financiers</summary>
       <div class="objCollapseBody">
         <div class="kpis" id="dashKpis"></div>
@@ -4239,7 +4281,7 @@ function renderTeam(){
   let contracts=['CDI','CDD','APPRENTI','INTERIM'];
   let header='<tr><th>Nom</th><th>Qualif.<span class="aide-info">i<span class="aide-tip">DEA = ambulancier diplômé, AA = auxiliaire, TAXI = chauffeur taxi, TPMR = transport PMR. Ces qualifications sont roulantes. REGULATEUR et REX sont non-roulants.</span></span></th><th>Contrat</th>'
     +'<th>H. base<span class="aide-info">i<span class="aide-tip">Heures travaillées par semaine. Ex : 35h pour un temps plein, 17,5h pour un mi-temps.</span></span></th>'
-    +'<th>% roul.<span class="aide-info">i<span class="aide-tip">Part du temps réellement passée sur la route. 100% pour un ambulancier à temps plein roulant, moins si la personne a aussi des tâches administratives.</span></span></th>'
+    +'<th>% roul.<span class="aide-info">i<span class="aide-tip">Part du temps passée en roulant (sur la route). 100% pour un ambulancier à temps plein roulant. Pour un salarié partagé, indiquez sa part roulante : par exemple 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif.</span></span></th>'
     +'<th>Jours/sem</th>'
     +'<th>Entrée 2027<span class="aide-info">i<span class="aide-tip">Date d\'arrivée en 2027. Laissez vide si la personne est déjà présente au 1er janvier.</span></span></th>'
     +'<th>Sortie 2027<span class="aide-info">i<span class="aide-tip">Date de départ en 2027 (fin de CDD, retraite...). Laissez vide si la personne reste toute l\'année.</span></span></th>'
@@ -4354,6 +4396,30 @@ function renderRH(){
   let a=A();
   if(!q('rhKpis'))return;
 
+  // ── Guidage si données insuffisantes pour travailler la présence ──
+  let nbRoulants = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
+  let hasObjectif = (+a.targetCA > 0 && +a.targetTXR > 0);
+  let guide = q('rhEmptyGuide');
+  if(guide){
+    if(nbRoulants === 0){
+      guide.style.display = '';
+      guide.innerHTML = '<div class="rhGuideIcon">👥</div>'
+        + '<div><b>Ajoutez d\'abord votre équipe</b><br>'
+        + 'La présence et les heures supplémentaires se calculent à partir de vos salariés roulants. '
+        + 'Commencez par renseigner votre équipe, puis revenez ici pour piloter la présence semaine par semaine.'
+        + '<div style="margin-top:10px"><button onclick="show(\'team\')" style="width:auto;padding:8px 16px">→ Aller à l\'équipe</button></div></div>';
+    } else if(!hasObjectif){
+      guide.style.display = '';
+      guide.innerHTML = '<div class="rhGuideIcon">🎯</div>'
+        + '<div><b>Renseignez votre objectif</b><br>'
+        + 'Le besoin en heures par semaine se calcule à partir de votre objectif de chiffre d\'affaires et de votre TXR. '
+        + 'Renseignez-les pour voir apparaître vos semaines et leur charge.'
+        + '<div style="margin-top:10px"><button onclick="show(\'objectif\')" style="width:auto;padding:8px 16px">→ Définir l\'objectif</button></div></div>';
+    } else {
+      guide.style.display = 'none';
+    }
+  }
+
   // ── KPIs annuels ──
   let tot=hsTot(a);
   let hsAnn=tot.hs,hsCost=hsAnn*(+a.costHour||0)*(+a.hsCostRate||1.25);
@@ -4428,7 +4494,13 @@ function renderRH(){
     progressHTML += '<div style="font-size:12px;color:var(--ink65)">CP restants à répartir : <b style="color:'+(Math.abs(cpLibres)<1?'var(--green)':'var(--accent-blue)')+'">'+cpLibres.toFixed(1)+' J</b></div>'
       + '</div>';
 
-    q('rhMonthCards').innerHTML = progressHTML + M.map(function(mo,m){
+    let aideHTML = '<div class="rhHelp">'
+      + '<span>💡</span>'
+      + '<span><b>Cliquez sur un mois</b> pour voir le détail de ses semaines et ajuster la charge. '
+      + 'Quand un mois vous convient, <b>validez-le</b> pour suivre votre avancement. '
+      + 'Le bouton <b>« Répartir les congés automatiquement »</b> place vos jours de CP sur l\'année en évitant les semaines déjà tendues.</span>'
+      + '</div>';
+    q('rhMonthCards').innerHTML = progressHTML + aideHTML + M.map(function(mo,m){
       let weeksOfMonth = hsR.filter(function(r){
         return a.cal.some(function(d){return d.week===r.week&&d.month===m;});
       });
@@ -4537,7 +4609,21 @@ function showWeekDetail(m){
   let weeksOfMonth=hsR.filter(function(r){
     return a.cal.some(function(d){return d.week===r.week&&d.month===m;});
   });
-  if(!weeksOfMonth.length){return;}
+  if(!weeksOfMonth.length){
+    // Guidage au lieu d'un écran muet
+    let det = q('rhWeekDetail');
+    if(det){
+      det.style.display='';
+      let cause = (a.employees && a.employees.filter(function(e){return isRoulant(e.qual);}).length)
+        ? 'Renseignez votre objectif de CA et votre TXR (étape Objectif) pour générer les semaines de ce mois.'
+        : 'Ajoutez d\'abord des salariés roulants à votre équipe pour faire apparaître les semaines.';
+      det.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink65)">'
+        + '<div style="font-size:28px;margin-bottom:8px">📅</div>'
+        + '<b style="color:var(--ink)">Aucune semaine à afficher pour '+M[m]+'</b><br>'
+        + '<span style="font-size:13px">'+cause+'</span></div>';
+    }
+    return;
+  }
   if(q('rhWeekDetailTitle'))q('rhWeekDetailTitle').textContent='Détail semaines — '+M[m];
   let header='<tr>'
     +'<th>Sem.</th><th>Cap. (h)</th>'
@@ -4883,7 +4969,16 @@ function renderPrevInsight(a, ca, net, tauxMS){
   let insight = q('prevInsight'), txt = q('prevInsightText');
   if(!insight || !txt) return;
   if(!ca){
-    insight.style.display = 'none';
+    // Guidage : expliquer pourquoi le prévisionnel est à zéro et quoi faire
+    insight.style.display = '';
+    let nbRoulants = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
+    if(nbRoulants === 0){
+      txt.innerHTML = 'Le prévisionnel se remplit automatiquement à partir de votre objectif, votre équipe et vos charges. Commencez par <b>renseigner votre objectif et votre équipe</b> — les montants apparaîtront ici.';
+    } else if(!(+a.targetCA > 0)){
+      txt.innerHTML = 'Renseignez votre <b>objectif de chiffre d\'affaires</b> (étape Objectif) pour que le compte de résultat prévisionnel se calcule.';
+    } else {
+      txt.innerHTML = 'Les charges ne sont pas encore saisies. Le contrôleur de gestion renseigne les charges de chaque poste ; le résultat prévisionnel se complètera au fur et à mesure.';
+    }
     return;
   }
   insight.style.display = '';
@@ -4933,9 +5028,13 @@ function renderPrevisionnel(){
     let total=ann(a,r.label);
     let cls=r.type==='subtotal'?'subtotal':'';
     let pctCA=ca?pct(total/ca*100):'—';
+    function cell(val){
+      let z = (!val || val===0) ? ' zeroVal' : '';
+      return '<td class="num locked'+z+'">'+euro(val)+'</td>';
+    }
     return '<tr class="'+cls+'"><td><b>'+r.label+'</b></td>'
-      +M.map(function(_,m){return '<td class="num locked">'+euro(amount(a,r.label,m))+'</td>';}).join('')
-      +'<td class="num locked"><b>'+euro(total)+'</b></td>'
+      +M.map(function(_,m){return cell(amount(a,r.label,m));}).join('')
+      +'<td class="num locked'+((!total||total===0)?' zeroVal':'')+'"><b>'+euro(total)+'</b></td>'
       +'<td class="num locked">'+pctCA+'</td>'
       +'</tr>';
   }).join('');
@@ -5808,103 +5907,102 @@ function cpPlanifies(a) {
   }, 0);
 }
 
-function repartirCPAuto(moissLibres) {
-  let a = A();
-  if (!a.cal.length) genCal(a);
+function hsParPersonne(a, week){
+  // HS par personne présente = HS de la semaine / ETP présents
+  let p = pres(a, week);
+  let n = needWeeks(a).find(function(x){return x.week===week;});
+  if(!n) return {hs:0, etp:p.etp, ratio:0};
+  let hs = Math.max(0, n.hours - p.av);
+  let ratio = p.etp > 0 ? hs / p.etp : 0;
+  return {hs:hs, etp:p.etp, ratio:ratio};
+}
 
-  // Réinitialiser CP des mois non verrouillés seulement
+// ═══════════════════════════════════════════════════════════
+// MOTEUR DE RÉPARTITION DES CP (v2)
+// Couche 1 : enveloppes légales (60% juin-oct, 20% nov-jan, 20% fév-mai)
+// Couche 2 : lisser les HS par personne présente dans chaque enveloppe
+//   → moins de CP sur les semaines de forte activité, plus sur les creuses.
+// ═══════════════════════════════════════════════════════════
+function repartirCPAuto(moissLibres){
+  let a = A();
+  if(!a.cal.length) genCal(a);
+
+  // Mois libres (non verrouillés)
   let libres = moissLibres || M.map(function(_,i){return i;}).filter(function(m){
-    return a.moisVerrouilles.indexOf(m) < 0;
+    return (a.moisVerrouilles||[]).indexOf(m) < 0;
   });
 
   // Vider les CP des semaines des mois libres
-  needWeeks(a).forEach(function(w) {
+  needWeeks(a).forEach(function(w){
     let mois = mainMonth(a, w.week);
-    if (libres.indexOf(mois) >= 0) {
-      if (a.presence[w.week]) a.presence[w.week].cp = 0;
+    if(libres.indexOf(mois) >= 0){
+      if(a.presence[w.week]) a.presence[w.week].cp = 0;
     }
   });
 
-  // CP déjà posés sur mois verrouillés
-  let cpVerrouilles = needWeeks(a).reduce(function(s, w) {
+  // CP déjà posés sur les mois verrouillés
+  let cpVerrouilles = needWeeks(a).reduce(function(s, w){
     let mois = mainMonth(a, w.week);
-    if (a.moisVerrouilles.indexOf(mois) >= 0) {
-      return s + (+((a.presence[w.week]||{}).cp)||0);
+    if((a.moisVerrouilles||[]).indexOf(mois) >= 0){
+      return s + (+((a.presence[w.week]||{}).cp) || 0);
     }
     return s;
   }, 0);
 
   let generes = cpGeneres(a);
   let restant = Math.round((generes - cpVerrouilles) * 10) / 10;
-  if (restant <= 0) { render(); return; }
+  if(restant <= 0){ render(); return; }
 
-  // Enveloppes légales filtrées sur mois libres
+  // ── COUCHE 1 : enveloppes légales (corrigées) ──
   let envelopes = [
-    { pct: 0.60, months: [5,6,7,8,9]  },
-    { pct: 0.20, months: [10,11,0]    },
-    { pct: 0.20, months: [1,2,3,4]    }
+    { pct: 0.60, months: [5,6,7,8,9]  },  // juin → octobre
+    { pct: 0.20, months: [10,11,0]    },  // novembre → janvier
+    { pct: 0.20, months: [1,2,3,4]    }   // février → mai
   ];
 
-  let hsR = hsRows(a);
-  let wksInfo = needWeeks(a).map(function(w) {
-    let mois = mainMonth(a, w.week);
-    let p = pres(a, w.week);
-    let dispoSansCP = p.base - p.mal - p.otherH;
-    let tension = w.hours - dispoSansCP;
-    return { week: w.week, month: mois, tension: tension, libre: libres.indexOf(mois) >= 0 };
-  }).filter(function(w){ return w.libre; });
-
-  let placed = 0;
-  let budgetRestant = restant;
-
-  envelopes.forEach(function(env) {
-    if (budgetRestant <= 0) return;
-    // Proportion de mois libres dans cette enveloppe
-    let moisLibresEnv = env.months.filter(function(m){ return libres.indexOf(m) >= 0; });
-    let moisTotalEnv = env.months.length;
-    let budgetEnv = Math.round(restant * env.pct * (moisLibresEnv.length / moisTotalEnv) * 10) / 10;
-    budgetEnv = Math.min(budgetEnv, budgetRestant);
-    if (budgetEnv <= 0) return;
-
-    let semaines = wksInfo
-      .filter(function(w){ return moisLibresEnv.indexOf(w.month) >= 0; })
-      .sort(function(a,b){ return b.tension - a.tension; });
-    if (!semaines.length) return;
-
-    let tendues = semaines.filter(function(w){ return w.tension > 0; });
-    let cibles = tendues.length ? tendues : semaines;
-    let totalTension = cibles.reduce(function(s,w){ return s + Math.max(w.tension,1); }, 0);
-
-    let bEnv = budgetEnv;
-    cibles.forEach(function(w, i) {
-      if (bEnv <= 0) return;
-      let weight = Math.max(w.tension,1) / totalTension;
-      let cpSem = i === cibles.length-1
-        ? Math.round(bEnv * 10) / 10
-        : Math.round(budgetEnv * weight * 10) / 10;
-      cpSem = Math.min(cpSem, bEnv);
-      cpSem = Math.round(cpSem * 10) / 10;
-      if (cpSem <= 0) return;
-      if (!a.presence[w.week]) a.presence[w.week] = {cp:0, other:0};
-      a.presence[w.week].cp = Math.round(((+a.presence[w.week].cp||0) + cpSem) * 10) / 10;
-      bEnv = Math.round((bEnv - cpSem) * 10) / 10;
-      budgetRestant = Math.round((budgetRestant - cpSem) * 10) / 10;
-      placed = Math.round((placed + cpSem) * 10) / 10;
+  // ── COUCHE 2 : dans chaque enveloppe, lisser les HS/personne ──
+  envelopes.forEach(function(env){
+    // Semaines libres de cette enveloppe
+    let semaines = needWeeks(a).filter(function(w){
+      let mois = mainMonth(a, w.week);
+      return env.months.indexOf(mois) >= 0 && libres.indexOf(mois) >= 0;
     });
+    if(!semaines.length) return;
+
+    // Budget CP de l'enveloppe, au prorata des mois libres présents
+    let moisLibresEnv = env.months.filter(function(m){ return libres.indexOf(m) >= 0; });
+    let budgetEnv = Math.round(restant * env.pct * (moisLibresEnv.length / env.months.length) * 10) / 10;
+    if(budgetEnv <= 0) return;
+
+    // Répartition par lissage itératif :
+    // à chaque pas, poser un peu de CP sur la semaine qui a le PLUS BAS
+    // taux de HS/personne (donc la plus creuse) → on y envoie des gens en congé
+    // sans créer de pic. On recalcule après chaque pas.
+    let pas = 0.5; // demi-jour de CP par itération
+    let placeTotal = 0;
+    let secu = 0;
+    while(budgetEnv - placeTotal > 0.05 && secu < 5000){
+      secu++;
+      // Trouver la semaine la plus "creuse" (plus bas HS/personne actuel)
+      let best = null, bestRatio = Infinity;
+      semaines.forEach(function(w){
+        // Simuler l'état actuel
+        let hp = hsParPersonne(a, w.week);
+        // On ne veut pas surcharger une semaine déjà sans personne
+        if(hp.etp <= 0.1) return;
+        if(hp.ratio < bestRatio){
+          bestRatio = hp.ratio;
+          best = w;
+        }
+      });
+      if(!best) break;
+      let ajout = Math.min(pas, budgetEnv - placeTotal);
+      if(!a.presence[best.week]) a.presence[best.week] = {cp:0, other:0};
+      a.presence[best.week].cp = Math.round(((+a.presence[best.week].cp||0) + ajout) * 10) / 10;
+      placeTotal = Math.round((placeTotal + ajout) * 10) / 10;
+    }
   });
 
-  // Solde sur semaines libres les plus tendues
-  if (budgetRestant > 0.1 && wksInfo.length) {
-    let toutes = wksInfo.slice().sort(function(a,b){ return b.tension - a.tension; });
-    let i = 0;
-    while (budgetRestant > 0.1 && i < toutes.length) {
-      let w = toutes[i++];
-      let cpAdd = Math.round(Math.min(budgetRestant, budgetRestant / Math.max(toutes.length - i + 1, 1)) * 10) / 10;
-      if (!a.presence[w.week]) a.presence[w.week] = {cp:0, other:0};
-      a.presence[w.week].cp = Math.round(((+a.presence[w.week].cp||0) + cpAdd) * 10) / 10;
-      budgetRestant = Math.round((budgetRestant - cpAdd) * 10) / 10;
-    }
-  }
   render();
 }
 
