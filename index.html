@@ -845,6 +845,18 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   border-radius:var(--radius-sm); font-size:12.5px; line-height:1.5; color:var(--ink);
 }
 .rhHelp span:first-child{ flex-shrink:0; }
+
+/* ═══ Coût du choix social (synthèse) ═══ */
+.synthCoutChoix{
+  padding:var(--sp-4); margin-bottom:var(--sp-4);
+  background:var(--orange-light); border:1px solid var(--orange);
+  border-radius:var(--radius);
+}
+.synthCoutChoix.optimal{ background:var(--green-light); border-color:var(--green); }
+.synthCoutHead{ display:flex; align-items:flex-start; gap:var(--sp-3); }
+.synthCoutIcon{ font-size:22px; flex-shrink:0; }
+.synthCoutTitle{ font-size:15px; font-weight:700; color:var(--ink); }
+.synthCoutSub{ font-size:13px; color:var(--ink); margin-top:4px; line-height:1.5; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head><body>
@@ -1472,6 +1484,21 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <div class="objInsight" id="synthInsight" style="display:none">
       <span class="objInsightIcon">💬</span>
       <span class="objInsightText" id="synthInsightText"></span>
+    </div>
+
+    <!-- Coût du choix social du REX : élément clé de validation -->
+    <div id="synthCoutChoix" class="synthCoutChoix" style="display:none">
+      <div class="synthCoutHead">
+        <span class="synthCoutIcon" id="synthCoutIcon"></span>
+        <div>
+          <div class="synthCoutTitle" id="synthCoutTitle"></div>
+          <div class="synthCoutSub" id="synthCoutSub"></div>
+        </div>
+      </div>
+      <details class="objCollapse" id="synthCoutDetail" style="display:none">
+        <summary>Détail des choix de répartition</summary>
+        <div class="objCollapseBody"><div id="synthCoutList"></div></div>
+      </details>
     </div>
 
     <!-- Détails repliables : graphiques + tous les indicateurs -->
@@ -5041,6 +5068,44 @@ function renderPrevisionnel(){
   q('prevTable').innerHTML=header+rows;
 }
 
+function renderCoutChoix(a){
+  let box = q('synthCoutChoix');
+  if(!box) return;
+  let c = coutDuChoixREX(a);
+  if(!c.mesurable){
+    // Pas de référence : le REX n'a pas encore lancé la répartition auto
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  let titre = q('synthCoutTitle'), sub = q('synthCoutSub');
+  if(c.surcout <= 0){
+    box.className = 'synthCoutChoix optimal';
+    q('synthCoutIcon').textContent = '✓';
+    titre.textContent = 'Répartition des congés optimale';
+    sub.textContent = 'Votre répartition des CP minimise le recours aux heures supplémentaires. Aucun surcoût.';
+    if(q('synthCoutDetail')) q('synthCoutDetail').style.display = 'none';
+  } else {
+    box.className = 'synthCoutChoix';
+    q('synthCoutIcon').textContent = '⚖️';
+    titre.innerHTML = 'Choix de répartition : surcoût de <b>' + euro(c.surcout) + '</b>';
+    sub.innerHTML = 'Vous avez réparti certains congés différemment de l\'optimum, pour ' + c.semaines.length + ' semaine' + (c.semaines.length>1?'s':'') + '. '
+      + 'Ce choix (souvent pour le climat social) représente environ <b>' + c.hsSup + ' h supplémentaires</b> sur l\'année. '
+      + 'C\'est une décision de gestion à assumer et à valider.';
+    // Détail des semaines
+    if(q('synthCoutDetail') && c.semaines.length){
+      q('synthCoutDetail').style.display = '';
+      q('synthCoutList').innerHTML = c.semaines.map(function(s){
+        let sens = s.ecart > 0 ? '+' + s.ecart + ' j de CP' : s.ecart + ' j de CP';
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">'
+          + '<span>Semaine ' + s.week + ' (' + M[s.mois] + ')</span>'
+          + '<span style="color:var(--ink65)">optimal : ' + s.optimal + ' j → choisi : ' + s.reel + ' j <b style="color:var(--orange)">(' + sens + ')</b></span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+}
+
 function renderSynthese(){
   let a = A();
   if(!a || a.name === 'Nouvelle agence') return;
@@ -5119,6 +5184,8 @@ function renderSynthese(){
   } else if(insight){
     insight.style.display = 'none';
   }
+
+  renderCoutChoix(a);
 }
 
 function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),t=hsTot(a);kpis('finKpis',[['CA calendrier',euro(ca)],['Charges personnel',euro(ms),'présence + HS'],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)],['MS / CA',pct(ca?ms/ca*100:0)],['HS',t.hs.toFixed(0)+' h']])}
@@ -5960,42 +6027,47 @@ function repartirCPAuto(moissLibres){
     { pct: 0.20, months: [1,2,3,4]    }   // février → mai
   ];
 
-  // ── COUCHE 2 : dans chaque enveloppe, lisser les HS/personne ──
+  // ── COUCHE 2 : dans chaque enveloppe, ÉGALISER les HS/personne ──
+  // Principe : on ne pose JAMAIS de CP sur une semaine structurellement forte
+  // (dont le HS/personne SANS CP dépasse déjà la moyenne de l'enveloppe).
+  // On remplit les creuses jusqu'à ce qu'elles rejoignent le niveau des fortes
+  // → vraie ligne plate (option B).
   envelopes.forEach(function(env){
-    // Semaines libres de cette enveloppe
     let semaines = needWeeks(a).filter(function(w){
       let mois = mainMonth(a, w.week);
       return env.months.indexOf(mois) >= 0 && libres.indexOf(mois) >= 0;
     });
     if(!semaines.length) return;
 
-    // Budget CP de l'enveloppe, au prorata des mois libres présents
     let moisLibresEnv = env.months.filter(function(m){ return libres.indexOf(m) >= 0; });
     let budgetEnv = Math.round(restant * env.pct * (moisLibresEnv.length / env.months.length) * 10) / 10;
     if(budgetEnv <= 0) return;
 
-    // Répartition par lissage itératif :
-    // à chaque pas, poser un peu de CP sur la semaine qui a le PLUS BAS
-    // taux de HS/personne (donc la plus creuse) → on y envoie des gens en congé
-    // sans créer de pic. On recalcule après chaque pas.
-    let pas = 0.5; // demi-jour de CP par itération
+    // Niveau de HS/personne de chaque semaine SANS aucun CP (structurel)
+    // (on a déjà vidé les CP des mois libres plus haut)
+    let structurel = {};
+    semaines.forEach(function(w){ structurel[w.week] = hsParPersonne(a, w.week).ratio; });
+    // Le "plafond" = la semaine la plus forte de l'enveloppe : on ne cherche pas
+    // à la dépasser. Les semaines dont le structurel atteint ce plafond sont "fortes"
+    // et resteront intouchées par l'automatique.
+    let plafond = Math.max.apply(null, semaines.map(function(w){ return structurel[w.week]; }));
+
+    // Remplissage itératif : à chaque pas, la semaine au plus BAS HS/personne
+    // reçoit un peu de CP — mais seulement si elle reste sous le plafond.
+    let pas = 0.5;
     let placeTotal = 0;
     let secu = 0;
-    while(budgetEnv - placeTotal > 0.05 && secu < 5000){
+    while(budgetEnv - placeTotal > 0.05 && secu < 8000){
       secu++;
-      // Trouver la semaine la plus "creuse" (plus bas HS/personne actuel)
       let best = null, bestRatio = Infinity;
       semaines.forEach(function(w){
-        // Simuler l'état actuel
         let hp = hsParPersonne(a, w.week);
-        // On ne veut pas surcharger une semaine déjà sans personne
-        if(hp.etp <= 0.1) return;
-        if(hp.ratio < bestRatio){
-          bestRatio = hp.ratio;
-          best = w;
-        }
+        if(hp.etp <= 0.5) return; // sécurité : ne pas vider une semaine
+        // Ne poser que si on reste sous le plafond (ne pas créer de nouveau pic)
+        if(hp.ratio >= plafond - 0.01) return;
+        if(hp.ratio < bestRatio){ bestRatio = hp.ratio; best = w; }
       });
-      if(!best) break;
+      if(!best) break; // toutes les semaines ont rejoint le plafond → ligne plate atteinte
       let ajout = Math.min(pas, budgetEnv - placeTotal);
       if(!a.presence[best.week]) a.presence[best.week] = {cp:0, other:0};
       a.presence[best.week].cp = Math.round(((+a.presence[best.week].cp||0) + ajout) * 10) / 10;
@@ -6003,7 +6075,73 @@ function repartirCPAuto(moissLibres){
     }
   });
 
+  // Mémoriser cette répartition optimale comme RÉFÉRENCE (pour le coût du choix REX)
+  memoriserRepartitionOptimale(a);
   render();
+}
+
+// Mémorise la répartition CP optimale du moteur (référence pour mesurer le coût des choix REX)
+function memoriserRepartitionOptimale(a){
+  let opt = {};
+  needWeeks(a).forEach(function(w){
+    opt[w.week] = (+((a.presence[w.week]||{}).cp) || 0);
+  });
+  a.cpOptimal = opt;
+  a.cpOptimalHSCost = coutHSTotal(a);
+}
+
+// Coût total des HS de l'année (heures supp × coût horaire × majoration)
+function coutHSTotal(a){
+  let hsAnn = hsTot(a).hs;
+  return hsAnn * (+a.costHour||0) * (+a.hsCostRate||1.25);
+}
+
+// ═══════════════════════════════════════════════════════════
+// COÛT DU CHOIX REX
+// Écart entre la répartition optimale (moteur) et la répartition réelle
+// (avec les ajustements manuels du REX). Ce surcoût est un élément de validation :
+// le REX peut choisir un moins-optimal pour le climat social, en connaissance de cause.
+// ═══════════════════════════════════════════════════════════
+function coutDuChoixREX(a){
+  // Pas de référence optimale mémorisée → pas de surcoût mesurable
+  if(!a.cpOptimal){
+    return { mesurable:false, surcout:0, hsSup:0, semaines:[] };
+  }
+  // Coût HS actuel (avec les choix du REX)
+  let coutActuel = coutHSTotal(a);
+  let coutOptimal = a.cpOptimalHSCost || 0;
+  let surcout = Math.max(0, Math.round(coutActuel - coutOptimal));
+
+  // Détail des semaines où le REX a dévié de l'optimum
+  let semaines = [];
+  needWeeks(a).forEach(function(w){
+    let reel = (+((a.presence[w.week]||{}).cp) || 0);
+    let opt = (+a.cpOptimal[w.week] || 0);
+    let ecart = Math.round((reel - opt) * 10) / 10;
+    if(Math.abs(ecart) >= 0.5){
+      semaines.push({
+        week: w.week,
+        mois: mainMonth(a, w.week),
+        optimal: opt,
+        reel: reel,
+        ecart: ecart
+      });
+    }
+  });
+
+  // Estimation des HS supplémentaires induites (en heures)
+  let hsSup = 0;
+  let cout = (+a.costHour||0) * (+a.hsCostRate||1.25);
+  if(cout > 0) hsSup = Math.round(surcout / cout);
+
+  return {
+    mesurable: true,
+    surcout: surcout,      // en euros
+    hsSup: hsSup,          // en heures
+    semaines: semaines,    // semaines déviées
+    coutActuel: Math.round(coutActuel),
+    coutOptimal: Math.round(coutOptimal)
+  };
 }
 
 function verrouilerMois(m) {
