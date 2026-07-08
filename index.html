@@ -1999,7 +1999,7 @@ const CG_GROUPS = [
 const panelsDR=[['validation','Mes agences'],['consolidation','Consolidation région'],['aide','Aide']];
 const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau'],['aide','Aide']];
 const agences=[
-  {nom:'ANGOULEME',zone:'A'},{nom:'COGNAC',zone:'A'},{nom:'CHATELLERAULT',zone:'A'},{nom:'PARTHENAY',zone:'A'},
+  {nom:'AGENCE DEMO',zone:'B'},{nom:'ANGOULEME',zone:'A'},{nom:'COGNAC',zone:'A'},{nom:'CHATELLERAULT',zone:'A'},{nom:'PARTHENAY',zone:'A'},
   {nom:'POITIERS',zone:'A'},{nom:'CLERMONT',zone:'A'},{nom:'DIJON',zone:'A'},{nom:'BOURG EN BRESSE',zone:'A'},
   {nom:'CHAMBERY',zone:'A'},{nom:'THYEZ',zone:'A'},{nom:'ANNECY',zone:'A'},{nom:'LIMOGES',zone:'A'},
   {nom:'BRIVE',zone:'A'},{nom:'TULLE',zone:'A'},{nom:'SAINT GILLES CROIX DE VIE',zone:'B'},
@@ -6556,16 +6556,18 @@ async function adminCreateUser() {
   const agence = role === 'rex' ? q('adminAgence').value : null;
   if (!nom || !email) { showAdminMsg('Nom et email obligatoires.', 'bad'); return; }
   if (role === 'rex' && (!agence || agence === '' || agence === '-- Choisir une agence --')) { showAdminMsg('Selectionnez une agence pour ce REX.', 'bad'); return; }
-  const {data: existing} = await sb.from('profiles').select('id').eq('email', email).single().catch(() => ({data:null}));
-  if (existing) { showAdminMsg('Un compte avec cet email existe deja.', 'bad'); return; }
-  // Échapper les apostrophes pour le SQL (D'ARGENTIN, O'BRIEN...)
+  // Vérification d'email existant : non bloquante (si Supabase ne répond pas, on continue quand même)
+  try {
+    const {data: existing} = await sb.from('profiles').select('id').eq('email', email).single().catch(() => ({data:null}));
+    if (existing) { showAdminMsg('Un compte avec cet email existe deja.', 'bad'); return; }
+  } catch(e) { /* on continue : la modale s'ouvrira quand même */ }
+  // Construire le SQL et ouvrir la modale
   const esc = function(s){ return String(s).replace(/'/g, "''"); };
   const nomSQL = esc(nom);
   const emailSQL = esc(email);
   const agenceField = agence ? ', agence' : '';
   const agenceVal = agence ? `, '${esc(agence)}'` : '';
   const sql = `INSERT INTO public.profiles (id, email, nom, role${agenceField})\nSELECT id, email, '${nomSQL}', '${role}'${agenceVal}\nFROM auth.users WHERE email = '${emailSQL}';`;
-  console.log('adminCreateUser: ouvre modale pour', nom, email, role, agence);
   showCreateModal(nom, email, sql);
 }
 
