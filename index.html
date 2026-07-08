@@ -857,9 +857,244 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 .synthCoutIcon{ font-size:22px; flex-shrink:0; }
 .synthCoutTitle{ font-size:15px; font-weight:700; color:var(--ink); }
 .synthCoutSub{ font-size:13px; color:var(--ink); margin-top:4px; line-height:1.5; }
+
+/* ═══ Courbe vivante de la charge (Présence & HS) ═══ */
+.chargeCurveBox{
+  padding:var(--sp-4); margin-bottom:var(--sp-4);
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+}
+.chargeCurveTitle{
+  font-size:14px; font-weight:700; color:var(--ink); margin-bottom:var(--sp-3);
+}
+.chargeCurveLegend{
+  display:flex; gap:var(--sp-4); flex-wrap:wrap; margin-top:var(--sp-3);
+  font-size:11px; color:var(--ink65);
+}
+.chargeCurveLegItem{ display:inline-flex; align-items:center; gap:6px; }
+.chargeCurveSwatch{
+  display:inline-block; width:12px; height:12px; border-radius:3px; flex-shrink:0;
+}
+.chargeCurveNote{
+  margin-top:var(--sp-3); padding:10px 14px;
+  background:var(--blue-light); border:1px solid var(--blue2);
+  border-radius:var(--radius-sm); font-size:12px; line-height:1.5; color:var(--ink);
+}
+
+/* ═══ Contrainte maladie (moyenne constante) ═══ */
+.sickRule{
+  display:flex; align-items:flex-start; gap:10px;
+  padding:12px 14px; margin-top:10px;
+  background:var(--violet-light); border:1px solid var(--violet2);
+  border-radius:var(--radius-sm); font-size:12.5px; line-height:1.5;
+}
+.sickRuleIcon{ font-size:18px; flex-shrink:0; }
+.sickCounter{
+  margin-top:10px; padding:12px 14px; border-radius:var(--radius-sm);
+  border:1px solid var(--border);
+}
+.sickCounter.ok{ background:var(--green-light); border-color:var(--green); }
+.sickCounter.warn{ background:var(--orange-light); border-color:var(--orange); }
+.sickCounterMain{ font-size:14px; color:var(--ink); }
+.sickCounterSub{ font-size:12px; color:var(--ink); margin-top:3px; }
+.sickRebalanceBtn{
+  width:auto; margin-top:10px; padding:8px 16px;
+  background:var(--orange); color:#fff; border:none; font-size:13px; font-weight:600;
+}
+
+/* ═══ Répartition HS 25/50 ═══ */
+.hs50Rule{
+  display:flex; align-items:flex-start; gap:10px;
+  padding:12px 14px; margin-bottom:12px;
+  background:var(--blue-light); border:1px solid var(--blue2);
+  border-radius:var(--radius-sm); font-size:12.5px; line-height:1.5;
+}
+.hs50RuleIcon{ font-size:18px; flex-shrink:0; }
+
+/* ═══════════════════════════════════════════════════════════
+   PAGE DE VISION SOMA (manifeste plein écran)
+   ═══════════════════════════════════════════════════════════ */
+.visionOverlay{
+  position:fixed; inset:0; z-index:1000;
+  background:#080D14;
+  display:flex; align-items:flex-start; justify-content:center;
+  overflow-y:auto; padding:60px 24px;
+  animation:visionFade .5s ease;
+}
+@keyframes visionFade{ from{opacity:0;} to{opacity:1;} }
+.visionInner{
+  max-width:680px; width:100%;
+  padding-bottom:40px;
+}
+.visionBrand{
+  font-family:'Space Grotesk',sans-serif; font-weight:700;
+  font-size:22px; letter-spacing:.02em; color:#fff;
+  text-align:center; margin-bottom:6px;
+}
+.visionBrand::after{
+  content:''; display:block; width:28px; height:2px;
+  background:#4A9EFF; margin:10px auto 0; border-radius:2px;
+  box-shadow:0 0 12px rgba(74,158,255,.6);
+}
+.visionKicker{
+  text-align:center; font-size:11px; letter-spacing:.25em;
+  text-transform:uppercase; color:rgba(255,255,255,.4);
+  margin-bottom:48px;
+}
+.visionH1{
+  font-family:'Space Grotesk',sans-serif; font-weight:600;
+  font-size:30px; line-height:1.25; color:#fff;
+  margin:0 0 24px; letter-spacing:-.01em;
+}
+.visionH2{
+  font-family:'Space Grotesk',sans-serif; font-weight:600;
+  font-size:24px; line-height:1.3; color:#fff;
+  margin:48px 0 20px; letter-spacing:-.01em;
+}
+.visionP{
+  font-size:16px; line-height:1.75; color:rgba(255,255,255,.78);
+  margin:0 0 20px;
+}
+.visionSign{
+  font-family:'Space Grotesk',sans-serif; font-style:italic;
+  font-size:16px; color:rgba(255,255,255,.55);
+  margin-top:40px; text-align:right;
+}
+.visionBtn{
+  display:block; width:auto; margin:56px auto 0;
+  padding:15px 40px;
+  background:#4A9EFF; color:#fff; border:none; border-radius:10px;
+  font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:600;
+  cursor:pointer; transition:all .2s ease;
+  box-shadow:0 4px 20px rgba(74,158,255,.35);
+}
+.visionBtn:hover{ background:#3d8ae6; transform:translateY(-1px); box-shadow:0 6px 26px rgba(74,158,255,.45); }
+
+/* Lien discret de retour vers la vision */
+.visionLink{
+  display:inline-block; margin-top:20px;
+  font-size:12px; color:var(--ink30); cursor:pointer;
+  text-decoration:none; transition:color .2s ease;
+}
+.visionLink:hover{ color:var(--blue); text-decoration:underline; }
+
+/* ═══ Pictogrammes « pourquoi » ═══ */
+.pourquoiPicto{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:16px; height:16px; margin-left:7px;
+  border-radius:50%; border:1px solid var(--border2);
+  color:var(--ink30); font-size:10px; font-weight:700;
+  cursor:pointer; vertical-align:middle; user-select:none;
+  transition:all .2s ease;
+}
+.pourquoiPicto:hover{ border-color:var(--blue); color:var(--blue); background:var(--blue-light); }
+.pourquoiBulle{
+  position:fixed; z-index:1200;
+  background:var(--card); border:1px solid var(--border2);
+  border-radius:12px; padding:16px 18px;
+  box-shadow:0 12px 40px rgba(0,0,0,.4);
+  animation:visionFade .2s ease;
+}
+.pourquoiTitre{
+  font-family:'Space Grotesk',sans-serif; font-weight:600;
+  font-size:13px; color:var(--ink); margin-bottom:8px; line-height:1.4;
+}
+.pourquoiTexte{ font-size:12.5px; line-height:1.6; color:var(--ink65); }
+.pourquoiFooter{
+  margin-top:12px; padding-top:8px; border-top:1px solid var(--border);
+  font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink30);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FICHE DE DÉCISIONS (écran de validation)
+   ═══════════════════════════════════════════════════════════ */
+.ficheDepart{
+  padding:10px 14px; margin-bottom:var(--sp-3);
+  background:var(--bg3); border-radius:var(--radius-sm);
+  font-size:13px; color:var(--ink65); line-height:1.5;
+}
+.ficheDepartLabel, .ficheConseqLabel{
+  font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--ink30); margin-right:6px;
+}
+.ficheLignes{
+  border:1px solid var(--border); border-radius:var(--radius);
+  overflow:hidden; margin-bottom:var(--sp-3);
+}
+.ficheLigne{
+  display:grid; grid-template-columns:150px 1fr; gap:4px 16px;
+  padding:12px 16px; border-bottom:1px solid var(--border);
+  align-items:baseline;
+}
+.ficheLigne:last-child{ border-bottom:none; }
+.ficheLigneTitre{
+  font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--ink65);
+}
+.ficheLigneVal{ font-size:14px; color:var(--ink); }
+.ficheVerdict{
+  grid-column:2; font-size:12px; line-height:1.4; margin-top:2px;
+  display:flex; align-items:flex-start; gap:5px;
+}
+.ficheVerdict.ok{ color:var(--green); }
+.ficheVerdict.warn{ color:#B26A00; }
+.ficheVerdict.choix{ color:var(--blue); }
+.ficheVerdict.neutre{ color:var(--ink30); }
+.ficheConseq{
+  padding:12px 16px;
+  background:var(--card2); border:1px solid var(--border2); border-radius:var(--radius-sm);
+  font-size:14px; color:var(--ink); line-height:1.5;
+}
+
+/* ═══ Bandeau de simulation (admin testant un rôle) ═══ */
+.simBanner{
+  position:fixed; top:0; left:0; right:0; z-index:350;
+  display:flex; align-items:center; gap:var(--sp-3);
+  padding:10px var(--sp-5);
+  background:var(--orange); color:#fff;
+  font-size:13px; font-weight:600;
+  box-shadow:0 2px 12px rgba(0,0,0,.3);
+}
+.simBannerDot{ width:8px; height:8px; border-radius:50%; background:#fff; animation:pulse 2s infinite; }
+.simBanner button{
+  width:auto; margin:0 0 0 auto; padding:6px 14px;
+  background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.5);
+  font-size:12px; font-weight:600;
+}
+.simBanner button:hover{ background:rgba(255,255,255,.3); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head><body>
+
+<!-- PAGE DE VISION SOMA (premier lancement + accessible ensuite) -->
+<div id="visionOverlay" class="visionOverlay" style="display:none">
+  <div class="visionInner">
+    <div class="visionBrand">SOMA</div>
+    <div class="visionKicker">La méthode</div>
+
+    <h1 class="visionH1">Une méthode construite à partir du terrain</h1>
+    <p class="visionP">SOMA n'est pas né d'un logiciel. Il est né de mon expérience.</p>
+    <p class="visionP">Pendant plusieurs années, j'ai construit et fait évoluer un système sur Excel pour bâtir les budgets de nos agences de transport sanitaire. À force de le corriger, de l'affiner, de le confronter au réel, cet outil est devenu bien plus qu'un tableur : une méthode.</p>
+    <p class="visionP">SOMA est l'aboutissement de ce travail. Il rassemble cette méthode, la structure, et la met au service de tous ceux qui construisent un budget d'agence.</p>
+
+    <h2 class="visionH2">La vision SOMA</h2>
+    <p class="visionP">Un bon budget n'est pas le budget le moins cher. C'est le budget le plus réaliste au regard des contraintes opérationnelles.</p>
+    <p class="visionP">Le meilleur planning n'est pas celui qui supprime toutes les heures supplémentaires. Un budget sans aucune marge est un budget rigide, incapable d'absorber la réalité. Les heures supplémentaires ne sont pas une faute : ce sont une réserve de souplesse, à condition de rester maîtrisées.</p>
+    <p class="visionP">La meilleure décision n'est pas toujours la plus rentable. Un responsable peut choisir d'accorder des congés au bon moment pour son équipe, même si ce n'est pas l'optimum mathématique. SOMA ne juge pas ce choix : il le rend visible, il le chiffre, et il permet de l'assumer.</p>
+    <p class="visionP">SOMA ne cherche pas à décider à la place des responsables qui font tourner les agences. Il cherche à éclairer leurs décisions. Il calcule ce qui peut l'être, il montre ce qui compte, et il laisse à chacun la responsabilité de l'arbitrage entre la performance, la souplesse et les contraintes du terrain.</p>
+    <p class="visionP">C'est cela, SOMA : une méthode née du terrain, devenue un outil, pour aider les responsables à mieux décider.</p>
+
+    <div class="visionSign">Frédéric Cavé</div>
+
+    <button class="visionBtn" onclick="closeVision()">Commencer à utiliser SOMA</button>
+  </div>
+</div>
+
+<!-- BANDEAU DE SIMULATION (admin testant un autre rôle) -->
+<div id="simBanner" class="simBanner" style="display:none">
+  <span class="simBannerDot"></span>
+  <span id="simBannerText"></span>
+  <button onclick="simulerRole('admin')">↩ Revenir à l'administration</button>
+</div>
 
 <!-- PARTICULES -->
 <div id="particles"></div>
@@ -873,10 +1108,10 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     </div>
     <div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:400;color:rgba(255,255,255,.55);margin-bottom:40px">Construction budgétaire · 2027</div>
     <div class="authTagline">
-      <div class="authTag"><span class="dot"></span>Saisie guidée étape par étape</div>
-      <div class="authTag"><span class="dot"></span>Circuit de validation 5 niveaux</div>
+      <div class="authTag"><span class="dot"></span>Une méthode née du terrain</div>
+      <div class="authTag"><span class="dot"></span>Circuit de validation collégial</div>
       <div class="authTag"><span class="dot"></span>Consolidation réseau en temps réel</div>
-      <div class="authTag"><span class="dot"></span>Accès sécurisé par rôle</div>
+      <div class="authTag"><span class="dot"></span>L'intelligence métier au service de la décision</div>
     </div>
   </div>
   <div class="authCard">
@@ -984,6 +1219,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <div><label>&nbsp;</label><button onclick="openAgency()">Valider</button></div>
       <div><label>&nbsp;</label><button class="secondary" id="btnHorsRef" onclick="addAgency()">Agence hors référentiel</button></div>
     </div>
+    <a class="visionLink" onclick="showVision(false)">La vision de SOMA</a>
   </div>
   <div class="card" id="budgetVersionBar" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
@@ -1167,6 +1403,14 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <span class="objInsightIcon">💬</span>
       <span class="objInsightText" id="rhInsightText"></span>
     </div>
+
+    <!-- Courbe vivante de la charge (HS par personne présente) : l'indicateur roi -->
+    <div id="chargeCurveBox" class="chargeCurveBox" style="display:none">
+      <div class="chargeCurveTitle">Charge des équipes présentes sur l'année <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'lissage')" title="Pourquoi cette règle ?">?</span> <span style="font-weight:400;color:var(--ink65);font-size:12px">— heures supplémentaires par personne, semaine par semaine</span></div>
+      <div id="chargeCurve"></div>
+      <div class="chargeCurveLegend" id="chargeCurveLegend"></div>
+      <div class="chargeCurveNote" id="chargeCurveNote"></div>
+    </div>
     <!-- Compteur CP + action SOMA -->
     <div id="cpCounter" style="padding:10px 14px;border:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--bg3);border-radius:var(--radius-sm);margin-top:var(--sp-3)">
       <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">CP générés </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
@@ -1203,6 +1447,20 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <div class="objCollapseBody">
       <div class="tablewrap"><table id="sickTable"></table></div>
       <div id="sickAlert" style="margin-top:8px"></div>
+    </div>
+  </details>
+
+  <details class="objCollapse" id="collapseHS50" open>
+    <summary>Répartition des heures supplémentaires (25% / 50%) <span class="pourquoiPicto" onclick="event.stopPropagation();ouvrirPourquoi(event,'hs50')" title="Pourquoi cette règle ?">?</span></summary>
+    <div class="objCollapseBody">
+      <div class="hs50Rule">
+        <span class="hs50RuleIcon">⏱️</span>
+        <div>Les 8 premières heures supplémentaires par semaine et par salarié sont majorées à <b>+25%</b>, au-delà à <b>+50%</b>.
+        Indiquez, pour chaque mois, la <b>part de vos heures supplémentaires qui part à +50%</b> — d'après la réalité de votre agence.
+        Beaucoup d'agences restent à <b>0%</b> toute l'année : c'est normal, tant que les heures supp restent réparties.</div>
+      </div>
+      <div class="tablewrap"><table id="hs50Table"></table></div>
+      <div id="hs50Info" style="margin-top:8px"></div>
     </div>
   </details>
 
@@ -1491,7 +1749,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <div class="synthCoutHead">
         <span class="synthCoutIcon" id="synthCoutIcon"></span>
         <div>
-          <div class="synthCoutTitle" id="synthCoutTitle"></div>
+          <div class="synthCoutTitle" id="synthCoutTitle"></div><span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'coutchoix')" title="Pourquoi cette règle ?" style="margin-top:2px">?</span>
           <div class="synthCoutSub" id="synthCoutSub"></div>
         </div>
       </div>
@@ -1833,6 +2091,106 @@ function roleLabel(r) {
 // ═══════════════════════════════════════════════
 // SETUP UI SELON ROLE
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// PICTOGRAMMES « POURQUOI » — transmettre l'intelligence métier
+// Chaque explication dit POURQUOI la règle existe, jamais comment l'utiliser.
+// ═══════════════════════════════════════════════════════════
+const POURQUOI = {
+  conges: {
+    titre: 'Pourquoi SOMA répartit les congés ?',
+    texte: 'Il n\'y a pas assez de semaines de vacances scolaires pour écouler tous les congés sans mettre en difficulté l\'activité. SOMA répartit les congés sur l\'année pour éviter que trop de personnes s\'absentent en même temps, tout en respectant les périodes légales de prise de congés.'
+  },
+  lissage: {
+    titre: 'Pourquoi lisser les heures supplémentaires ?',
+    texte: 'Une charge régulière est plus tenable qu\'une alternance de semaines vides et de semaines sous tension. En répartissant les congés là où l\'activité le permet, SOMA cherche à garder un recours aux heures supplémentaires stable — pour que la charge des équipes présentes reste équitable toute l\'année.'
+  },
+  hs50: {
+    titre: 'Pourquoi distinguer les heures à 25% et à 50% ?',
+    texte: 'Au-delà de huit heures supplémentaires par semaine, une heure coûte 50% de plus au lieu de 25%. Deux agences avec le même volume d\'heures supplémentaires peuvent donc avoir des coûts très différents. Rendre cette bascule visible permet de connaître le vrai coût de production, et d\'agir dessus.'
+  },
+  reserve: {
+    titre: 'Pourquoi viser une réserve d\'heures supplémentaires plutôt que zéro ?',
+    texte: 'L\'activité réelle ne sera jamais exactement celle du budget. Une réserve d\'environ 10% d\'heures supplémentaires permet d\'absorber une hausse d\'activité sans basculer immédiatement dans les heures les plus chères, et une baisse sans dégrader la productivité. Zéro heure supplémentaire n\'est pas un objectif : c\'est une rigidité.'
+  },
+  calculs: {
+    titre: 'Pourquoi SOMA calcule-t-il à votre place ?',
+    texte: 'Les arbitrages de présence, de congés et de coûts sont trop nombreux pour être tenus de tête. SOMA fait les calculs pour vous laisser du temps pour ce qui compte vraiment : décider. Vous gardez toujours la main sur les choix ; SOMA se charge de vous en montrer les conséquences.'
+  },
+  coutchoix: {
+    titre: 'Pourquoi SOMA affiche-t-il un « coût du choix » ?',
+    texte: 'Vous pouvez choisir de répartir les congés autrement que ce que le calcul suggère — pour le climat social, pour votre équipe. Ce choix a parfois un coût. SOMA le chiffre non pour vous en dissuader, mais pour que vous puissiez l\'assumer et le justifier en toute transparence.'
+  }
+};
+
+// Génère le HTML d'un pictogramme (à insérer à côté d'un titre de fonctionnalité)
+function pourquoiPicto(cle){
+  return '<span class="pourquoiPicto" onclick="ouvrirPourquoi(event,\''+cle+'\')" title="Pourquoi cette règle ?">?</span>';
+}
+
+// Ouvre la bulle explicative près du pictogramme
+function ouvrirPourquoi(ev, cle){
+  ev.stopPropagation();
+  fermerPourquoi();
+  let data = POURQUOI[cle];
+  if(!data) return;
+  let bulle = document.createElement('div');
+  bulle.id = 'pourquoiBulle';
+  bulle.className = 'pourquoiBulle';
+  bulle.innerHTML = '<div class="pourquoiTitre">'+data.titre+'</div>'
+    + '<div class="pourquoiTexte">'+data.texte+'</div>'
+    + '<div class="pourquoiFooter">SOMA · la méthode</div>';
+  document.body.appendChild(bulle);
+  // Positionner près du picto cliqué
+  let r = ev.target.getBoundingClientRect();
+  let bw = 320;
+  let left = Math.min(r.left, window.innerWidth - bw - 16);
+  let top = r.bottom + 8;
+  // Si trop bas, afficher au-dessus
+  if(top + 200 > window.innerHeight){ top = Math.max(8, r.top - 8 - 200); }
+  bulle.style.left = Math.max(8,left) + 'px';
+  bulle.style.top = top + 'px';
+  bulle.style.width = bw + 'px';
+  // Fermer au clic ailleurs
+  setTimeout(function(){ document.addEventListener('click', fermerPourquoi, {once:true}); }, 10);
+}
+function fermerPourquoi(){
+  let b = q('pourquoiBulle');
+  if(b) b.remove();
+}
+
+// ═══════════════════════════════════════════════════════════
+// PAGE DE VISION SOMA — affichée au premier lancement (par utilisateur)
+// ═══════════════════════════════════════════════════════════
+function visionKey(){
+  return 'soma_vision_vue_' + (PROFILE && PROFILE.id ? PROFILE.id : 'anon');
+}
+function maybeShowVision(){
+  // Afficher seulement si jamais vue par cet utilisateur
+  try{
+    if(localStorage.getItem(visionKey()) === '1') return;
+  }catch(e){}
+  showVision(true);
+}
+function showVision(firstTime){
+  let ov = q('visionOverlay');
+  if(!ov) return;
+  ov.style.display = 'flex';
+  ov.scrollTop = 0;
+  let inner = ov.querySelector('.visionInner');
+  if(inner) inner.scrollTop = 0;
+  // Le bouton dit "Commencer" au premier lancement, "Fermer" ensuite
+  let btn = ov.querySelector('.visionBtn');
+  if(btn) btn.textContent = firstTime ? 'Commencer à utiliser SOMA' : 'Fermer';
+  document.body.style.overflow = 'hidden';
+}
+function closeVision(){
+  let ov = q('visionOverlay');
+  if(ov) ov.style.display = 'none';
+  document.body.style.overflow = '';
+  // Mémoriser que cet utilisateur a vu la vision
+  try{ localStorage.setItem(visionKey(), '1'); }catch(e){}
+}
+
 function setupUI() {
   const role = PROFILE.role;
   // Afficher/masquer le switch de rôle (uniquement pour CG)
@@ -1867,6 +2225,8 @@ function setupUI() {
     show('admin');
     renderAdmin();
   }
+
+  maybeShowVision();
 }
 
 // ═══════════════════════════════════════════════
@@ -2141,6 +2501,18 @@ async function soumettreBudget() {
   if (!BUDGET_ID) { alert('Sauvegardez d\'abord le budget avant de le soumettre.'); return; }
   // La version active devient la version soumise (référence pour les valideurs)
   let vLabel = VERSION_LABELS[ACTIVE_VERSION] || 'V1';
+  // Alerte douce : moyenne d'absentéisme éloignée de la cible du CG
+  let _a = A();
+  if(_a && _a.sick && _a.targetAbsRate!==null && _a.targetAbsRate!==undefined){
+    let _filled = _a.sick.filter(function(v){return v!==null&&v!==undefined;});
+    if(_filled.length){
+      let _avg = _filled.reduce(function(s,v){return s+(+v||0);},0)/_filled.length;
+      let _diff = Math.abs(_avg - (+_a.targetAbsRate||0));
+      if(_diff > 0.1){
+        if(!confirm('Attention : votre taux d\'absentéisme moyen ('+pct(_avg)+') s\'écarte de la référence du contrôle de gestion ('+pct(_a.targetAbsRate)+').\n\nVous pouvez le rééquilibrer avant de soumettre (bouton « Rééquilibrer automatiquement » sur l\'écran Présence).\n\nSoumettre quand même ?')) return;
+      }
+    }
+  }
   if (!confirm('Soumettre la version '+vLabel+' au Directeur Régional ?\n\nCette version deviendra le budget officiel. Vous ne pourrez plus le modifier tant qu\'il est en validation.')) return;
   // Marquer la version active comme soumise et sauvegarder
   BUDGET_META.submittedVersion = ACTIVE_VERSION;
@@ -2432,16 +2804,17 @@ function simulerRole(role) {
     PROFILE = {..._originalProfile};
     _originalProfile = null;
     if (q('simulationBadge')) q('simulationBadge').style.display = 'none';
+    if (q('simBanner')) q('simBanner').style.display = 'none';
   } else {
     PROFILE = {...PROFILE, role};
-    if (q('simulationBadge')) {
-      let labels = {rex:'REX Exploitation',cg:'Controleur de gestion',dr:'Dir. Regional',df:'Dir. Financier',dg:'Dir. General',pdg:'PDG'};
-      q('simulationBadge').style.display = '';
-      q('simulationBadge').textContent = 'Simulation : vue ' + (labels[role]||role) + '. Cliquez Revenir Admin pour reprendre.';
+    let labels = {rex:'REX Exploitation',cg:'Contrôleur de gestion',dr:'Directeur Régional',df:'Directeur Financier',dg:'Directeur Général',pdg:'PDG'};
+    // Bandeau flottant global : visible sur tous les écrans
+    if (q('simBanner') && q('simBannerText')) {
+      q('simBanner').style.display = 'flex';
+      q('simBannerText').textContent = 'Vous testez la vue « ' + (labels[role]||role) + ' »';
     }
   }
   setupUI();
- setupUI();
 }
 
 function toggleAdminAgence() {
@@ -2594,7 +2967,7 @@ function refs(){return Array.from({length:12},()=>({semaine:null,vacances:null,s
 function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,cgLocked:false,tauxAbsImproductif:null,hsImproductif:{},repasRoulant:{},repasNonRoulant:{},idjfRoulant:{},idjfNonRoulant:{},
   // Calendrier des périodes de paie 2027
   // Format : [{mois:'Janvier', debut:'2026-12-07', fin:'2027-01-10', semaines:5}...]
-  periodesPaie:null,variablesDec2026:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),tauxHoraireBrut:null,tauxChargePatronal:null,costHour:null,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
+  periodesPaie:null,variablesDec2026:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),hs50:Array(12).fill(null),tauxHoraireBrut:null,tauxChargePatronal:null,costHour:null,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'?'annual':'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
 function A(){return S.agencies[S.active]}
 function between(d,s,e){return d>=s&&d<=e}
 function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
@@ -2671,7 +3044,7 @@ function hsRows(a){
 // Version sans dépendance circulaire (utilisée par hsRows lui-même)
 function refAgenceSeuilsBase(a) {
   let baseHebdo = baseH(a);
-  let coutHSRef = baseHebdo * (+a.costHour||28.5) * (+a.hsCostRate||1.25);
+  let coutHSRef = baseHebdo * (+a.costHour||28.5) * coefHSMoyen(a);
   return {
     coutHSRef,
     seuilFaible: coutHSRef * 0.10,
@@ -2694,7 +3067,7 @@ function payrollMonthCivil(a,m){
     let daysMonth=a.cal.filter(d=>d.week===r.week&&d.month===m).length;
     if(!daysMonth)return s;
     let ratio=daysMonth/daysWeek;
-    let weeklyCost=(r.av*(+a.costHour||0))+(r.hs*(+a.costHour||0)*(+a.hsCostRate||1.25));
+    let weeklyCost=(r.av*(+a.costHour||0))+(r.hs*(+a.costHour||0)*coefHSMois(a,mainMonth(a,r.week)));
     return s+weeklyCost*ratio;
   },0);
   // MS improductifs (régulateurs, REX, responsables) : coût journalier x jours travaillés
@@ -2717,7 +3090,7 @@ function payrollMonthCivil(a,m){
     let daysWeek=a.cal.filter(d=>d.week===w).length||7;
     let daysMonth=a.cal.filter(d=>d.week===w&&d.month===m).length;
     let ratio=daysMonth/daysWeek;
-    msHSImproductif += hs * coutHoraireImproductif(a) * (+a.hsCostRate||1.25) * ratio;
+    msHSImproductif += hs * coutHoraireImproductif(a) * coefHSMois(a,m) * ratio;
   });
   // Indemnités repas (roulants + non-roulants) : semaines rattachées au mois, pro-rata jours
   let repasMois = 0;
@@ -3206,7 +3579,7 @@ function cgDashItem(level, text, panel, action){
 function cgDashItemAgence(level, nom, text){
   let icon = level==='warn'?'⚠':'○';
   let iconCls = level==='warn'?'warn':'todo';
-  return '<button class="attentionItem" style="border:1px solid var(--border);margin-bottom:6px;width:100%" onclick="cgOpenAgence(\''+nom.replace(/'/g,"\\'")+'\')">'
+  return '<button class="attentionItem" style="border:1px solid var(--border);margin-bottom:6px;width:100%" onclick="cgOpenAgence(\''+nom.replace(/'/g,"\'")+'\')">'
     + '<span class="attentionItemIcon '+iconCls+'">'+icon+'</span>'
     + '<span class="attentionItemText"><b>'+nom+'</b> — '+text+'</span>'
     + '<span class="attentionItemArrow">voir →</span>'
@@ -3399,13 +3772,159 @@ function renderRefusREX(){
   }
 }
 
+// Construit la fiche des décisions opérationnelles du REX (pour le valideur)
+// Chaque décision est jugée par rapport à une référence FIABLE :
+// médiane réseau, historique de l'agence, absentéisme RH 2026.
+function ficheDecisions(d, agenceNom){
+  // ── Données du budget ──
+  let ca = ann(d,"Chiffre d'affaires") || 0;
+  let histCA = +d.histCA || 0;           // CA réalisé 2026
+  let targetCA = +d.targetCA || ca || 0;
+  let net = ann(d,"RESULTAT NET") || 0;
+  let ms = ann(d,"Charges de personnel") || 0;
+  let tauxMS = ca ? Math.round(ms/ca*100) : 0;
+  let nbRoulants = d.employees ? d.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
+
+  // Absentéisme : moyenne des taux mensuels vs référence RH 2026
+  let absRef = (d.targetAbsRate!==null && d.targetAbsRate!==undefined) ? +d.targetAbsRate : null;
+  let sickFilled = (d.sick||[]).filter(function(v){return v!==null&&v!==undefined;});
+  let absMoy = sickFilled.length ? sickFilled.reduce(function(s,v){return s+(+v||0);},0)/sickFilled.length : null;
+
+  // HS moyennes par salarié roulant/semaine + coût total
+  let hsAnn = 0;
+  try { hsAnn = hsTot(d).hs; } catch(e){}
+  let hsParSalSem = (nbRoulants>0) ? (hsAnn / nbRoulants / 52) : 0;
+
+  // Part des HS à 50% (moyenne annuelle)
+  let hs50Filled = (d.hs50||[]).filter(function(v){return v!==null&&v!==undefined;});
+  let hs50Moy = hs50Filled.length ? hs50Filled.reduce(function(s,v){return s+(+v||0);},0)/hs50Filled.length : 0;
+
+  // Coût du choix REX
+  let choix = null;
+  try { choix = coutDuChoixREX(d); } catch(e){}
+
+  // Croissance CA vs historique
+  let croissance = (histCA>0) ? ((targetCA - histCA)/histCA*100) : null;
+
+  // ── Médiane réseau (croissance CA et HS/salarié des autres agences) ──
+  let medCroissance = null, medHSsal = null;
+  try {
+    let croissances = [], hsSals = [];
+    (S.agencies||[]).forEach(function(a){
+      if(a.name === agenceNom) return;
+      let aCA = ann(a,"Chiffre d'affaires")||0, aHist = +a.histCA||0;
+      if(aHist>0 && aCA>0) croissances.push((aCA-aHist)/aHist*100);
+      let aRoul = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
+      if(aRoul>0){ let ah=0; try{ah=hsTot(a).hs;}catch(e){} hsSals.push(ah/aRoul/52); }
+    });
+    if(croissances.length) medCroissance = median(croissances);
+    if(hsSals.length) medHSsal = median(hsSals);
+  } catch(e){}
+
+  return {
+    ca, histCA, targetCA, net, tauxMS, nbRoulants, croissance, medCroissance,
+    absRef, absMoy, hsParSalSem, medHSsal, hs50Moy, choix,
+    activites: [d.actSan!==false?'sanitaire':null, d.actSai?'saisonnier':null, d.actTP?'transport de personnes':null].filter(Boolean)
+  };
+}
+
+// Génère le HTML de la fiche des décisions (3 blocs : départ, décisions, conséquence)
+function ficheDecisionsHTML(d, agenceNom){
+  let f = ficheDecisions(d, agenceNom);
+
+  // ── Bloc 1 : point de départ ──
+  let depart = '<div class="ficheDepart">'
+    + '<span class="ficheDepartLabel">Point de départ</span> '
+    + (f.histCA>0 ? 'CA réalisé 2026 : <b>'+euro(f.histCA)+'</b> · ' : '')
+    + '<b>'+f.nbRoulants+'</b> salariés roulants · '
+    + (f.activites.length ? 'activité '+f.activites.join(' + ') : 'activité sanitaire')
+    + '</div>';
+
+  // ── Bloc 2 : décisions ──
+  function ligne(titre, valeur, verdict, type){
+    // type : 'ok' (vert), 'warn' (ambre), 'choix' (bleu), 'neutre' (gris)
+    let icon = type==='warn'?'⚠':type==='choix'?'◆':type==='ok'?'✓':'·';
+    let cls = 'ficheVerdict '+(type||'neutre');
+    return '<div class="ficheLigne">'
+      + '<div class="ficheLigneTitre">'+titre+'</div>'
+      + '<div class="ficheLigneVal">'+valeur+'</div>'
+      + (verdict ? '<div class="'+cls+'"><span>'+icon+'</span> '+verdict+'</div>' : '')
+      + '</div>';
+  }
+
+  let lignes = '';
+
+  // Ambition commerciale
+  let caVal = 'Vise '+(f.croissance!==null?(f.croissance>=0?'+':'')+f.croissance.toFixed(1)+'% ':'')+'('+euro(f.targetCA)+')';
+  let caVerdict = '';
+  if(f.croissance!==null && f.medCroissance!==null){
+    caVerdict = 'Croissance vs 2026 ; médiane réseau : '+(f.medCroissance>=0?'+':'')+f.medCroissance.toFixed(1)+'%';
+  } else if(f.croissance!==null){
+    caVerdict = 'Croissance par rapport à son réalisé 2026';
+  }
+  lignes += ligne('Ambition commerciale', caVal, caVerdict, 'neutre');
+
+  // Effectif
+  lignes += ligne('Effectif', '<b>'+f.nbRoulants+'</b> salariés roulants intégrés', 'Mis en regard de la hausse de CA visée', 'neutre');
+
+  // Absentéisme (verdict net si référence RH disponible)
+  if(f.absMoy!==null){
+    let absVal = 'Table sur <b>'+pct(f.absMoy)+'</b>';
+    let absVerdict = '', absType = 'neutre';
+    if(f.absRef!==null){
+      let ecart = f.absMoy - f.absRef;
+      if(ecart < -0.3){
+        absVerdict = 'Optimiste : l\'absentéisme maladie + AT 2026 (service RH) était de '+pct(f.absRef);
+        absType = 'warn';
+      } else if(ecart > 0.3){
+        absVerdict = 'Prudent : supérieur à l\'absentéisme maladie + AT 2026 (service RH) de '+pct(f.absRef);
+        absType = 'ok';
+      } else {
+        absVerdict = 'Conforme à l\'absentéisme maladie + AT 2026 (service RH) : '+pct(f.absRef);
+        absType = 'ok';
+      }
+    }
+    lignes += ligne('Absentéisme maladie', absVal, absVerdict, absType);
+  }
+
+  // Heures supplémentaires
+  let hsVal = '<b>'+f.hsParSalSem.toFixed(1)+' h</b>/semaine par salarié roulant';
+  let hsVerdict = (f.medHSsal!==null) ? 'Médiane réseau : '+f.medHSsal.toFixed(1)+' h/semaine' : '';
+  lignes += ligne('Heures supplémentaires', hsVal, hsVerdict, 'neutre');
+
+  // Structure des HS (part 50%)
+  if(f.hs50Moy > 0){
+    lignes += ligne('Structure des HS', '<b>'+pct(f.hs50Moy)+'</b> des heures à +50%',
+      'Cette part augmente le coût moyen des heures supplémentaires', 'warn');
+  } else {
+    lignes += ligne('Structure des HS', 'Toutes les heures à +25%',
+      'Répartition saine, pas de bascule dans les heures chères', 'ok');
+  }
+
+  // Arbitrage social (coût du choix)
+  if(f.choix && f.choix.mesurable && f.choix.surcout > 0){
+    lignes += ligne('Arbitrage social',
+      'Congés déplacés hors optimum · surcoût <b>'+euro(f.choix.surcout)+'</b>',
+      'Choix humain assumé, à valider', 'choix');
+  }
+
+  // ── Bloc 3 : conséquence ──
+  let conseq = '<div class="ficheConseq">'
+    + '<span class="ficheConseqLabel">Résultat de ces choix</span> '
+    + 'Résultat net : <b>'+euro(f.net)+'</b>'+(f.ca?' ('+pct(f.net/f.ca*100)+' du CA)':'')+' · '
+    + 'MS/CA : <b>'+f.tauxMS+'%</b>'
+    + '</div>';
+
+  return depart + '<div class="ficheLignes">' + lignes + '</div>' + conseq;
+}
+
 function validationCard(it, role){
   let d = it.d || {};
   let ca = ann(d,"Chiffre d'affaires") || (d.cal&&d.cal.length?d.cal.reduce(function(s,x){return s+(x.total||0);},0):0);
   let net = ann(d,"RESULTAT NET") || 0;
   let ms = ann(d,"Charges de personnel") || 0;
   let tauxMS = ca ? Math.round(ms/ca*100) : 0;
-  let safe = it.agence.replace(/'/g, "\\'");
+  let safe = it.agence.replace(/'/g, "\'");
 
   // Historique de refus éventuel
   let refusAnterieur = '';
@@ -3424,11 +3943,7 @@ function validationCard(it, role){
     +   '<div class="valCardTitle">'+it.agence+' 2027</div>'
     +   '<button class="valCardDetail" onclick="consulterBudget(\''+safe+'\')">▸ Voir tous les écrans</button>'
     + '</div>'
-    + '<div class="valCardKpis">'
-    +   '<span><b>CA</b> '+euro(ca)+'</span>'
-    +   '<span><b>Résultat</b> '+euro(net)+'</span>'
-    +   '<span><b>MS/CA</b> '+tauxMS+'%</span>'
-    + '</div>'
+    + ficheDecisionsHTML(it.d || {}, it.agence)
     + (it.updated ? '<div class="valCardMeta">Mis à jour le '+new Date(it.updated).toLocaleDateString('fr-FR')+'</div>' : '')
     + refusAnterieur
     + '<label class="valCardCommentLabel">Commentaire (obligatoire)</label>'
@@ -4383,39 +4898,188 @@ function renderTeam(){
     }
   }
 }
+function renderChargeCurve(a){
+  let box = q('chargeCurveBox');
+  if(!box) return;
+  let nbRoulants = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
+  if(nbRoulants === 0 || !(+a.targetCA>0 && +a.targetTXR>0)){
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+
+  // Données : HS/personne par semaine
+  let weeks = needWeeks(a);
+  let pts = weeks.map(function(w){
+    let hp = hsParPersonne(a, w.week);
+    return { week:w.week, mois:mainMonth(a,w.week), ratio:hp.ratio, hs:hp.hs, etp:hp.etp };
+  });
+  if(!pts.length){ box.style.display='none'; return; }
+
+  // Enveloppes légales (pour les 3 zones colorées)
+  function envOf(mois){
+    if([5,6,7,8,9].indexOf(mois)>=0) return 0;      // juin-oct
+    if([10,11,0].indexOf(mois)>=0) return 1;         // nov-jan
+    return 2;                                         // fév-mai
+  }
+  let envColors = ['rgba(139,127,255,.10)','rgba(45,212,191,.10)','rgba(245,158,11,.10)'];
+  let envNames = ['Juin–Octobre (60% des congés)','Nov–Janvier (20%)','Février–Mai (20%)'];
+
+  // Dimensions
+  let W = 900, H = 220, padL = 44, padR = 16, padT = 16, padB = 28;
+  let plotW = W - padL - padR, plotH = H - padT - padB;
+  let maxRatio = Math.max.apply(null, pts.map(function(p){return p.ratio;}).concat([1]));
+  maxRatio = Math.ceil(maxRatio * 1.15);
+  let n = pts.length;
+  function cx(i){ return padL + (n<=1?0:(i/(n-1))*plotW); }
+  function cy(r){ return padT + plotH - (r/maxRatio)*plotH; }
+
+  // Moyenne globale (ligne de repère)
+  let moy = pts.reduce(function(s,p){return s+p.ratio;},0)/n;
+
+  let svg = '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block">';
+
+  // Zones d'enveloppe (fond coloré) — regrouper les semaines consécutives par enveloppe
+  let zoneStart = 0;
+  for(let i=1;i<=n;i++){
+    if(i===n || envOf(pts[i].mois)!==envOf(pts[zoneStart].mois)){
+      let e = envOf(pts[zoneStart].mois);
+      let x1 = cx(zoneStart) - (zoneStart>0?(cx(zoneStart)-cx(zoneStart-1))/2:0);
+      let x2 = cx(i-1) + (i<n?(cx(i)-cx(i-1))/2:0);
+      svg += '<rect x="'+x1.toFixed(1)+'" y="'+padT+'" width="'+(x2-x1).toFixed(1)+'" height="'+plotH+'" fill="'+envColors[e]+'"/>';
+      zoneStart = i;
+    }
+  }
+
+  // Ligne de moyenne (repère)
+  svg += '<line x1="'+padL+'" y1="'+cy(moy).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+cy(moy).toFixed(1)+'" stroke="var(--ink30)" stroke-width="1" stroke-dasharray="4 4"/>';
+  svg += '<text x="'+(W-padR)+'" y="'+(cy(moy)-4).toFixed(1)+'" text-anchor="end" font-size="10" fill="var(--ink30)">moyenne '+moy.toFixed(1)+' h/pers</text>';
+
+  // Axe Y (graduations)
+  for(let g=0;g<=maxRatio;g+=Math.max(1,Math.round(maxRatio/4))){
+    svg += '<text x="'+(padL-6)+'" y="'+(cy(g)+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="var(--ink30)">'+g+'</text>';
+  }
+
+  // Ligne de la courbe
+  let path = pts.map(function(p,i){ return (i===0?'M':'L')+cx(i).toFixed(1)+' '+cy(p.ratio).toFixed(1); }).join(' ');
+  svg += '<path d="'+path+'" fill="none" stroke="var(--violet)" stroke-width="2"/>';
+
+  // Points (cliquables), colorés selon la charge
+  let seuilWarn = moy * 1.4, seuilCrit = moy * 1.8;
+  pts.forEach(function(p,i){
+    let col = p.ratio > seuilCrit ? 'var(--orange)' : (p.ratio > seuilWarn ? '#F59E0B' : 'var(--violet)');
+    let r = (p.ratio > seuilWarn) ? 3.5 : 2.5;
+    svg += '<circle cx="'+cx(i).toFixed(1)+'" cy="'+cy(p.ratio).toFixed(1)+'" r="'+r+'" fill="'+col+'" '
+      + 'style="cursor:pointer" onclick="ouvrirMois('+p.mois+')"><title>Semaine '+p.week+' — '+p.ratio.toFixed(1)+' h/pers ('+Math.round(p.hs)+' h au total)</title></circle>';
+  });
+
+  // Étiquettes de mois sur l'axe X
+  let moisVus = {};
+  pts.forEach(function(p,i){
+    if(!(p.mois in moisVus)){ moisVus[p.mois]=i; }
+  });
+  Object.keys(moisVus).forEach(function(m){
+    let i = moisVus[m];
+    svg += '<text x="'+cx(i).toFixed(1)+'" y="'+(H-8)+'" font-size="9" fill="var(--ink65)">'+M[+m].slice(0,3)+'</text>';
+  });
+
+  svg += '</svg>';
+  q('chargeCurve').innerHTML = svg;
+
+  // Légende des 3 zones
+  q('chargeCurveLegend').innerHTML = envNames.map(function(name,i){
+    return '<span class="chargeCurveLegItem"><span class="chargeCurveSwatch" style="background:'+envColors[i].replace('.10','.5')+'"></span>'+name+'</span>';
+  }).join('');
+
+  // Note explicative des paliers (crucial)
+  q('chargeCurveNote').innerHTML = '💡 Vos heures supplémentaires sont lissées <b>à l\'intérieur de chaque période légale de congés</b>. '
+    + 'Les niveaux peuvent différer entre les périodes car la loi impose de concentrer 60% des congés sur juin–octobre. '
+    + 'Une courbe <b>plate dans chaque zone</b> est le signe d\'une bonne répartition.';
+}
+
+// Qualifie une semaine : contient-elle un férié, tombe-t-elle en vacances scolaires ?
+function qualifierSemaine(a, week){
+  let jours = a.cal.filter(function(d){return d.week===week;});
+  let ferie = jours.some(function(d){return d.type==='ferie';});
+  let vacances = jours.some(function(d){return d.type==='vacances';});
+  if(ferie) return 'jour férié';
+  if(vacances) return 'vacances scolaires';
+  return null; // semaine standard
+}
+
+// Fil conducteur de Présence & HS : oriente le REX selon l'état réel.
 function renderRhInsight(a, tot, hsAnn){
   let insight = q('rhInsight'), txt = q('rhInsightText');
   if(!insight || !txt) return;
-  if(!a.employees || a.employees.length === 0){
+
+  // État 0 : pas d'équipe ou pas d'objectif → le guidage dédié s'en charge
+  let nbRoulants = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
+  if(nbRoulants === 0 || !(+a.targetCA>0 && +a.targetTXR>0)){
     insight.style.display = 'none';
     return;
   }
-  let hsR = hsRows(a);
-  let critiques = hsR.filter(function(r){return r.t==='critique';});
-  // Regrouper les mois en tension
-  let moisEnTension = {};
-  critiques.forEach(function(r){
-    let mm = a.cal.find(function(d){return d.week===r.week;});
-    if(mm){ moisEnTension[mm.month] = true; }
-  });
-  let nomsMois = Object.keys(moisEnTension).map(function(m){return M[+m];});
+  insight.style.display = '';
 
-  // CP : SOMA a-t-il réparti ?
-  let gen = cpGeneres(a), plan = cpPlanifies(a);
+  // CP répartis ?
+  let plan = cpPlanifies(a);
   let cpRepartis = plan > 0;
 
-  let phrase = 'Votre année génère environ <b>' + Math.round(hsAnn) + ' heures supplémentaires</b>. ';
-  if(critiques.length === 0){
-    phrase += 'Aucune semaine n\'est en tension critique — votre charge est bien répartie. ';
-  } else if(nomsMois.length){
-    phrase += '<b>' + critiques.length + ' semaine' + (critiques.length>1?'s':'') + '</b> en tension, principalement en <b>' + nomsMois.slice(0,2).join(' et ') + '</b>. ';
+  // Semaines en surcharge (selon HS/personne vs moyenne agence)
+  let ratios = needWeeks(a).map(function(w){ return {week:w.week, mois:mainMonth(a,w.week), ...hsParPersonne(a,w.week)}; });
+  let moy = ratios.length ? ratios.reduce(function(s,r){return s+r.ratio;},0)/ratios.length : 0;
+  let surcharge = ratios.filter(function(r){ return r.hs>=0.5 && r.ratio > moy*1.4; });
+  // Trier par gravité (pire d'abord)
+  surcharge.sort(function(x,y){ return y.ratio - x.ratio; });
+
+  // Coût du choix REX (si mesurable)
+  let choix = coutDuChoixREX(a);
+
+  let phrase = '';
+
+  // ── État 1 : congés pas encore répartis → inviter à l'action clé ──
+  if(!cpRepartis){
+    let nbSal = a.employees.filter(function(e){return isRoulant(e.qual);}).length;
+    phrase = 'Votre équipe et votre objectif sont en place. Il reste à répartir les congés de vos <b>'
+      + nbSal + ' salariés</b> sur l\'année. SOMA peut le faire en lissant la charge — utilisez <b>« Répartir les congés automatiquement »</b> ci-dessous.';
+    txt.innerHTML = phrase;
+    return;
   }
-  if(cpRepartis){
-    phrase += 'SOMA a réparti vos congés pour lisser la charge sur l\'année.';
-  } else {
-    phrase += 'Utilisez « Répartir les congés automatiquement » pour que SOMA lisse la charge à votre place.';
+
+  // ── État 4 : le REX a fait un choix coûteux → le refléter ──
+  if(choix.mesurable && choix.surcout > 0){
+    phrase = 'Vos congés sont répartis. Vous avez choisi d\'accorder des congés différemment de l\'optimum sur <b>'
+      + choix.semaines.length + ' semaine' + (choix.semaines.length>1?'s':'') + '</b>, soit un surcoût de <b>'
+      + euro(choix.surcout) + '</b> — un arbitrage social que vous pourrez justifier à la validation.';
+    // Ajouter mention des surcharges restantes s'il y en a
+    if(surcharge.length){
+      let pire = surcharge[0];
+      let q1 = qualifierSemaine(a, pire.week);
+      phrase += ' Par ailleurs, la semaine ' + pire.week + (q1?' ('+q1+')':'') + ' reste tendue.';
+    }
+    txt.innerHTML = phrase;
+    return;
   }
-  insight.style.display = '';
+
+  // ── État 3 : des semaines en surcharge → pointer le pire + action ──
+  if(surcharge.length){
+    let pire = surcharge[0];
+    let qual = qualifierSemaine(a, pire.week);
+    let ton = surcharge.length === 1
+      ? 'Une semaine reste un peu tendue'
+      : '<b>' + surcharge.length + ' semaines</b> restent en surcharge';
+    phrase = 'Vos congés sont répartis en lissant la charge. ' + ton + ' : la semaine <b>'
+      + pire.week + '</b>' + (qual ? ' (<b>' + qual + '</b>)' : '') + ' à ' + pire.ratio.toFixed(1) + ' h/pers. '
+      + 'Voulez-vous examiner <b>' + M[pire.mois] + '</b> en premier ?';
+    txt.innerHTML = phrase;
+    return;
+  }
+
+  // ── État 2 : tout va bien → rassurer ──
+  let minR = Math.min.apply(null, ratios.filter(function(r){return r.hs>=0.5;}).map(function(r){return r.ratio;}).concat([0]));
+  let maxR = Math.max.apply(null, ratios.map(function(r){return r.ratio;}).concat([0]));
+  phrase = 'Vos congés sont répartis, la charge est lissée. Vos équipes présentes font entre <b>'
+    + minR.toFixed(1) + '</b> et <b>' + maxR.toFixed(1) + ' h supplémentaires par personne</b>, sans pic. '
+    + 'Votre socle de semaines standard est équilibré — votre année de présence est saine.';
   txt.innerHTML = phrase;
 }
 
@@ -4449,7 +5113,7 @@ function renderRH(){
 
   // ── KPIs annuels ──
   let tot=hsTot(a);
-  let hsAnn=tot.hs,hsCost=hsAnn*(+a.costHour||0)*(+a.hsCostRate||1.25);
+  let hsAnn=tot.hs,hsCost=hsAnn*(+a.costHour||0)*coefHSMoyen(a);
   let empMoy=tot.av>0?tot.av/52/35:0;
   q('rhKpis').innerHTML=[
     ['HS estimées',hsAnn.toFixed(0)+' h',(function(){let s=refAgenceSeuils(a);return hsAnn>s.seuilTensionCrit*52?'⚠ élevé':hsAnn>s.seuiltensionWarn*52?'niveau modéré':'niveau maîtrisé';})() ],
@@ -4460,6 +5124,7 @@ function renderRH(){
 
   // ── Interprétation (le copilote explique la situation + ce que SOMA a fait) ──
   renderRhInsight(a, tot, hsAnn);
+  renderChargeCurve(a);
 
   // ── Bandeau CP ──
   let gen=cpGeneres(a),plan=cpPlanifies(a),rest=Math.round((gen-plan)*10)/10;
@@ -4490,8 +5155,44 @@ function renderRH(){
       +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
       +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
     if(q('sickAlert')){
-      let msg=Math.abs(diff)>0.05?'<div class="alert"><b>Ecart Maladie &amp; AT</b> '+pct(diff)+' vs cible <button class="secondary" onclick="applyAvg()" style="margin-left:8px">Appliquer la cible</button></div>':'';
-      q('sickAlert').innerHTML=msg;
+      let cible = +a.targetAbsRate||0;
+      let aCible = Math.abs(diff) <= 0.1;
+      let bandeau = '<div class="sickRule">'
+        + '<span class="sickRuleIcon">🩺</span>'
+        + '<div><b>Taux d\'absentéisme fixé par le contrôle de gestion : '+pct(cible)+'</b> (basé sur l\'historique 2025-2026).<br>'
+        + 'Vous pouvez ajuster la répartition mois par mois selon la réalité de votre agence, mais la <b>moyenne annuelle doit rester à '+pct(cible)+'</b>.</div></div>';
+      let compteur = '<div class="sickCounter '+(aCible?'ok':'warn')+'">'
+        + '<div class="sickCounterMain">Moyenne actuelle : <b>'+pct(avg)+'</b></div>'
+        + '<div class="sickCounterSub">'
+        + (aCible
+            ? '✓ Conforme à la cible du contrôle de gestion'
+            : 'Écart de <b>'+pct(Math.abs(diff))+'</b> '+(diff>0?'au-dessus':'en dessous')+' de la cible ('+pct(cible)+') — à corriger')
+        + '</div>'
+        + (!aCible ? '<button class="sickRebalanceBtn" onclick="reequilibrerSick()">Rééquilibrer automatiquement</button>' : '')
+        + '</div>';
+      q('sickAlert').innerHTML = bandeau + compteur;
+    }
+  }
+
+  // ── Tableau répartition HS 25%/50% ──
+  if(q('hs50Table')){
+    if(!a.hs50) a.hs50 = Array(12).fill(null);
+    let filled50 = a.hs50.filter(function(v){return v!==null&&v!==undefined;});
+    let moy50 = filled50.length ? filled50.reduce(function(s,v){return s+(+v||0);},0)/filled50.length : 0;
+    q('hs50Table').innerHTML = '<tr><th>Mois</th>'+M.map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>Moy</th></tr>'
+      + '<tr><td><b>% HS à +50%</b></td>'
+      + a.hs50.map(function(v,i){
+          let display = v!==null&&v!==undefined?v:'';
+          return '<td><input type="number" value="'+display+'" placeholder="0" min="0" max="100" onchange="setHS50('+i+',this.value)" style="width:52px"></td>';
+        }).join('')
+      + '<td class="num"><b>'+pct(moy50)+'</b></td></tr>';
+    if(q('hs50Info')){
+      if(moy50 <= 0){
+        q('hs50Info').innerHTML = '<div style="font-size:12px;color:var(--green)">✓ Toutes vos heures supplémentaires sont à +25% — répartition saine.</div>';
+      } else {
+        q('hs50Info').innerHTML = '<div style="font-size:12px;color:var(--ink65)">En moyenne <b>'+pct(moy50)+'</b> de vos heures supplémentaires partent à +50% sur l\'année. '
+          + 'Le coût moyen de vos HS sera calculé en conséquence.</div>';
+      }
     }
   }
 
@@ -4525,7 +5226,7 @@ function renderRH(){
       + '<span>💡</span>'
       + '<span><b>Cliquez sur un mois</b> pour voir le détail de ses semaines et ajuster la charge. '
       + 'Quand un mois vous convient, <b>validez-le</b> pour suivre votre avancement. '
-      + 'Le bouton <b>« Répartir les congés automatiquement »</b> place vos jours de CP sur l\'année en évitant les semaines déjà tendues.</span>'
+      + 'Le bouton <b>« Répartir les congés automatiquement »</b> place vos jours de CP sur l\'année en évitant les semaines déjà tendues. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,\'conges\')" title="Pourquoi cette règle ?">?</span></span>'
       + '</div>';
     q('rhMonthCards').innerHTML = progressHTML + aideHTML + M.map(function(mo,m){
       let weeksOfMonth = hsR.filter(function(r){
@@ -4544,7 +5245,7 @@ function renderRH(){
       let cpPoss = weeksOfMonth.filter(function(r){return r.t==='sous-charge';}).length;
 
       // Coût HS du mois
-      let coutHsM = hsM * (+a.costHour||28.5) * (+a.hsCostRate||1.25);
+      let coutHsM = hsM * (+a.costHour||28.5) * coefHSMois(a, m);
 
       let estVerrouille = moisVerrouilles.indexOf(m) >= 0;
       let estActif = moisActif === m;
@@ -4659,15 +5360,26 @@ function showWeekDetail(m){
     +'<th title="Autres absences en jours">Autres (J)</th>'
     +'<th><b>Dispo (h)</b></th><th>Besoin (h)</th>'
     +'<th><b>Écart</b></th><th><b>HS (h)</b></th>'
-    +'<th>Alerte</th><th title="Impact financier d\'ajouter 1J de CP">Impact 1J CP</th>'
+    +'<th title="Heures supplémentaires par personne présente"><b>HS/pers</b></th>'
+    +'<th>Charge</th><th title="Impact financier d\'ajouter 1J de CP">Impact 1J CP</th>'
     +'</tr>';
+  // Moyenne HS/personne de l'agence (référence pour le langage de charge)
+  let _tousRatios = needWeeks(a).map(function(w){ return hsParPersonne(a, w.week).ratio; });
+  let _moyRatio = _tousRatios.length ? _tousRatios.reduce(function(s,r){return s+r;},0)/_tousRatios.length : 0;
   let rows=weeksOfMonth.map(function(hr){
     let p=pres(a,hr.week);
-    let alertTxt='',alertStyle='';
-    if(hr.t==='critique'){alertTxt='🔴 Tension';alertStyle='color:var(--orange);font-weight:700';}
-    else if(hr.t==='warning'){alertTxt='🟡 HS mod.';alertStyle='color:#FF8F00;font-weight:700';}
-    else if(hr.t==='sous-charge'){alertTxt='🔵 CP possible';alertStyle='color:var(--blue)';}
-    else{alertTxt='🟢 OK';alertStyle='color:var(--green)';}
+    // Charge de la semaine (HS par personne présente) + langage naturel
+    let hp = hsParPersonne(a, hr.week);
+    let chargeTxt, chargeStyle, chargeDot;
+    if(hp.hs < 0.5){
+      chargeTxt='aucune tension'; chargeDot='var(--green)'; chargeStyle='color:var(--green)';
+    } else if(hp.ratio > _moyRatio*1.4){
+      chargeTxt='surcharge'; chargeDot='var(--orange)'; chargeStyle='color:var(--orange);font-weight:700';
+    } else if(hp.ratio > _moyRatio*0.9){
+      chargeTxt='charge soutenue'; chargeDot='#F59E0B'; chargeStyle='color:#B26A00;font-weight:600';
+    } else {
+      chargeTxt='charge légère'; chargeDot='#7Cc47f'; chargeStyle='color:var(--green)';
+    }
     let ecartCls=hr.gap<-5?'bad':hr.gap>5?'ok':'';
     return '<tr>'
       +'<td>S'+hr.week+'</td>'
@@ -4680,7 +5392,8 @@ function showWeekDetail(m){
       +'<td class="num">'+hr.hours.toFixed(1)+'</td>'
       +'<td class="num"><span class="'+ecartCls+'">'+hr.gap.toFixed(1)+'</span></td>'
       +'<td class="num"><b>'+(hr.hs>0?'<span style="color:var(--orange)">'+hr.hs.toFixed(1)+'</span>':'0')+'</b></td>'
-      +'<td style="'+alertStyle+';font-size:12px;white-space:nowrap">'+alertTxt+'</td>'
+      +'<td class="num"><b>'+(hp.hs>=0.5?hp.ratio.toFixed(1):'—')+'</b></td>'
+      +'<td style="'+chargeStyle+';font-size:12px;white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+chargeDot+';margin-right:6px"></span>'+chargeTxt+'</td>'
       +(function(){
         let seuils = refAgenceSeuils(a);
         let imp = impactCPSemaine(a, hr.week, -1);
@@ -4694,7 +5407,7 @@ function showWeekDetail(m){
 
   // ── Bandeau impact mensuel temps réel ──
   let hsM = weeksOfMonth.reduce(function(s,r){return s+(r.hs||0);},0);
-  let coutHSM = hsM * (+a.costHour||28.5) * (+a.hsCostRate||1.25);
+  let coutHSM = hsM * (+a.costHour||28.5) * coefHSMois(a, m);
   let cpM = weeksOfMonth.reduce(function(s,r){let p2=a.presence[r.week]||{cp:0};return s+(+p2.cp||0);},0);
   let critM = weeksOfMonth.filter(function(r){return r.t==='critique';}).length;
   let okM = weeksOfMonth.filter(function(r){return r.t==='ok';}).length;
@@ -4935,7 +5648,7 @@ function renderCoherence(){
     +'Si vos références CA dépassent significativement ce montant, des tensions HS apparaîtront.</div>':'');
 }
 
-function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*a.hsCostRate,hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+gaugeRow('Résultat net / CA',netRate)+gaugeRow('Coût HS / CA',hsRate)}
+function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*coefHSMoyen(a),hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+gaugeRow('Résultat net / CA',netRate)+gaugeRow('Coût HS / CA',hsRate)}
 
 function cgBadgeType(x){return x.chargeType==='fixe'?'<span class="badgeFixe">fixe</span>':'<span class="badgeVar">variable</span>'}
 function cgCellType(x,safe){return '<td>'+cgBadgeType(x)+`<select onchange="setRexType('${safe}',this.value)" style="margin-top:5px"><option value="fixe" ${x.chargeType==='fixe'?'selected':''}>charge fixe</option><option value="variable" ${x.chargeType==='variable'?'selected':''}>charge variable</option></select></td>`}
@@ -4968,7 +5681,7 @@ function renderCgInsight(a){
     q('cgKpis').innerHTML = [
       ['Postes saisis', saisis+'/'+totalPostes, saisis<totalPostes?'à compléter':'✓ complet'],
       ['Coût horaire', coutHoraire?euro(coutHoraire).replace(' €','')+' €/h':'—', coutHoraire?'brut chargé':'à renseigner'],
-      ['Coefficient HS', a.hsCostRate?('×'+a.hsCostRate):'—', 'majoration']
+      ['Coefficient HS moyen', '×'+coefHSMoyen(a).toFixed(3), 'selon répartition 25/50']
     ].map(function(x){return '<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>';}).join('');
   }
 
@@ -5337,7 +6050,7 @@ function renderHSImproductif(){
   weeks.forEach(function(wk){
     let w = wk.week;
     let hs = a.hsImproductif && a.hsImproductif[w] ? a.hsImproductif[w] : '';
-    let cout = hs ? euro(Math.round(+hs * coutH * (+a.hsCostRate||1.25))) : '—';
+    let cout = hs ? euro(Math.round(+hs * coutH * coefHSMois(a,mainMonth(a,w)))) : '—';
     // Mois de la semaine
     let dayInWeek = a.cal.find(function(d){ return d.week===w; });
     let moisNom = dayInWeek ? M[dayInWeek.month] : '';
@@ -5350,7 +6063,7 @@ function renderHSImproductif(){
   });
   // Total
   let totalHS = a.hsImproductif ? Object.values(a.hsImproductif).reduce(function(s,v){return s+(+v||0);},0) : 0;
-  let totalCout = Math.round(totalHS * coutH * (+a.hsCostRate||1.25));
+  let totalCout = Math.round(totalHS * coutH * coefHSMoyen(a));
   html += '<tr style="background:var(--bg2)"><td colspan="2"><b>Total année</b></td><td class="num"><b>'+totalHS+' h</b></td><td class="num"><b style="color:var(--orange)">'+euro(totalCout)+'</b></td></tr>';
   q('hsImpTable').innerHTML = html;
 }
@@ -5374,7 +6087,51 @@ function setPresence(w,f,v){
   }
 }
 function setSick(m,v){A().sick[m]=v===''?null:+v;render()}
+function setHS50(m,v){
+  let val = v===''?null:Math.max(0,Math.min(100,+v));
+  if(!A().hs50) A().hs50 = Array(12).fill(null);
+  A().hs50[m]=val;
+  render();
+}
 function applyAvg(){let v=A().targetAbsRate!==null?+A().targetAbsRate:0;A().sick=Array(12).fill(v);render()}
+
+// Rééquilibrage intelligent : garde la FORME de répartition voulue par le REX,
+// mais ajuste pour que la moyenne annuelle revienne à la cible du CG.
+function reequilibrerSick(){
+  let a = A();
+  let cible = +a.targetAbsRate || 0;
+  // Mois renseignés (les vides restent vides)
+  let idxRemplis = [];
+  a.sick.forEach(function(v,i){ if(v!==null&&v!==undefined) idxRemplis.push(i); });
+  if(!idxRemplis.length){ a.sick = Array(12).fill(cible); render(); return; }
+
+  let moyActuelle = idxRemplis.reduce(function(s,i){return s+(+a.sick[i]||0);},0)/idxRemplis.length;
+  let ecart = moyActuelle - cible; // >0 : on est trop haut, il faut baisser
+  if(Math.abs(ecart) < 0.001){ render(); return; }
+
+  // Répartir l'écart proportionnellement, sans descendre sous 0
+  // On retire (ou ajoute) 'ecart' à la moyenne de chaque mois rempli.
+  // Méthode : soustraire l'écart uniformément, puis corriger les négatifs.
+  let ajust = a.sick.slice();
+  idxRemplis.forEach(function(i){ ajust[i] = (+a.sick[i]||0) - ecart; });
+  // Corriger les valeurs négatives en reportant sur les autres
+  let secu = 0;
+  while(secu < 50){
+    secu++;
+    let negs = idxRemplis.filter(function(i){ return ajust[i] < 0; });
+    if(!negs.length) break;
+    let deficit = negs.reduce(function(s,i){ return s + (0 - ajust[i]); }, 0);
+    negs.forEach(function(i){ ajust[i] = 0; });
+    let positifs = idxRemplis.filter(function(i){ return ajust[i] > 0.01; });
+    if(!positifs.length) break;
+    let parMois = deficit / positifs.length;
+    positifs.forEach(function(i){ ajust[i] = Math.max(0, ajust[i] - parMois); });
+  }
+  idxRemplis.forEach(function(i){ ajust[i] = Math.round(ajust[i]*100)/100; });
+  a.sick = ajust;
+  render();
+  showToast('Répartition ajustée pour respecter la moyenne du contrôle de gestion.', 'success');
+}
 function setRexMode(l,v){A().rex[l].mode=v;render()}
 function setRexType(l,v){A().rex[l].chargeType=v;render()}
 function setRexKey(l,v){A().rex[l].allocationKey=v;render()}
@@ -6090,10 +6847,49 @@ function memoriserRepartitionOptimale(a){
   a.cpOptimalHSCost = coutHSTotal(a);
 }
 
+// ═══════════════════════════════════════════════════════════
+// BARÈME RÉEL DES HEURES SUPPLÉMENTAIRES (25% / 50%)
+// Les 8 premières h/semaine/salarié sont à +25%, au-delà à +50%.
+// Le REX renseigne, par mois, la part de HS qui part à +50% (a.hs50[mois]).
+// Coefficient du mois = part25 × 1,25 + part50 × 1,50.
+// Défaut (rien renseigné) : 0% à 50% → coefficient 1,25 (comme avant).
+// ═══════════════════════════════════════════════════════════
+function tauxHS50Mois(a, mois){
+  if(!a.hs50) return 0;
+  let v = a.hs50[mois];
+  if(v===null || v===undefined) return 0;
+  return Math.max(0, Math.min(100, +v)) / 100;
+}
+// Coefficient de majoration réel d'un mois donné
+function coefHSMois(a, mois){
+  let p50 = tauxHS50Mois(a, mois);
+  return (1 - p50) * 1.25 + p50 * 1.50;
+}
+// Coefficient moyen annuel (pondéré par les HS de chaque mois si possible, sinon simple)
+function coefHSMoyen(a){
+  // Pondération par le volume de HS mensuel pour un coût moyen juste
+  let totHS = 0, totCoef = 0;
+  let hsR = hsRows(a);
+  for(let m=0;m<12;m++){
+    let hsM = hsR.filter(function(r){return mainMonth(a,r.week)===m;}).reduce(function(s,r){return s+(r.hs||0);},0);
+    if(hsM>0){ totHS += hsM; totCoef += hsM * coefHSMois(a, m); }
+  }
+  if(totHS>0) return totCoef/totHS;
+  // Pas de HS : coefficient moyen simple des mois renseignés, sinon 1,25
+  return 1.25;
+}
+
 // Coût total des HS de l'année (heures supp × coût horaire × majoration)
 function coutHSTotal(a){
-  let hsAnn = hsTot(a).hs;
-  return hsAnn * (+a.costHour||0) * (+a.hsCostRate||1.25);
+  // Somme du coût des HS mois par mois, chaque mois avec son coefficient réel (25/50)
+  let hsR = hsRows(a);
+  let ch = (+a.costHour||0);
+  let total = 0;
+  for(let m=0;m<12;m++){
+    let hsM = hsR.filter(function(r){return mainMonth(a,r.week)===m;}).reduce(function(s,r){return s+(r.hs||0);},0);
+    total += hsM * ch * coefHSMois(a, m);
+  }
+  return total;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6131,7 +6927,7 @@ function coutDuChoixREX(a){
 
   // Estimation des HS supplémentaires induites (en heures)
   let hsSup = 0;
-  let cout = (+a.costHour||0) * (+a.hsCostRate||1.25);
+  let cout = (+a.costHour||0) * coefHSMoyen(a);
   if(cout > 0) hsSup = Math.round(surcout / cout);
 
   return {
@@ -6188,7 +6984,7 @@ function ouvrirMois(m) {
 function refAgenceSeuils(a) {
   // Coût HS d'une semaine type (si toute la capacité était en HS)
   let baseHebdo = baseH(a);  // heures roulants contractuelles
-  let coutHSRef = baseHebdo * (+a.costHour||28.5) * (+a.hsCostRate||1.25);
+  let coutHSRef = baseHebdo * (+a.costHour||28.5) * coefHSMoyen(a);
   // Seuils impact CP (% du coût HS semaine type)
   let seuilFaible = coutHSRef * 0.10;
   let seuilMoyen  = coutHSRef * 0.30;
@@ -6220,7 +7016,7 @@ function impactCPSemaine(a, week, deltaCPjours) {
   let hr = hsRows(a).find(function(r){ return r.week === week; }) || {hs:0, gap:0};
   let hsDelta = -deltaCPjours * 7; // retirer CP augmente les HS
   let costHour = +a.costHour || 28.5;
-  let coefHS = +a.hsCostRate || 1.25;
+  let coefHS = coefHSMois(a, mainMonth(a, week));
   if (hr.gap > 0) {
     // Semaine en tension : chaque heure compte
     return Math.round(hsDelta * costHour * coefHS);
@@ -6684,7 +7480,7 @@ function payrollPayMonth(a, moisIdx) {
     if (ratio <= 0) return;
 
     // Coût pro-ratisé de cette semaine
-    let coutSem = (r.av * (+a.costHour || 0)) + (r.hs * (+a.costHour || 0) * (+a.hsCostRate || 1.25));
+    let coutSem = (r.av * (+a.costHour || 0)) + (r.hs * (+a.costHour || 0) * coefHSMois(a,mainMonth(a,r.week)));
     ms += coutSem * ratio;
   });
 
@@ -6715,7 +7511,7 @@ function payrollPayMonth(a, moisIdx) {
       }).length;
       let ratio = daysInPeriode / daysOfWeek.length;
       if (ratio <= 0) return;
-      msHSImp += hs * coutHoraireImproductif(a) * (+a.hsCostRate || 1.25) * ratio;
+      msHSImp += hs * coutHoraireImproductif(a) * coefHSMois(a,mainMonth(a,w)) * ratio;
     });
   }
 
@@ -6762,7 +7558,7 @@ function chargesReport2028(a) {
     if (!daysOfWeek.length) return;
     let ratio = daysInPeriode / daysOfWeek.length;
     if (ratio <= 0) return;
-    let coutSem = (r.av * (+a.costHour || 0)) + (r.hs * (+a.costHour || 0) * (+a.hsCostRate || 1.25));
+    let coutSem = (r.av * (+a.costHour || 0)) + (r.hs * (+a.costHour || 0) * coefHSMois(a,mainMonth(a,r.week)));
     ms += coutSem * ratio;
   });
 
@@ -6885,63 +7681,66 @@ function resetPeriodesPaie() {
 // ═══════════════════════════════════════════════
 const FAQ = {
   rex: [
-    ['Par où je commence ?', 'Suivez les onglets dans l\'ordre : <b>1. Objectif</b> (votre cible CA et TXR) → <b>2. Références CA</b> (le chiffre d\'affaires moyen par type de journée) → <b>3. Calendrier</b> (généré automatiquement) → <b>4. Équipe</b> (votre personnel) → <b>5. Présence & HS</b> (le cœur du budget, mois par mois) → <b>6. Prévisionnel</b> (le résultat). Chaque onglet du menu affiche une pastille de couleur indiquant son état d\'avancement : gris (non commencé), orange (en cours), vert (complet).'],
-    ['Combien de temps faut-il pour construire mon budget ?', 'Comptez environ 1 à 2 heures la première fois, une fois votre équipe importée. L\'étape la plus longue est l\'onglet 5 (Présence & HS), où vous travaillez mois par mois. Vous pouvez sauvegarder et reprendre plus tard : rien n\'est perdu.'],
-    ['D\'où viennent les données déjà remplies (CA 2026, TXR) ?', 'Ces données sont pré-remplies par le contrôleur de gestion à partir de vos réalisés. Si vous voyez un cadenas "🔒 Données verrouillées par le CG", vous ne pouvez pas les modifier — elles servent de base commune à tout le réseau pour garantir des budgets comparables. Si une valeur vous semble erronée, contactez le CG : lui seul peut la corriger.'],
-    ['Qu\'est-ce que le TXR exactement ?', 'Le TXR (taux de recette) est votre chiffre d\'affaires divisé par le temps de travail effectif, exprimé en euros par heure. Il représente ce que génère une heure de travail roulant. Il sert à calculer le besoin en heures : CA ÷ TXR = heures nécessaires. Un TXR réaliste se situe généralement entre 35 et 45 €/h selon l\'activité.'],
-    ['Comment saisir mes références CA journalières ?', 'Dans l\'onglet 2, indiquez pour chaque mois le chiffre d\'affaires moyen réalisé selon le type de journée : semaine normale, vacances scolaires, samedi, dimanche, jour férié. Ces montants (en euros par jour) servent à construire automatiquement votre calendrier budgétaire mois par mois. Basez-vous sur vos réalisés des années précédentes.'],
-    ['Comment importer mon équipe depuis Excel ?', 'Dans l\'onglet 4, cliquez "Importer depuis Excel" et sélectionnez le fichier fourni par le contrôleur de gestion. Votre liste de salariés se charge automatiquement avec les qualifications, contrats et heures. Vérifiez ensuite chaque ligne et corrigez si nécessaire. Vous pouvez aussi ajouter des salariés manuellement avec le bouton "+ Ajouter salarié".'],
-    ['Que signifient les qualifications (DEA, AA, TAXI, TPMR) ?', 'DEA = ambulancier diplômé d\'État, AA = auxiliaire ambulancier, TAXI = chauffeur de taxi, TPMR = transport de personnes à mobilité réduite. Ce sont les personnels "roulants" comptés dans la capacité de production. REGULATEUR et REX sont non-roulants. Les facturières sont exclues du calcul de production.'],
-    ['Comment fonctionne la répartition automatique des CP ?', 'Dans l\'onglet 5, le bouton "Répartir CP auto" propose une distribution respectant les enveloppes légales (60% des congés entre juin et octobre, 20% entre novembre et janvier, 20% entre février et mai) et privilégie les semaines les plus tendues pour lisser votre charge. Vous pouvez ensuite ajuster manuellement semaine par semaine. La colonne "Impact 1J CP" vous montre le coût marginal d\'un jour de congé posé.'],
-    ['Comment sont calculés les CP générés ?', 'Chaque salarié génère 2,5 jours de congés par mois de présence, diminués de la part d\'absence maladie. Un CDD saisonnier présent seulement 4 mois génère donc environ 10 jours, pas 30. L\'objectif est d\'équilibrer les CP générés et les CP planifiés — l\'indicateur en haut de l\'onglet 5 vous le signale.'],
-    ['Que veut dire "verrouiller un mois" ?', 'Quand vous avez terminé un mois, cliquez "Valider ce mois" pour le verrouiller (🔒). Cela évite les modifications accidentelles et marque votre progression. Vous pouvez le déverrouiller à tout moment pour revenir dessus. Attention : le verrouillage n\'est PAS une soumission — c\'est juste une étape de travail personnelle. Votre budget n\'est transmis que lorsque vous cliquez "Soumettre au DR".'],
-    ['Pourquoi des heures supplémentaires apparaissent-elles ?', 'Les HS apparaissent quand le besoin en heures (votre CA ÷ TXR) dépasse la capacité de votre équipe une semaine donnée. Si vous en avez beaucoup, deux causes possibles : soit votre CA de référence est trop élevé par rapport à votre effectif, soit votre équipe est sous-dimensionnée cette semaine-là (congés, absences). Le bloc "Cohérence CA/effectif" de l\'onglet 1 vous aide à vérifier si votre objectif est atteignable.'],
-    ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'onglet 4, chaque salarié a une date d\'entrée et de sortie 2027 (optionnelles, à laisser vides s\'il est présent toute l\'année). Pour un renfort saisonnier, utilisez le bouton "+ Poste prévisionnel" pré-réglé juin-septembre. Pour un départ en retraite ou une fin de contrat, renseignez la date de sortie. Un graphique sous le tableau montre l\'évolution de votre effectif mois par mois, et le calcul des HS s\'ajuste automatiquement.'],
-    ['Comment sont pris en compte les régulateurs et responsables (personnel improductif) ?', 'Dans l\'onglet 5, une carte "Personnel improductif" permet de saisir leur taux d\'absentéisme propre (distinct de celui des roulants) et leurs heures supplémentaires par semaine (total pour l\'agence, majorées à 1,25). Ils sont payés au coût journalier, intégré à la masse salariale. Leurs congés sont comptés en coût mais n\'ont pas d\'impact sur la production roulante.'],
-    ['Comment saisir les indemnités repas et dimanche/jour férié (IDJF) ?', 'Dans l\'onglet 5, la carte "Indemnités" propose un tableau par semaine où vous saisissez, en euros, le montant total des indemnités repas et IDJF, séparément pour le personnel roulant et non-roulant. Trois compteurs en haut affichent les totaux annuels. Ces montants sont automatiquement intégrés à la masse salariale de votre prévisionnel.'],
-    ['Quelle différence entre personnel roulant et non-roulant / improductif ?', 'Le personnel roulant (ambulanciers DEA, auxiliaires AA, taxis, TPMR) produit le chiffre d\'affaires : ses heures et absences pilotent le calcul des heures supplémentaires. Le personnel improductif (régulateurs, responsables d\'exploitation, responsables de régulation) assure le fonctionnement mais ne roule pas : il est valorisé au coût journalier, avec son propre absentéisme et ses propres HS saisies manuellement.'],
-    ['Comment sauvegarder mon travail ?', 'Cliquez sur le bouton "Sauvegarder" en haut à droite. Il devient vert quand la sauvegarde a réussi. Sauvegardez régulièrement, surtout après avoir travaillé un mois complet. Vos données sont stockées en ligne et vous les retrouvez à votre prochaine connexion, y compris le dernier mois sur lequel vous travailliez.'],
-    ['Comment soumettre mon budget ?', 'Une fois votre budget complet et sauvegardé, cliquez "Soumettre au DR" dans la barre de statut. Une confirmation vous est demandée car vous ne pourrez plus modifier le budget tant qu\'il est en cours de validation. Il remonte ensuite le circuit : Directeur Régional → Directeur Financier → Directeur Général → PDG.'],
-    ['Mon budget a été refusé, que faire ?', 'Un encadré orange dans votre barre de statut affiche le motif du refus ou du complément demandé par le valideur. Lisez-le attentivement, corrigez les points signalés, sauvegardez, puis cliquez "Re-soumettre". Votre budget repart dans le circuit à l\'étape concernée. Un refus n\'est pas un rejet définitif — c\'est une demande d\'ajustement.'],
+    ['Par où je commence ?', 'Suivez les étapes dans l\'ordre de la barre latérale : d\'abord votre objectif de chiffre d\'affaires, puis votre équipe, puis la présence et les heures supplémentaires, et enfin le prévisionnel et la synthèse. À chaque écran, SOMA vous guide et calcule les conséquences de vos choix. Vous n\'avez jamais à tout remplir d\'un coup : vous avancez pas à pas.'],
+    ['Comment saisir mes références CA journalières ?', 'Sur l\'écran Objectif, renseignez votre chiffre d\'affaires cible et votre TXR (CA par heure travaillée). SOMA en déduit le besoin en heures semaine par semaine. Ces deux valeurs sont le point de départ de tout le budget : elles déterminent combien de personnel il vous faut.'],
+    ['Comment importer mon équipe depuis Excel ?', 'Sur l\'écran Équipe, utilisez la fonction d\'import et déposez votre fichier au format attendu (une matrice d\'import est fournie). SOMA lit les salariés, leurs qualifications et leurs heures. Vous pouvez ensuite ajuster chaque ligne à la main.'],
+    ['Que signifient les qualifications (DEA, AA, TAXI, TPMR) ?', 'Ce sont les qualifications du personnel roulant : DEA (diplôme d\'ambulancier), AA (auxiliaire ambulancier), TAXI et TPMR (transport de personnes à mobilité réduite). SOMA les considère comme du personnel roulant, c\'est-à-dire qui produit du chiffre d\'affaires sur la route. Les autres qualifications sont comptées comme personnel improductif.'],
+    ['Qu\'est-ce que le pourcentage roulant d\'un salarié ?', 'Certains salariés ne roulent pas à 100% de leur temps : ils partagent leur activité entre la route et la régulation, ou des tâches administratives. Le pourcentage roulant indique la part réellement passée à produire du chiffre d\'affaires. Par exemple, 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif.'],
+    ['Comment fonctionne la répartition automatique des congés ?', 'SOMA répartit vos congés sur l\'année selon deux principes. D\'abord les périodes légales : 60% des congés sur juin-octobre, 20% sur novembre-janvier, 20% sur février-mai. Ensuite le lissage : à l\'intérieur de chaque période, SOMA place les congés de façon à garder un recours aux heures supplémentaires le plus régulier possible, en évitant les semaines déjà tendues.'],
+    ['Pourquoi SOMA ne cherche pas à supprimer toutes les heures supplémentaires ?', 'Parce qu\'un budget sans aucune heure supplémentaire est un budget rigide. L\'activité réelle ne sera jamais exactement celle prévue. Une réserve d\'environ 10% d\'heures supplémentaires permet d\'absorber une hausse d\'activité sans basculer dans les heures les plus chères, et une baisse sans dégrader la productivité. Zéro heure supplémentaire n\'est pas un objectif : c\'est une fragilité.'],
+    ['Pourquoi distingue-t-on les heures à 25% et à 50% ?', 'Les huit premières heures supplémentaires par semaine et par salarié sont majorées à 25%, au-delà à 50%. Deux agences avec le même volume d\'heures supplémentaires peuvent donc avoir des coûts très différents selon la façon dont ces heures se répartissent. Indiquer la part de vos heures à 50% permet à SOMA de calculer le vrai coût de vos heures supplémentaires.'],
+    ['Qu\'est-ce que le coût du choix que je vois en synthèse ?', 'SOMA calcule la répartition des congés qui minimise le coût des heures supplémentaires. Vous pouvez choisir de vous en écarter, par exemple pour accorder des congés à un moment qui compte pour votre équipe. Ce choix a parfois un surcoût. SOMA le chiffre non pour vous en dissuader, mais pour que vous puissiez l\'assumer et le justifier lors de la validation.'],
+    ['Comment lire la courbe de charge et les couleurs des semaines ?', 'La courbe montre les heures supplémentaires par personne présente, semaine par semaine. Une courbe plate signifie une charge équitable. Les trois zones colorées correspondent aux périodes légales de congés. Dans le détail des semaines, chaque semaine porte un verdict en langage clair : aucune tension, charge légère, charge soutenue ou surcharge. Une semaine en surcharge mérite votre attention.'],
+    ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste.'],
+    ['Comment sont calculés les congés générés ?', 'Chaque mois de présence génère environ 2,5 jours de congés payés. SOMA calcule automatiquement le total de congés à écouler sur l\'année à partir de votre effectif et de son temps de présence. C\'est ce stock que la répartition automatique distribue ensuite sur vos semaines.'],
+    ['Que veut dire verrouiller un mois ?', 'Verrouiller un mois indique à SOMA que vous avez ajusté ce mois manuellement et qu\'il ne doit plus y toucher lors des répartitions automatiques. Le moteur travaille alors autour de vos mois verrouillés. C\'est utile quand vous savez qu\'un mois particulier doit rester tel que vous l\'avez réglé.'],
+    ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
+    ['Comment sont pris en compte les régulateurs et responsables ?', 'Ce sont du personnel improductif : ils ne produisent pas de chiffre d\'affaires sur la route, mais ils ont un coût. SOMA les intègre dans la masse salariale sans les compter dans la capacité roulante. Le bloc dédié sur l\'écran Présence permet de les renseigner. Chaque agence en a, c\'est normal.'],
+    ['Comment saisir les indemnités repas et dimanche/jour férié ?', 'Sur l\'écran Présence, le bloc indemnités permet de renseigner, semaine par semaine, les montants pour le personnel roulant et non-roulant. Comme les congés, ce sont des saisies récurrentes qui alimentent votre masse salariale prévisionnelle.'],
+    ['Quelle différence entre personnel roulant et improductif ?', 'Le personnel roulant produit du chiffre d\'affaires en transportant des patients : c\'est lui qui génère votre activité. Le personnel improductif (régulateurs, responsables, administratifs) est nécessaire au fonctionnement mais ne roule pas. Les deux ont un coût, seul le roulant produit du CA. C\'est cette distinction qui permet de calculer votre TXR.'],
+    ['Comment sauvegarder mon travail ?', 'SOMA sauvegarde automatiquement au fil de votre saisie, en silence. Vous n\'avez pas de bouton à presser. Une petite mention vous confirme l\'enregistrement. Vos données sont conservées sur le serveur et vous les retrouvez à votre prochaine connexion.'],
+    ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, utilisez le bouton de soumission. Votre budget entre alors dans le circuit de validation collégial et vous ne pouvez plus le modifier tant qu\'il est en cours de validation. Assurez-vous d\'avoir vérifié votre synthèse avant de soumettre.'],
+    ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
   ],
   cg: [
-    ['Quel est mon rôle dans l\'outil ?', 'En tant que contrôleur de gestion, vous préparez le terrain pour les REX (données de référence, coûts horaires, registre RH), vous pilotez l\'ensemble du réseau (vue comparative, graphiques, consolidation) et vous gérez les spécificités comptables (périodes de paie). Vous avez accès à toutes les agences, y compris les entités hors-réseau (siège, centre de formation).'],
-    ['Comment pré-remplir les données de toutes les agences ?', 'Dans l\'onglet "Données agences", vous pouvez saisir manuellement chaque ligne (CA 2025/2026, TXR, absentéisme, taux horaire) ou cliquer "Importer données agences" pour charger un fichier Excel de toutes les agences en une seule opération. Après avoir cliqué "Enregistrer", ces données sont automatiquement transmises et verrouillées côté REX.'],
-    ['Comment importer le registre RH ?', 'Dans "Données agences", cliquez "Importer registre RH" et sélectionnez le fichier Registre_Jour.xlsx. L\'outil répartit automatiquement les salariés par agence (grâce à un mapping des noms d\'agence), traduit les libellés d\'emploi en qualifications SOMA, exclut les salariés sortis et calcule les heures hebdomadaires (horaire mensuel ÷ 4,33). Vous pouvez régénérer et réimporter ce fichier autant de fois que nécessaire pour tenir les effectifs à jour.'],
-    ['Comment calculer le coût horaire d\'une agence ?', 'Dans "Données agences", saisissez le taux horaire brut moyen et le taux de charges patronales de l\'agence. Le coût horaire moyen se calcule automatiquement : brut × (1 + charges%). Par exemple 12,50 € × (1 + 45%) = 18,13 €/h. Ce coût alimente tous les calculs de masse salariale et de coût des heures supplémentaires.'],
-    ['À quoi sert la vue comparative ?', 'Elle met toutes les agences côte à côte sur les indicateurs clés (TXR, absentéisme, coût horaire, ETP roulant, HS/CA) avec les médianes du réseau affichées en haut. Les valeurs qui s\'écartent de plus de 15% de la médiane apparaissent en orange, les meilleures en vert. C\'est votre tableau de bord pour repérer les agences atypiques.'],
-    ['À quoi servent les graphiques ?', 'L\'onglet "Graphiques" propose deux visualisations. Le premier montre l\'évolution du CA par agence (2025, 2026, budgété 2027) en barres — utile pour repérer les trajectoires anormales. Le second est un nuage de points productivité × tension : chaque agence est positionnée selon son TXR (horizontal) et son taux de charge (vertical). Les agences en haut à gauche (peu productives mais très tendues) méritent votre attention.'],
-    ['Comment fonctionnent les périodes de paie ?', 'Les variables de paie sont collectées par périodes glissantes de 4 semaines (5 en début de trimestre), pas par mois civil. La masse salariale comptabilisée est donc décalée par rapport au temps travaillé. L\'onglet "Périodes de paie" reconstitue ce calendrier 2027 et le prévisionnel suit ce découpage réel. Vous pouvez ajuster chaque date et saisir la part de décembre 2026 incluse en paie de janvier 2027.'],
-    ['Pourquoi la masse salariale ne colle pas au temps travaillé du mois ?', 'C\'est normal et voulu. Comme les variables de paie sont arrêtées avant la fin du mois, la charge salariale de janvier inclut une partie de décembre, et ainsi de suite. Les mois à 5 semaines affichent une charge plus élevée. Le prévisionnel reflète ce que la comptabilité enregistrera réellement, pas une simple photo du mois civil. Les REX y sont habitués.'],
-    ['Que comprend exactement la masse salariale du prévisionnel ?', 'Elle agrège : le coût des heures roulantes disponibles et des heures supplémentaires (au coût horaire × majoration), le coût journalier des improductifs (régulateurs, responsables) et leurs HS, les indemnités repas et IDJF saisies par semaine, et la quote-part du directeur régional. Le tout est ventilé selon les périodes de paie réelles si elles sont configurées.'],
-    ['Comment voir l\'avancement de toutes les agences ?', 'L\'onglet "Consolidation" affiche le statut de chaque budget (non commencé, brouillon, soumis, validé), le CA budgété, la capacité max, le taux de charge, les HS estimées et les alertes. En haut, des indicateurs vous disent combien de budgets sont déposés, validés ou en attente. Vous repérez instantanément les agences en retard ou en anomalie.'],
-    ['Comment exporter la consolidation pour la direction ?', 'Dans "Consolidation", le bouton "Export Excel" génère un fichier à trois feuilles : consolidation détaillée (19 colonnes), statuts et indicateurs comparatifs. Idéal pour transmettre à la direction générale ou travailler hors ligne.'],
-    ['Une alerte s\'affiche quand j\'ouvre un budget soumis, c\'est quoi ?', 'Quand vous ouvrez un budget qu\'un REX a soumis, une notification apparaît en haut à droite avec les anomalies détectées automatiquement : coût horaire manquant, CA supérieur à la capacité, CP déséquilibrés, TXR absent. Elle vous fait gagner du temps en pointant directement les vérifications à faire.'],
+    ['Quel est mon rôle dans SOMA ?', 'Le contrôleur de gestion prépare le terrain et supervise le réseau. Vous renseignez les données de référence de chaque agence (historiques, statistiques, cibles), vous suivez l\'avancement des 27 budgets, vous les comparez, et vous participez à leur validation. Vous êtes aussi valideur : votre décision compte dans le circuit collégial.'],
+    ['Comment bien préparer les références des agences ?', 'Avant que les responsables construisent leurs budgets, vous posez leur cadre : le CA historique, le TXR de référence, le taux d\'absentéisme maladie et accident de travail. Ces données servent de socle et de point de comparaison. Plus elles sont justes, plus les budgets des agences seront réalistes et faciles à juger.'],
+    ['Que dois-je vérifier avant que les responsables construisent leurs budgets ?', 'Assurez-vous que chaque agence a ses données de référence renseignées et qu\'un directeur régional lui est affecté. Sans référence, le responsable construit à l\'aveugle. Sans DR affecté, son budget ne pourra pas être validé à la première étape du circuit. L\'écran d\'affectation vous montre où il manque quelque chose.'],
+    ['Comment pré-remplir les données de toutes les agences ?', 'Utilisez la fonction d\'import des références : une matrice permet de renseigner en une fois les données de plusieurs agences, plutôt que de les saisir une par une. C\'est le plus gros gain de temps pour préparer le réseau. Vous pouvez ensuite ajuster agence par agence.'],
+    ['Comment importer le registre RH ?', 'La fonction d\'import RH permet de charger les données du personnel de plusieurs agences depuis un fichier. SOMA répartit les salariés dans leur agence respective. Vous évitez ainsi de ressaisir manuellement chaque équipe.'],
+    ['Comment suivre l\'avancement des 27 agences ?', 'Le tableau de bord réseau vous montre l\'état de chaque agence : budget non commencé, en cours, soumis, validé. Vous voyez d\'un coup d\'œil qui a soumis et qui est en retard, sans avoir à ouvrir chaque agence.'],
+    ['Comment repérer une agence qui sort de l\'ordinaire ?', 'SOMA compare chaque agence à la médiane du réseau et signale les écarts notables. Une agence dont un indicateur s\'éloigne fortement de ses pairs est mise en évidence. Cela vous permet de concentrer votre attention sur les budgets qui le méritent, plutôt que de tout éplucher.'],
+    ['À quoi sert la vue comparative ?', 'Elle met les agences côte à côte sur les mêmes indicateurs, pour repérer les atypies. Une agence n\'est jamais bonne ou mauvaise dans l\'absolu : elle l\'est par rapport à ses pairs et à son contexte. La vue comparative vous donne cette lecture relative.'],
+    ['À quoi servent les graphiques ?', 'Ils donnent une vision d\'ensemble du réseau : répartition du chiffre d\'affaires, des résultats, des ratios entre agences. C\'est une lecture synthétique, utile pour préparer une présentation à la direction ou repérer une tendance générale.'],
+    ['Comment fonctionnent les périodes de paie ?', 'Les périodes de paie découpent l\'année selon votre calendrier de paie réel, qui ne coïncide pas toujours avec les mois civils. SOMA en tient compte pour rattacher les charges à la bonne période. C\'est ce qui explique que la masse salariale d\'un mois ne corresponde pas exactement au temps travaillé de ce mois.'],
+    ['Pourquoi la masse salariale ne colle pas au temps travaillé du mois ?', 'Parce que la paie suit ses propres périodes, décalées par rapport aux mois civils, et parce qu\'elle intègre des éléments variables (heures supplémentaires, indemnités) rattachés à des dates de versement. SOMA reconstitue la masse salariale au plus près de la réalité de paie, pas du simple temps travaillé.'],
+    ['Que comprend exactement la masse salariale du prévisionnel ?', 'Elle intègre les salaires de base du personnel roulant et improductif, les heures supplémentaires valorisées selon leur majoration réelle (25% ou 50%), les indemnités, et les charges patronales. C\'est le coût complet du personnel, pas seulement les salaires bruts.'],
+    ['Mon rôle dans le circuit de validation ?', 'Le contrôleur de gestion et le directeur financier valident ensemble à la deuxième étape du circuit, après le directeur régional. Les deux doivent valider pour que le budget passe à la direction générale. Votre onglet de validation vous montre les budgets qui attendent votre décision.'],
+    ['Comment exporter la consolidation pour la direction ?', 'La fonction d\'export de la consolidation génère une vue agrégée de l\'ensemble du réseau, prête à être transmise à la direction. Elle rassemble les chiffres des agences validées en une synthèse unique.'],
   ],
   valideur: [
-    ['Quels budgets dois-je valider ?', 'Votre onglet "Validation" affiche uniquement les budgets qui attendent votre décision. Un Directeur Régional voit les agences de sa région ; le Directeur Financier, le Directeur Général et le PDG voient les budgets arrivés à leur niveau du circuit. Vous n\'avez pas à chercher : seuls les budgets pertinents pour vous apparaissent.'],
-    ['Dans quel ordre traiter les budgets ?', 'Commencez par ceux marqués "✓ OK" (sans alerte) : ils demandent une validation rapide. Concentrez ensuite votre attention sur ceux qui affichent des alertes (⚠) : ce sont eux qui nécessitent un examen approfondi et éventuellement un complément.'],
-    ['Comment lire la synthèse d\'un budget ?', 'Chaque carte affiche l\'essentiel sans avoir à ouvrir le détail : CA budgété 2027, évolution vs 2026 (colorée), taux de charge, effectif, TXR et coût horaire. Le taux de charge est le meilleur indicateur : vert (sain), orange (proche de la capacité), rouge (au-delà, HS importantes nécessaires). Le bouton "Voir le détail" déroule l\'objectif complet, l\'équipe par qualification et les perspectives rédigées par le REX.'],
-    ['Que signifie l\'évolution du CA ?', 'C\'est la variation entre le CA réalisé 2026 et le CA budgété 2027. Une hausse de plus de 10% s\'affiche en orange : elle doit être justifiée, surtout si aucune embauche n\'est prévue (une alerte le signale). Une baisse de plus de 10% s\'affiche aussi en alerte. Une évolution modérée et cohérente avec l\'effectif est le signe d\'un budget réaliste.'],
-    ['Que signifient les alertes ?', 'Les alertes pointent les incohérences : coût horaire manquant, CA supérieur à la capacité de l\'effectif (+15%), TXR non renseigné, ou une hausse de CA forte sans embauche prévue. Elles vous indiquent précisément quoi vérifier ou demander en complément avant de valider.'],
-    ['Différence entre refuser, complément et orientation ?', 'Trois niveaux de retour. <b>Refuser</b> renvoie le budget au REX pour une révision complète (motif obligatoire). <b>Demander un complément</b> signale des points précis à corriger sans tout rejeter (motif obligatoire) — le plus fréquent. <b>Donner une orientation</b> laisse un commentaire de conseil sans changer le statut ni bloquer le budget. Choisissez selon la gravité.'],
-    ['Que se passe-t-il quand je valide ?', 'Le budget passe automatiquement à l\'étape suivante du circuit (DR → DF → DG → PDG). Votre décision est enregistrée avec la date et votre éventuel commentaire. Quand le PDG valide, le budget est définitivement adopté pour l\'exercice 2027.'],
-    ['Le REX voit-il mes commentaires ?', 'Oui. Quand vous refusez ou demandez un complément, votre motif s\'affiche directement dans la barre de statut du REX, dans un encadré orange. Il sait ainsi exactement quoi corriger avant de re-soumettre. Soyez précis et constructif dans vos commentaires.'],
-    ['Comment comparer les agences entre elles ?', 'L\'onglet "Consolidation" vous donne une vue d\'ensemble avec tous les indicateurs par agence, pour situer chaque budget dans son contexte. Cela vous aide à juger si un chiffre est normal ou atypique pour le réseau.'],
+    ['Comment fonctionne le circuit de validation collégial ?', 'Le circuit comporte trois étapes successives. D\'abord le directeur régional de l\'agence. Puis le contrôleur de gestion et le directeur financier ensemble. Enfin la direction générale et le PDG ensemble. À chaque étape, tous les valideurs concernés doivent valider pour passer à la suivante. Un seul refus, à n\'importe quelle étape, renvoie le budget au responsable pour correction.'],
+    ['Quels budgets dois-je valider ?', 'Votre écran de validation ne vous montre que les budgets qui attendent votre décision, à votre étape du circuit. Vous ne voyez pas ceux qui sont encore aux étapes précédentes ni ceux que vous avez déjà traités. Un badge vous indique combien de budgets vous attendent.'],
+    ['Comment lire la fiche de décisions d\'un budget ?', 'Chaque budget se présente comme une fiche en trois temps : d\'où part l\'agence, les décisions prises par le responsable, et le résultat qui en découle. Vous ne validez pas des chiffres, vous validez des choix opérationnels : une ambition de chiffre d\'affaires, un mouvement d\'effectif, un taux d\'absentéisme, une charge d\'heures supplémentaires. La fiche vous permet de comprendre le budget en quelques secondes.'],
+    ['Que veulent dire les verdicts sur la fiche ?', 'À côté de chaque décision, SOMA pose un repère. Quand il dispose d\'une référence sûre, il juge : par exemple un absentéisme optimiste par rapport au taux calculé par le service RH. Quand il n\'a pas de seuil certain, il se contente de situer la décision par rapport à la médiane du réseau ou à l\'historique de l\'agence. Les points d\'attention sont signalés pour que vous sachiez où porter votre jugement.'],
+    ['Pourquoi mon commentaire est-il obligatoire ?', 'Parce qu\'une décision de validation engage. Un commentaire, qu\'il accompagne une validation ou un refus, laisse une trace de votre raisonnement. En cas de refus, il indique au responsable ce qu\'il doit corriger. En cas de validation, il documente ce que vous avez accepté et pourquoi.'],
+    ['Que se passe-t-il quand je valide ?', 'Votre validation est enregistrée avec la date et votre commentaire. Si tous les valideurs de votre étape ont validé, le budget passe à l\'étape suivante. Quand la dernière étape valide, le budget est définitivement adopté pour l\'exercice.'],
+    ['Que se passe-t-il si je refuse ?', 'Le budget retourne immédiatement au responsable à l\'état brouillon, et toutes les validations déjà obtenues sont effacées. Le responsable voit votre motif de refus, corrige, et resoumet. Un nouveau cycle de validation démarre alors depuis le directeur régional. Un refus est donc une décision qui a du poids : d\'où l\'importance du commentaire.'],
+    ['L\'historique des refus est-il conservé ?', 'Oui. Même après une resoumission, SOMA garde la trace des refus précédents et de leurs motifs. Si un budget a déjà été refusé, vous le voyez sur sa fiche, avec la raison. Cela vous permet de vérifier si le responsable a bien corrigé ce qui avait été signalé.'],
+    ['Puis-je consulter le budget en détail avant de décider ?', 'Oui. Le bouton pour voir tous les écrans ouvre le budget complet en lecture seule. Vous parcourez l\'objectif, l\'équipe, la présence, le prévisionnel et la synthèse exactement comme le responsable les a construits, sans rien pouvoir modifier. Un bandeau vous rappelle que vous êtes en consultation.'],
+    ['Qu\'est-ce que le coût du choix affiché sur certains budgets ?', 'Le responsable peut avoir choisi de répartir les congés autrement que l\'optimum calculé, par exemple pour le climat social de son équipe. SOMA chiffre le surcoût de ce choix. Ce n\'est pas une faute : c\'est un arbitrage humain que vous êtes invité à valider en connaissance de cause.'],
+    ['Le responsable voit-il mes commentaires ?', 'Oui, en cas de refus : votre motif lui est affiché pour qu\'il sache quoi corriger. C\'est le sens même du commentaire obligatoire : rendre votre décision utile et compréhensible pour celui qui reçoit le budget.'],
+    ['Comment comparer les agences entre elles ?', 'Au-delà des budgets à valider, la consolidation et la vue réseau vous permettent de situer chaque agence par rapport aux autres. Une décision de budget se juge toujours mieux avec le contexte du réseau en tête.'],
   ],
   admin: [
-    ['Comment créer un compte ?', 'Dans le panneau Admin, section "Créer un compte", renseignez le nom complet, l\'email et le rôle. Si c\'est un REX, sélectionnez aussi son agence. L\'outil génère alors le SQL à exécuter dans Supabase pour finaliser la création du profil. Le compte d\'authentification doit être créé en parallèle dans Supabase.'],
-    ['Comment tester l\'interface d\'un autre rôle ?', 'Section "Voir en tant que", cliquez sur le rôle souhaité (REX, CG, DR, DF, DG, PDG). Vous voyez immédiatement l\'interface de ce rôle sans vous déconnecter, avec un bandeau orange rappelant la simulation. Cliquez "Revenir Admin" pour reprendre votre accès normal. Très utile pour vérifier ce que voit chaque utilisateur.'],
-    ['Comment réinitialiser un mot de passe ?', 'Dans la liste des utilisateurs, le bouton "Reset MDP" en face de chaque personne génère le SQL de réinitialisation à exécuter dans Supabase. Communiquez ensuite le mot de passe provisoire à l\'utilisateur, qui pourra le changer.'],
-    ['Comment changer le rôle ou l\'agence d\'un utilisateur ?', 'Dans la liste des utilisateurs, les menus déroulants "Rôle" et "Agence" permettent de modifier directement ces attributs. Le changement est enregistré immédiatement dans la base.'],
-    ['Comment supprimer un compte ?', 'Le bouton "Supprimer" dans la liste des utilisateurs retire le profil. Attention : cette action est délicate, vérifiez bien l\'identité avant de confirmer. Le compte d\'authentification Supabase doit être supprimé séparément.'],
+    ['Comment créer un compte ?', 'Depuis l\'écran d\'administration, la fonction de création de compte vous permet d\'ajouter un utilisateur, de lui attribuer un rôle (responsable, contrôleur de gestion, directeur régional, direction, PDG) et, le cas échéant, de le rattacher à une agence ou une région.'],
+    ['Comment tester les différents profils ?', 'Depuis l\'écran d\'administration, vous pouvez basculer dans la vue de n\'importe quel rôle pour voir SOMA exactement comme cet utilisateur le voit. Un bandeau orange en haut de l\'écran vous rappelle que vous êtes en simulation et vous permet de revenir à tout moment à l\'administration.'],
+    ['Comment fonctionne l\'affectation des DR aux agences ?', 'L\'écran d\'affectation associe chaque agence à son directeur régional. Cette affectation détermine qui valide le budget de l\'agence à la première étape du circuit. Une agence sans DR affecté ne pourra pas être validée : l\'écran vous signale celles qui restent à affecter.'],
+    ['Comment réinitialiser un mot de passe ?', 'La gestion des comptes permet de déclencher une réinitialisation de mot de passe pour un utilisateur. Il recevra les instructions pour définir un nouveau mot de passe.'],
+    ['Comment supprimer un compte ?', 'Depuis la gestion des utilisateurs, vous pouvez supprimer un compte. Soyez prudent : cette action retire l\'accès de l\'utilisateur. Vérifiez qu\'aucun budget en cours ne dépend de lui avant de procéder.'],
+    ['Les données sont-elles sauvegardées automatiquement ?', 'Oui. Toutes les saisies sont enregistrées automatiquement sur le serveur, en continu. Les utilisateurs n\'ont pas de manipulation à faire pour conserver leur travail.'],
+    ['Puis-je modifier un budget à la place d\'un responsable ?', 'L\'administration donne accès à la modification des budgets. Utilisez cette possibilité avec discernement : le budget appartient au responsable de l\'agence, et toute modification de votre part doit rester exceptionnelle et justifiée.'],
   ],
-  commun: [
-    ['Je n\'arrive pas à me connecter, que faire ?', 'Vérifiez votre email et votre mot de passe. Si le problème persiste, contactez l\'administrateur qui pourra réinitialiser votre mot de passe. Le mot de passe est sensible à la casse.'],
-    ['Mes données sont-elles sauvegardées automatiquement ?', 'Non, pensez à cliquer "Sauvegarder" régulièrement. Le bouton devient vert quand la sauvegarde a réussi. Vos données sont ensuite stockées en ligne de façon sécurisée et vous les retrouvez à chaque connexion.'],
-    ['Sur quel appareil puis-je utiliser l\'outil ?', 'L\'outil fonctionne sur ordinateur, tablette et mobile, dans n\'importe quel navigateur récent. Pour la saisie détaillée (onglet Présence & HS), un écran d\'ordinateur est plus confortable.'],
-    ['J\'ai trouvé un bug ou une erreur, comment le signaler ?', 'Notez précisément ce que vous faisiez au moment du problème (quel onglet, quelle action) et signalez-le au contrôleur de gestion ou à l\'administrateur. Une capture d\'écran aide beaucoup à diagnostiquer.'],
-  ]
 };
 
 function renderAide(){
