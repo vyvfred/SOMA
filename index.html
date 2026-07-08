@@ -1,8 +1,10 @@
 <!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SOMA · Budget 2027 · VYV Ambulance</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
 /* ── VARIABLES ── */
 :root{
@@ -1106,13 +1108,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <div style="font-family:Space Grotesk,sans-serif;font-size:58px;font-weight:700;color:#fff;letter-spacing:.1em;line-height:1;text-transform:uppercase">SOMA</div>
       <div style="font-family:Space Grotesk,sans-serif;font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.22em;text-transform:uppercase;margin-top:6px">VYV Ambulance</div>
     </div>
-    <div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:400;color:rgba(255,255,255,.55);margin-bottom:40px">Construction budgétaire · 2027</div>
-    <div class="authTagline">
-      <div class="authTag"><span class="dot"></span>Une méthode née du terrain</div>
-      <div class="authTag"><span class="dot"></span>Circuit de validation collégial</div>
-      <div class="authTag"><span class="dot"></span>Consolidation réseau en temps réel</div>
-      <div class="authTag"><span class="dot"></span>L'intelligence métier au service de la décision</div>
-    </div>
+    <div style="font-family:Space Grotesk,sans-serif;font-size:16px;font-weight:400;color:rgba(255,255,255,.55);margin-bottom:40px">Outil de construction et de validation budgétaire · version 2027</div>
   </div>
   <div class="authCard">
     <h2 style="font-family:Outfit,sans-serif;font-size:24px;font-weight:900;margin-bottom:6px">Connexion</h2>
@@ -1818,8 +1814,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <button onclick="simulerRole('cg')" style="background:var(--blue);color:#fff;border:none;font-weight:700">Contrôleur de gestion</button>
       <button onclick="simulerRole('dr')" style="background:#2C3E7A;color:#fff;border:none;font-weight:700">Directeur Régional</button>
       <button onclick="simulerRole('df')" style="background:#4A235A;color:#fff;border:none;font-weight:700">Directeur Financier</button>
-      <button onclick="simulerRole('dg')" style="background:#1A5276;color:#fff;border:none;font-weight:700">Directeur Général</button>
-      <button onclick="simulerRole('pdg')" style="background:#784212;color:#fff;border:none;font-weight:700">PDG</button>
+      <button onclick="simulerRole('dg')" style="background:#1A5276;color:#fff;border:none;font-weight:700">Direction</button>
       <button onclick="simulerRole('admin')" class="secondary">↩ Revenir Admin</button>
     </div>
     <div id="simulationBadge" style="display:none;margin-top:10px;padding:8px 14px;background:rgba(196,83,0,.1);border:1px solid var(--orange);font-size:12px;color:var(--orange)"></div>
@@ -1838,8 +1833,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
           <option value="dr">Dir. Régional</option>
           <option value="cg">Contrôleur de gestion</option>
           <option value="df">Dir. Financier</option>
-          <option value="dg">Dir. Général</option>
-          <option value="pdg">PDG</option>
+          <option value="dg">Direction</option>
           <option value="admin">Admin</option>
         </select>
       </div>
@@ -2085,7 +2079,7 @@ async function doLogout() {
 }
 
 function roleLabel(r) {
-  return {rex:'REX',dr:'Dir. Régional',cg:'Contrôleur de gestion',df:'Direction Financière',dg:'Direction Générale',pdg:'PDG',admin:'Admin'}[r]||r;
+  return {rex:'REX',dr:'Dir. Régional',cg:'Contrôleur de gestion',df:'Direction Financière',dg:'Direction (DG, directeurs opérationnels)',pdg:'Direction (DG, directeurs opérationnels)',admin:'Admin'}[r]||r;
 }
 
 // ═══════════════════════════════════════════════
@@ -2234,7 +2228,7 @@ function setupUI() {
 // ═══════════════════════════════════════════════
 function buildNavValidateur() {
   let role = PROFILE.role;
-  let labels = { dr:'Directeur Régional', dg:'Direction Générale', pdg:'Présidence' };
+  let labels = { dr:'Directeur Régional', dg:'Direction (DG, directeurs opérationnels)', pdg:'Direction (DG, directeurs opérationnels)' };
   let panels = (role === 'dr')
     ? [['validation','Budgets à valider'],['consolidation','Consolidation région'],['aide','Aide']]
     : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['aide','Aide']];
@@ -2807,7 +2801,7 @@ function simulerRole(role) {
     if (q('simBanner')) q('simBanner').style.display = 'none';
   } else {
     PROFILE = {...PROFILE, role};
-    let labels = {rex:'REX Exploitation',cg:'Contrôleur de gestion',dr:'Directeur Régional',df:'Directeur Financier',dg:'Directeur Général',pdg:'PDG'};
+    let labels = {rex:'REX Exploitation',cg:'Contrôleur de gestion',dr:'Directeur Régional',df:'Directeur Financier',dg:'Direction (DG, directeurs opérationnels)',pdg:'Direction (DG, directeurs opérationnels)'};
     // Bandeau flottant global : visible sur tous les écrans
     if (q('simBanner') && q('simBannerText')) {
       q('simBanner').style.display = 'flex';
@@ -4086,9 +4080,9 @@ async function consulterBudget(agenceNom){
 const VALIDATION_STAGES = [
   { etage: 1, validateurs: ['dr'],        label: 'Directeur Régional' },
   { etage: 2, validateurs: ['cg','df'],   label: 'Contrôle de gestion & Finances' },
-  { etage: 3, validateurs: ['dg','pdg'],  label: 'Direction générale' }
+  { etage: 3, validateurs: ['dg','pdg'],  label: 'Direction' }
 ];
-const VALIDATOR_LABELS = { dr:'Directeur Régional', cg:'Contrôleur de gestion', df:'Directeur Financier', dg:'Directeur Général', pdg:'PDG' };
+const VALIDATOR_LABELS = { dr:'Directeur Régional', cg:'Contrôleur de gestion', df:'Directeur Financier', dg:'Direction (DG, directeurs opérationnels)', pdg:'Direction (DG, directeurs opérationnels)' };
 const VALIDATOR_ROLES = ['dr','cg','df','dg','pdg'];
 
 // Crée une structure de validation vierge
@@ -7715,11 +7709,11 @@ const FAQ = {
     ['Comment fonctionnent les périodes de paie ?', 'Les périodes de paie découpent l\'année selon votre calendrier de paie réel, qui ne coïncide pas toujours avec les mois civils. SOMA en tient compte pour rattacher les charges à la bonne période. C\'est ce qui explique que la masse salariale d\'un mois ne corresponde pas exactement au temps travaillé de ce mois.'],
     ['Pourquoi la masse salariale ne colle pas au temps travaillé du mois ?', 'Parce que la paie suit ses propres périodes, décalées par rapport aux mois civils, et parce qu\'elle intègre des éléments variables (heures supplémentaires, indemnités) rattachés à des dates de versement. SOMA reconstitue la masse salariale au plus près de la réalité de paie, pas du simple temps travaillé.'],
     ['Que comprend exactement la masse salariale du prévisionnel ?', 'Elle intègre les salaires de base du personnel roulant et improductif, les heures supplémentaires valorisées selon leur majoration réelle (25% ou 50%), les indemnités, et les charges patronales. C\'est le coût complet du personnel, pas seulement les salaires bruts.'],
-    ['Mon rôle dans le circuit de validation ?', 'Le contrôleur de gestion et le directeur financier valident ensemble à la deuxième étape du circuit, après le directeur régional. Les deux doivent valider pour que le budget passe à la direction générale. Votre onglet de validation vous montre les budgets qui attendent votre décision.'],
+    ['Mon rôle dans le circuit de validation ?', 'Le contrôleur de gestion et le directeur financier valident ensemble à la deuxième étape du circuit, après le directeur régional. Les deux doivent valider pour que le budget passe à la Direction. Votre onglet de validation vous montre les budgets qui attendent votre décision.'],
     ['Comment exporter la consolidation pour la direction ?', 'La fonction d\'export de la consolidation génère une vue agrégée de l\'ensemble du réseau, prête à être transmise à la direction. Elle rassemble les chiffres des agences validées en une synthèse unique.'],
   ],
   valideur: [
-    ['Comment fonctionne le circuit de validation collégial ?', 'Le circuit comporte trois étapes successives. D\'abord le directeur régional de l\'agence. Puis le contrôleur de gestion et le directeur financier ensemble. Enfin la direction générale et le PDG ensemble. À chaque étape, tous les valideurs concernés doivent valider pour passer à la suivante. Un seul refus, à n\'importe quelle étape, renvoie le budget au responsable pour correction.'],
+    ['Comment fonctionne le circuit de validation collégial ?', 'Le circuit comporte trois étapes successives. D\'abord le directeur régional de l\'agence. Puis le contrôleur de gestion et le directeur financier ensemble. Enfin la Direction (direction générale et directeurs opérationnels) ensemble. À chaque étape, tous les valideurs concernés doivent valider pour passer à la suivante. Un seul refus, à n\'importe quelle étape, renvoie le budget au responsable pour correction.'],
     ['Quels budgets dois-je valider ?', 'Votre écran de validation ne vous montre que les budgets qui attendent votre décision, à votre étape du circuit. Vous ne voyez pas ceux qui sont encore aux étapes précédentes ni ceux que vous avez déjà traités. Un badge vous indique combien de budgets vous attendent.'],
     ['Comment lire la fiche de décisions d\'un budget ?', 'Chaque budget se présente comme une fiche en trois temps : d\'où part l\'agence, les décisions prises par le responsable, et le résultat qui en découle. Vous ne validez pas des chiffres, vous validez des choix opérationnels : une ambition de chiffre d\'affaires, un mouvement d\'effectif, un taux d\'absentéisme, une charge d\'heures supplémentaires. La fiche vous permet de comprendre le budget en quelques secondes.'],
     ['Que veulent dire les verdicts sur la fiche ?', 'À côté de chaque décision, SOMA pose un repère. Quand il dispose d\'une référence sûre, il juge : par exemple un absentéisme optimiste par rapport au taux calculé par le service RH. Quand il n\'a pas de seuil certain, il se contente de situer la décision par rapport à la médiane du réseau ou à l\'historique de l\'agence. Les points d\'attention sont signalés pour que vous sachiez où porter votre jugement.'],
@@ -7733,7 +7727,7 @@ const FAQ = {
     ['Comment comparer les agences entre elles ?', 'Au-delà des budgets à valider, la consolidation et la vue réseau vous permettent de situer chaque agence par rapport aux autres. Une décision de budget se juge toujours mieux avec le contexte du réseau en tête.'],
   ],
   admin: [
-    ['Comment créer un compte ?', 'Depuis l\'écran d\'administration, la fonction de création de compte vous permet d\'ajouter un utilisateur, de lui attribuer un rôle (responsable, contrôleur de gestion, directeur régional, direction, PDG) et, le cas échéant, de le rattacher à une agence ou une région.'],
+    ['Comment créer un compte ?', 'Depuis l\'écran d\'administration, la fonction de création de compte vous permet d\'ajouter un utilisateur, de lui attribuer un rôle (responsable, contrôleur de gestion, directeur régional, direction) et, le cas échéant, de le rattacher à une agence ou une région.'],
     ['Comment tester les différents profils ?', 'Depuis l\'écran d\'administration, vous pouvez basculer dans la vue de n\'importe quel rôle pour voir SOMA exactement comme cet utilisateur le voit. Un bandeau orange en haut de l\'écran vous rappelle que vous êtes en simulation et vous permet de revenir à tout moment à l\'administration.'],
     ['Comment fonctionne l\'affectation des DR aux agences ?', 'L\'écran d\'affectation associe chaque agence à son directeur régional. Cette affectation détermine qui valide le budget de l\'agence à la première étape du circuit. Une agence sans DR affecté ne pourra pas être validée : l\'écran vous signale celles qui restent à affecter.'],
     ['Comment réinitialiser un mot de passe ?', 'La gestion des comptes permet de déclencher une réinitialisation de mot de passe pour un utilisateur. Il recevra les instructions pour définir un nouveau mot de passe.'],
@@ -8218,7 +8212,7 @@ function renderConsolidation(){
         +kpiHtml('Budgets déposés',deposes,Math.round(deposes/total*100)+'%')
         +kpiHtml('En brouillon',brouillons,'')
         +kpiHtml('Non commencés',nonDeposes,'')
-        +kpiHtml('Validés PDG',valides,'')
+        +kpiHtml('Validés Direction',valides,'')
         +kpiHtml('En cours validation',budgets.filter(function(b){return b.statut.includes('soumis');}).length,'')
         +'</div>';
 
