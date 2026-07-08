@@ -1063,6 +1063,56 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   font-size:12px; font-weight:600;
 }
 .simBanner button:hover{ background:rgba(255,255,255,.3); }
+
+/* ═══════════════════════════════════════════════════════════
+   MODE DÉMONSTRATION
+   ═══════════════════════════════════════════════════════════ */
+.demoBanner{
+  position:fixed; top:0; left:0; right:0; z-index:360;
+  display:flex; align-items:center; gap:var(--sp-3);
+  padding:10px var(--sp-5);
+  background:#784212; color:#fff;
+  font-size:13px; font-weight:600;
+  box-shadow:0 2px 12px rgba(0,0,0,.3);
+}
+.demoBannerDot{ width:8px; height:8px; border-radius:50%; background:#fff; animation:pulse 2s infinite; }
+.demoBanner button{
+  width:auto; padding:6px 14px;
+  background:rgba(255,255,255,.2); color:#fff; border:1px solid rgba(255,255,255,.5);
+  font-size:12px; font-weight:600;
+}
+.demoBanner button:hover{ background:rgba(255,255,255,.3); }
+.demoBannerReinit{ margin-left:auto; }
+
+/* Bouton de réinitialisation sur l'écran d'accueil démo */
+.demoReinitZone{
+  max-width:900px; margin:var(--sp-5) auto 0; padding-top:var(--sp-4);
+  border-top:1px solid var(--border); text-align:center;
+}
+.demoReinitBtn{
+  width:auto; padding:10px 22px;
+  background:var(--card); color:var(--ink); border:1px solid var(--border2);
+  border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer;
+  transition:all .2s ease;
+}
+.demoReinitBtn:hover{ border-color:#784212; color:#784212; }
+.demoReinitHint{ display:block; margin-top:8px; font-size:12px; color:var(--ink30); }
+
+.demoIntro{ max-width:720px; margin:0 auto var(--sp-5); text-align:center; }
+.demoTitle{ font-family:'Space Grotesk',sans-serif; font-size:26px; color:var(--ink); margin-bottom:12px; }
+.demoLead{ font-size:15px; line-height:1.7; color:var(--ink65); }
+.demoCards{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:var(--sp-4); max-width:900px; margin:0 auto;
+}
+.demoCard{
+  padding:var(--sp-4); border:1px solid var(--border2); border-radius:var(--radius);
+  background:var(--card); cursor:pointer; transition:all .2s ease;
+}
+.demoCard:hover{ border-color:var(--blue); box-shadow:0 6px 24px rgba(74,158,255,.2); transform:translateY(-2px); }
+.demoCardLabel{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; color:var(--ink); margin-bottom:8px; }
+.demoCardDesc{ font-size:13px; line-height:1.5; color:var(--ink65); margin-bottom:14px; }
+.demoCardAction{ font-size:13px; font-weight:600; color:var(--blue); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head><body>
@@ -1089,6 +1139,14 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 
     <button class="visionBtn" onclick="closeVision()">Commencer à utiliser SOMA</button>
   </div>
+</div>
+
+<!-- BANDEAU DE DÉMONSTRATION (accès démo autonome) -->
+<div id="demoBanner" class="demoBanner" style="display:none">
+  <span class="demoBannerDot"></span>
+  <span id="demoBannerText"></span>
+  <button onclick="reinitialiserDemo()" class="demoBannerReinit">↺ Réinitialiser</button>
+  <button onclick="demoRetourAccueil()">↩ Retour au choix des profils</button>
 </div>
 
 <!-- BANDEAU DE SIMULATION (admin testant un autre rôle) -->
@@ -1835,6 +1893,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
           <option value="df">Dir. Financier</option>
           <option value="dg">Direction</option>
           <option value="admin">Admin</option>
+          <option value="demo">Démonstration</option>
         </select>
       </div>
     </div>
@@ -1877,6 +1936,10 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <div id="consolidationContent"><div class="loading">Chargement...</div></div>
   </div>
 </section>
+
+  <section id="demoAccueil" class="panel">
+    <div id="demoAccueilContent"></div>
+  </section>
 
 </main></div>
 <div class="footer">SOMA · Budget 2027 · VYV Ambulance</div>
@@ -2190,6 +2253,46 @@ function setupUI() {
   // Afficher/masquer le switch de rôle (uniquement pour CG)
   if (q('roleSwitchZone')) q('roleSwitchZone').style.display = role === 'cg' ? '' : 'none';
   if (q('somSave')) q('somSave').style.display = ['rex','cg','admin'].includes(role) ? '' : 'none';
+
+  // ── MODE DÉMO : étanchéité totale ──
+  // En démo, on affiche l'interface du rôle mais sans jamais charger les vraies
+  // agences depuis Supabase. L'agence démo est déjà en mémoire dans S.agencies.
+  if (PROFILE._demo && DEMO_VUE) {
+    if (role === 'rex') {
+      S.role = 'rex';
+      buildNav();
+      show('objectif');
+      render();
+    } else if (role === 'cg' || role === 'df') {
+      S.role = 'cg';
+      buildNav();
+      show('cgdash');
+      render();
+    } else if (role === 'dr' || role === 'dg' || role === 'pdg') {
+      S.role = role;
+      buildNavValidateur();
+      show('validation');
+      renderValidationCollegial();
+    }
+    // Bandeau démo + bouton retour dans la nav
+    let labels = {rex:'Responsable d\'exploitation', cg:'Contrôleur de gestion', dr:'Valideur (Direction régionale)'};
+    if (q('demoBanner') && q('demoBannerText')) {
+      q('demoBanner').style.display = 'flex';
+      q('demoBannerText').textContent = 'Démonstration — vue « ' + (labels[DEMO_VUE]||DEMO_VUE) + ' » sur l\'agence fictive';
+    }
+    let nav = q('nav');
+    if (nav && nav.querySelector('.demoNavBack') === null) {
+      let back = document.createElement('button');
+      back.className = 'navbtn demoNavBack';
+      back.style.cssText = 'background:#784212;color:#fff;margin-bottom:8px';
+      back.textContent = '↩ Retour choix des profils';
+      back.onclick = demoRetourAccueil;
+      nav.insertBefore(back, nav.firstChild);
+    }
+    maybeShowVision();
+    return;
+  }
+
   if (role === 'rex') {
     S.role = 'rex';
     buildNav();
@@ -2218,6 +2321,12 @@ function setupUI() {
     buildNavAdmin();
     show('admin');
     renderAdmin();
+  } else if (role === 'demo') {
+    // Mode démonstration : accès autonome pour explorer tous les profils
+    // sur l'agence fictive, sans les pouvoirs d'administration réelle.
+    buildNavDemo();
+    show('demoAccueil');
+    renderDemoAccueil();
   }
 
   maybeShowVision();
@@ -2457,6 +2566,9 @@ async function loadBudgetFromSupabase(agence) {
 async function saveBudgetToSupabase() {
   const a = A();
   if (!a || a.name === 'Nouvelle agence') return;
+  // MODE DÉMO : ne jamais écrire dans Supabase. Les modifications restent
+  // en mémoire sur l'agence fictive (réinitialisables), rien n'est persisté.
+  if (PROFILE._demo || (a && a.name === 'AGENCE DEMO')) { markSaved(); return; }
   markSaving();
   try {
     // Charger l'enregistrement existant pour préserver les autres versions
@@ -2791,6 +2903,153 @@ function toggleNav() {
 // SIMULATION DE RÔLE (ADMIN)
 // ═══════════════════════════════════════════════
 let _originalProfile = null;
+
+// ═══════════════════════════════════════════════════════════
+// MODE DÉMONSTRATION — accès autonome pour explorer SOMA
+// Un membre de la direction explore tous les profils sur l'agence
+// fictive, peut tout modifier, sans toucher aux vraies données.
+// ═══════════════════════════════════════════════════════════
+let DEMO_VUE = null;          // le profil actuellement exploré en démo (rex/cg/valideur)
+let DEMO_AGENCE = null;       // l'agence fictive de démo, construite en mémoire, partagée
+let _demoProfile = null;      // sauvegarde du profil démo d'origine
+
+const DEMO_ROLES = [
+  { code:'rex', label:'Responsable d\'exploitation', desc:'Construire le budget d\'une agence : objectif, équipe, présence, congés, heures supplémentaires.' },
+  { code:'cg',  label:'Contrôleur de gestion', desc:'Préparer les références, superviser le réseau, consolider.' },
+  { code:'dr',  label:'Valideur (Direction régionale)', desc:'Examiner et valider un budget via la fiche de décisions.' }
+];
+
+// Navigation du mode démo : un bouton d'accueil + le retour
+function buildNavDemo() {
+  let h = '<div class="navgroup">Démonstration</div>';
+  h += '<button class="navbtn active" data-p="demoAccueil">Choisir un profil à explorer</button>';
+  q('nav').innerHTML = h;
+  document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => { show(b.dataset.p); if(b.dataset.p==='demoAccueil'){DEMO_VUE=null; renderDemoAccueil();} });
+}
+
+// Écran d'accueil : présente la démo et propose d'explorer chaque profil
+function renderDemoAccueil() {
+  let box = q('demoAccueilContent');
+  if(!box) return;
+  let html = '<div class="demoIntro">'
+    + '<h2 class="demoTitle">Bienvenue dans la démonstration de SOMA</h2>'
+    + '<p class="demoLead">Vous explorez SOMA librement, sur une agence fictive de démonstration. '
+    + 'Vous pouvez tout modifier pour tester : rien de ce que vous faites n\'affecte les vraies agences du réseau. '
+    + 'Choisissez un profil ci-dessous pour découvrir SOMA de son point de vue.</p>'
+    + '</div>';
+  html += '<div class="demoCards">';
+  DEMO_ROLES.forEach(function(r){
+    html += '<div class="demoCard" onclick="demoVoirRole(\''+r.code+'\')">'
+      + '<div class="demoCardLabel">'+r.label+'</div>'
+      + '<div class="demoCardDesc">'+r.desc+'</div>'
+      + '<div class="demoCardAction">Explorer →</div>'
+      + '</div>';
+  });
+  html += '</div>';
+  // Bouton de réinitialisation
+  html += '<div class="demoReinitZone">'
+    + '<button class="demoReinitBtn" onclick="reinitialiserDemo()">↺ Réinitialiser la démonstration</button>'
+    + '<span class="demoReinitHint">Remet l\'agence fictive dans son état d\'origine, en effaçant les modifications.</span>'
+    + '</div>';
+  box.innerHTML = html;
+}
+
+// Basculer dans la vue d'un profil, en restant en mode démo
+function demoVoirRole(role) {
+  if (!_demoProfile) _demoProfile = {...PROFILE};
+  DEMO_VUE = role;
+  // Construire l'agence démo une seule fois (partagée pendant la session)
+  if (!DEMO_AGENCE) DEMO_AGENCE = construireAgenceDemo();
+  // Installer l'agence démo comme seule agence visible (étanchéité totale)
+  S.agencies = [DEMO_AGENCE];
+  S.agIdx = 0;
+  BUDGET_ID = null;
+  BUDGET_STATUT = 'brouillon';
+  // On prend le rôle choisi, mais on garde la marque démo
+  PROFILE = {..._demoProfile, role: role, _demo: true, agence: 'AGENCE DEMO'};
+  let labels = {rex:'Responsable d\'exploitation', cg:'Contrôleur de gestion', dr:'Valideur (Direction régionale)'};
+  // Bandeau démo permanent
+  if (q('demoBanner') && q('demoBannerText')) {
+    q('demoBanner').style.display = 'flex';
+    q('demoBannerText').textContent = 'Démonstration — vous explorez la vue « ' + (labels[role]||role) + ' » sur l\'agence fictive';
+  }
+  setupUI();
+}
+
+// Revenir à l'accueil démo (choix des profils)
+function demoRetourAccueil() {
+  if (_demoProfile) { PROFILE = {..._demoProfile}; }
+  DEMO_VUE = null;
+  if (q('demoBanner')) q('demoBanner').style.display = 'none';
+  setupUI();
+}
+
+// Réinitialiser la démo : reconstruire l'agence fictive dans son état d'origine.
+// Efface toutes les modifications accumulées par les visiteurs précédents.
+function reinitialiserDemo() {
+  if (!confirm('Réinitialiser la démonstration ? Toutes les modifications faites sur l\'agence fictive seront effacées et le budget reviendra à son état d\'origine.')) return;
+  DEMO_AGENCE = construireAgenceDemo();
+  // Si on explore actuellement un profil, réinstaller l'agence fraîche
+  if (DEMO_VUE) {
+    S.agencies = [DEMO_AGENCE];
+    S.agIdx = 0;
+    setupUI();
+  }
+  // Message de confirmation discret
+  if (typeof toast === 'function') {
+    toast('Démonstration réinitialisée');
+  } else {
+    alert('La démonstration a été réinitialisée. L\'agence fictive est revenue à son état d\'origine.');
+  }
+}
+
+// Construit l'agence fictive de démonstration avec un budget réaliste pré-rempli.
+// Entièrement en mémoire : jamais enregistrée dans Supabase, aucune vraie donnée touchée.
+function construireAgenceDemo() {
+  let a = agency('AGENCE DEMO');
+  a.schoolZone = 'B';
+  genCal(a);
+
+  // Objectif réaliste
+  a.histCA = 4100000;          // CA réalisé 2026
+  a.targetCA = 4182000;        // +2%
+  a.targetTXR = 92;            // CA / heure
+  a.targetAbsRate = 8;         // absentéisme maladie + AT de référence (RH)
+  a.actSan = true; a.actSai = true; a.actTP = false;
+
+  // Paramètres de coût
+  a.costHour = 28.5;
+  a.tauxHoraireBrut = 13.5;
+  a.tauxChargePatronal = 42;
+  a.tauxAbsImproductif = 6;
+
+  // Équipe réaliste : 12 roulants + 2 improductifs
+  let quals = ['DEA','DEA','DEA','DEA','AA','AA','AA','DEA','AA','DEA','TAXI','AA'];
+  a.employees = quals.map(function(q, i){
+    return { name:'Salarié '+(i+1), qual:q, contract:'CDI', hours:35, hoursM:0,
+             hsTarget:3, pctRoulant:100, joursSem:5, coutJour:0, dateEntree:'', dateSortie:'' };
+  });
+  // Un CDD saisonnier (été)
+  a.employees.push({ name:'CDD Saisonnier', qual:'AA', contract:'CDD', hours:35, hoursM:0,
+    hsTarget:3, pctRoulant:100, joursSem:5, coutJour:0, dateEntree:'2027-06-01', dateSortie:'2027-09-30' });
+  // Deux improductifs (régulation)
+  a.employees.push({ name:'Régulateur 1', qual:'REGULATEUR', contract:'CDI', hours:35, hoursM:0,
+    hsTarget:0, pctRoulant:0, joursSem:5, coutJour:0, dateEntree:'', dateSortie:'' });
+  a.employees.push({ name:'Responsable', qual:'RESPONSABLE', contract:'CDI', hours:35, hoursM:0,
+    hsTarget:0, pctRoulant:50, joursSem:5, coutJour:0, dateEntree:'', dateSortie:'' });
+
+  // Références CA journalières réalistes (ventilation simple)
+  // (les refs existent déjà par défaut via agency())
+
+  // Une part de HS à 50% en hiver (montre le barème 25/50)
+  a.hs50 = Array(12).fill(0);
+  a.hs50[0] = 25; a.hs50[1] = 20; a.hs50[11] = 30;  // jan, fév, déc
+
+  // Absentéisme mensuel réaliste (moyenne proche de 8%)
+  a.sick = [9,9,8,7,7,6,6,7,8,9,9,9];
+
+  return a;
+}
 
 function simulerRole(role) {
   if (!_originalProfile) _originalProfile = {...PROFILE};
@@ -3663,6 +3922,13 @@ async function renderValidationCollegial(){
   if(loading) loading.style.display = 'none';
   budgets = budgets || [];
 
+  // MODE DÉMO : ne montrer que l'agence fictive, jamais les vrais budgets
+  if (PROFILE._demo) {
+    let demoData = DEMO_AGENCE ? {versions:{v1:DEMO_AGENCE}, meta:{}, validation:newValidation()} : null;
+    if (demoData) demoData.validation.statut = 'soumis';
+    budgets = demoData ? [{ agence:'AGENCE DEMO', statut:'soumis', data:demoData, updated_at:new Date().toISOString() }] : [];
+  }
+
   // Pour le DR : charger la carte d'affectation (il ne voit que ses agences)
   let affMap = null;
   if(role === 'dr'){
@@ -3959,6 +4225,11 @@ function updateValButtons(agenceNom){
 }
 
 async function deciderBudget(agenceNom, decision){
+  // MODE DÉMO : la décision n'est pas enregistrée, on montre juste le principe.
+  if (PROFILE._demo) {
+    alert('Mode démonstration : en usage réel, votre décision (' + (decision==='valide'?'validation':'refus') + ') serait enregistrée et le budget passerait à l\'étape suivante du circuit. Ici, rien n\'est modifié.');
+    return;
+  }
   let key = agenceNom.replace(/[^a-zA-Z0-9]/g,'_');
   let comment = q('valComment_'+key);
   let commentaire = comment ? comment.value.trim() : '';
@@ -4645,6 +4916,11 @@ function renderStepNav(id){
     html += '<button onclick="showBudgetRecap()" style="width:auto;margin:0;background:linear-gradient(135deg,var(--green),#45c87a);color:#fff;border:none;padding:10px 22px;font-weight:700">✓ Terminer et sauvegarder</button>';
   }
   html += '</div>';
+  // Bouton de réinitialisation
+  html += '<div class="demoReinitZone">'
+    + '<button class="demoReinitBtn" onclick="reinitialiserDemo()">↺ Réinitialiser la démonstration</button>'
+    + '<span class="demoReinitHint">Remet l\'agence fictive dans son état d\'origine, en effaçant les modifications.</span>'
+    + '</div>';
   box.innerHTML = html;
 }
 
