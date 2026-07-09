@@ -3331,9 +3331,13 @@ function hsRows(a){
   });
 }
 // Version sans dépendance circulaire (utilisée par hsRows lui-même)
+// coefHSMoyen() dépend de hsRows() : on ne l'appelle donc PAS ici pour éviter
+// la récursion infinie hsRows -> refAgenceSeuilsBase -> coefHSMoyen -> hsRows.
+// coutHSRef n'est de toute façon pas consommé par hsRows (qui n'utilise que les
+// seuils de tension, dérivés de baseHebdo). Coefficient de base 1,25 (défaut barème).
 function refAgenceSeuilsBase(a) {
   let baseHebdo = baseH(a);
-  let coutHSRef = baseHebdo * (+a.costHour||28.5) * coefHSMoyen(a);
+  let coutHSRef = baseHebdo * (+a.costHour||28.5) * 1.25;
   return {
     coutHSRef,
     seuilFaible: coutHSRef * 0.10,
@@ -6521,6 +6525,17 @@ function addAgency(){let n=prompt('Nom agence');if(!n)return;S.agencies.push(age
 function changeAgency(){if(q('start'))q('start').style.display='';show('objectif')}
 
 function migrateState(){S.agencies.forEach(a=>{
+  // Références CA : garantir la structure {san,sai,tp} × 12 mois (anciens budgets)
+  if(!a.refs||typeof a.refs!=='object')a.refs={san:refs(),sai:refs(),tp:refs()};
+  ['san','sai','tp'].forEach(k=>{
+    if(!Array.isArray(a.refs[k])||a.refs[k].length!==12)a.refs[k]=refs();
+    a.refs[k].forEach((mo,i)=>{
+      if(!mo||typeof mo!=='object')a.refs[k][i]={semaine:null,vacances:null,samedi:null,dimanche:null,ferie:null};
+      else ['semaine','vacances','samedi','dimanche','ferie'].forEach(t=>{if(!(t in mo))mo[t]=null;});
+    });
+  });
+  if(!Array.isArray(a.cal))a.cal=[];
+  if(!Array.isArray(a.hs50))a.hs50=Array(12).fill(null);
   if(a.drCostAnnual===undefined)a.drCostAnnual=0;
   if(a.tauxHoraireBrut===undefined)a.tauxHoraireBrut=null;
   if(a.tauxChargePatronal===undefined)a.tauxChargePatronal=null;
