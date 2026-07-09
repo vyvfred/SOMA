@@ -1113,6 +1113,36 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 .demoCardLabel{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:17px; color:var(--ink); margin-bottom:8px; }
 .demoCardDesc{ font-size:13px; line-height:1.5; color:var(--ink65); margin-bottom:14px; }
 .demoCardAction{ font-size:13px; font-weight:600; color:var(--blue); }
+
+/* ═══ Bilan CP par enveloppe (synthèse) ═══ */
+.synthEnveloppes{
+  margin-top:var(--sp-4); padding:var(--sp-4);
+  border:1px solid var(--border2); border-radius:var(--radius);
+  background:var(--card);
+}
+.synthEnvTitle{
+  font-family:'Space Grotesk',sans-serif; font-weight:600;
+  font-size:15px; color:var(--ink); margin-bottom:12px;
+}
+.envTable{ width:100%; border-collapse:collapse; }
+.envTable th{
+  text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+  color:var(--ink30); padding:6px 10px; border-bottom:1px solid var(--border);
+}
+.envTable td{ padding:8px 10px; font-size:13px; border-bottom:1px solid var(--border); }
+.envTable td.num{ text-align:right; }
+.envEcart.ok{ color:var(--green); font-weight:600; }
+.envEcart.warn{ color:#B26A00; font-weight:700; }
+.envAlerte{
+  margin-top:10px; padding:10px 12px; font-size:12.5px; line-height:1.5;
+  background:rgba(178,106,0,.08); border:1px solid rgba(178,106,0,.35);
+  border-radius:var(--radius-sm); color:#B26A00;
+}
+.envReliquat{
+  margin-top:10px; padding:10px 12px; font-size:12.5px; line-height:1.5;
+  background:rgba(196,83,0,.1); border:1px solid var(--orange);
+  border-radius:var(--radius-sm); color:var(--orange);
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head><body>
@@ -1824,6 +1854,12 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
           <div class="chartBox"><div class="chartTitle">Ratios clés</div><div id="chartRatios"></div></div>
         </div>
       </div>
+
+    <!-- Bilan des CP par enveloppe légale (mis en avant : cible vs réel) -->
+    <div id="synthEnveloppes" class="synthEnveloppes" style="display:none">
+      <div class="synthEnvTitle">Répartition des congés par période légale</div>
+      <div id="synthEnvBody"></div>
+    </div>
     </details>
 
     <details class="objCollapse" id="synthCollapseKpis" open>
@@ -6089,6 +6125,61 @@ function renderCoutChoix(a){
   }
 }
 
+// Bilan des CP par enveloppe légale : cible vs réellement posé.
+// Met en avant les écarts dus aux mois verrouillés et la compensation appliquée.
+function renderEnveloppesCP(a){
+  let box = q('synthEnveloppes'), body = q('synthEnvBody');
+  if(!box || !body) return;
+  let envs = a.cpEnveloppes;
+  if(!envs || !envs.length){ box.style.display = 'none'; return; }
+
+  // CP réellement posés par enveloppe (verrouillés + placés par le moteur ou la main)
+  let defs = [
+    { nom: 'Juin – octobre',     months: [5,6,7,8,9]  },
+    { nom: 'Novembre – janvier', months: [10,11,0]    },
+    { nom: 'Février – mai',      months: [1,2,3,4]    }
+  ];
+  let generes = cpGeneres(a);
+  let html = '<table class="envTable"><tr><th>Période</th><th>Cible légale</th><th>CP posés</th><th>Écart</th></tr>';
+  let alertes = [];
+  defs.forEach(function(def, i){
+    let env = envs[i] || {};
+    let poses = needWeeks(a).reduce(function(s, w){
+      let mois = mainMonth(a, w.week);
+      if(def.months.indexOf(mois) >= 0) return s + (+((a.presence[w.week]||{}).cp) || 0);
+      return s;
+    }, 0);
+    poses = Math.round(poses * 10) / 10;
+    let cible = env.cible !== undefined ? env.cible : Math.round(generes * (env.pct||0) * 10) / 10;
+    let ecart = Math.round((poses - cible) * 10) / 10;
+    let ecartCls = Math.abs(ecart) < 1 ? 'ok' : 'warn';
+    let ecartTxt = Math.abs(ecart) < 1 ? 'conforme' : (ecart > 0 ? '+' + ecart + ' j' : ecart + ' j');
+    if(Math.abs(ecart) >= 1 && env.verrouille > 0){
+      alertes.push(def.nom + ' : les mois verrouillés portent ' + env.verrouille + ' j — la répartition automatique a compensé sur les autres périodes.');
+    }
+    html += '<tr>'
+      + '<td>' + def.nom + '</td>'
+      + '<td class="num">' + cible + ' j</td>'
+      + '<td class="num"><b>' + poses + ' j</b></td>'
+      + '<td class="num envEcart ' + ecartCls + '">' + ecartTxt + '</td>'
+      + '</tr>';
+  });
+  html += '</table>';
+
+  // Alertes de compensation
+  if(alertes.length){
+    html += '<div class="envAlerte">' + alertes.map(function(t){ return '⚖ ' + t; }).join('<br>') + '</div>';
+  }
+  // Reliquat non placé
+  if(a.cpReliquat && a.cpReliquat > 0){
+    html += '<div class="envReliquat">⚠ <b>' + a.cpReliquat + ' jours de CP</b> n\'ont pas pu être répartis automatiquement '
+      + '(les semaines disponibles ont atteint leur niveau d\'équilibre). Déverrouillez un mois ou placez-les manuellement.</div>';
+  }
+
+  body.innerHTML = html;
+  box.style.display = '';
+}
+
 function renderSynthese(){
   let a = A();
   if(!a || a.name === 'Nouvelle agence') return;
@@ -6169,6 +6260,7 @@ function renderSynthese(){
   }
 
   renderCoutChoix(a);
+  renderEnveloppesCP(a);
 }
 
 function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),t=hsTot(a);kpis('finKpis',[['CA calendrier',euro(ca)],['Charges personnel',euro(ms),'présence + HS'],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)],['MS / CA',pct(ca?ms/ca*100:0)],['HS',t.hs.toFixed(0)+' h']])}
@@ -6556,19 +6648,65 @@ async function adminCreateUser() {
   const agence = role === 'rex' ? q('adminAgence').value : null;
   if (!nom || !email) { showAdminMsg('Nom et email obligatoires.', 'bad'); return; }
   if (role === 'rex' && (!agence || agence === '' || agence === '-- Choisir une agence --')) { showAdminMsg('Selectionnez une agence pour ce REX.', 'bad'); return; }
-  // Vérification d'email existant : non bloquante (si Supabase ne répond pas, on continue quand même)
+
+  showAdminMsg('Creation du compte en cours...', 'ok');
+
+  // 1) Verifier si un profil existe deja avec cet email
   try {
-    const {data: existing} = await sb.from('profiles').select('id').eq('email', email).single().catch(() => ({data:null}));
+    const {data: existing} = await sb.from('profiles').select('id').eq('email', email).maybeSingle();
     if (existing) { showAdminMsg('Un compte avec cet email existe deja.', 'bad'); return; }
-  } catch(e) { /* on continue : la modale s'ouvrira quand même */ }
-  // Construire le SQL et ouvrir la modale
-  const esc = function(s){ return String(s).replace(/'/g, "''"); };
-  const nomSQL = esc(nom);
-  const emailSQL = esc(email);
-  const agenceField = agence ? ', agence' : '';
-  const agenceVal = agence ? `, '${esc(agence)}'` : '';
-  const sql = `INSERT INTO public.profiles (id, email, nom, role${agenceField})\nSELECT id, email, '${nomSQL}', '${role}'${agenceVal}\nFROM auth.users WHERE email = '${emailSQL}';`;
-  showCreateModal(nom, email, sql);
+  } catch(e) { /* non bloquant */ }
+
+  // 2) Creer l'identite de connexion via un client Supabase SECONDAIRE isole.
+  //    persistSession:false garantit que la session admin actuelle n'est pas touchee.
+  let userId = null;
+  try {
+    const sbTemp = supabase.createClient(SUPA_URL, SUPA_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+    const {data, error} = await sbTemp.auth.signUp({
+      email: email,
+      password: 'vyvFred01!'
+    });
+    if (error) {
+      // Cas frequent : l'identite existe deja dans Authentication
+      if (String(error.message||'').toLowerCase().includes('already registered')) {
+        // On tente de retrouver son id via un profil eventuel, sinon on informe
+        showAdminMsg('Cette identite existe deja dans Supabase. Si le profil manque, utilisez le SQL de liaison.', 'bad');
+        return;
+      }
+      showAdminMsg('Erreur creation identite : ' + error.message, 'bad');
+      return;
+    }
+    userId = data && data.user ? data.user.id : null;
+    if (!userId) {
+      showAdminMsg('Identite creee mais identifiant introuvable. Verifiez que la confirmation email est desactivee dans Supabase (Authentication > Providers > Email > Confirm email).', 'bad');
+      return;
+    }
+  } catch(e) {
+    showAdminMsg('Erreur inattendue : ' + (e.message||e), 'bad');
+    return;
+  }
+
+  // 3) Creer le profil metier (role + agence)
+  try {
+    const {error: perr} = await sb.from('profiles').insert({
+      id: userId, email: email, nom: nom, role: role, agence: agence || null
+    });
+    if (perr) {
+      showAdminMsg('Identite creee, mais erreur sur le profil : ' + perr.message, 'bad');
+      return;
+    }
+  } catch(e) {
+    showAdminMsg('Identite creee, mais erreur sur le profil : ' + (e.message||e), 'bad');
+    return;
+  }
+
+  // 4) Succes complet
+  showAdminMsg('Compte cree : ' + nom + ' (' + role + (agence ? ', ' + agence : '') + '). Mot de passe habituel. La personne peut se connecter.', 'ok');
+  q('adminNom').value = '';
+  q('adminEmail').value = '';
+  if (typeof renderAdmin === 'function') renderAdmin();
 }
 
 function showCreateModal(nom, email, sql) {
@@ -7049,27 +7187,57 @@ function repartirCPAuto(moissLibres){
   let restant = Math.round((generes - cpVerrouilles) * 10) / 10;
   if(restant <= 0){ render(); return; }
 
-  // ── COUCHE 1 : enveloppes légales (corrigées) ──
+  // ── COUCHE 1 : enveloppes légales CONSCIENTES des mois verrouillés ──
+  // Cible de chaque enveloppe = pct × total généré.
+  // Budget des mois libres = cible − CP déjà posés sur les mois verrouillés de l'enveloppe.
+  // Si un mois verrouillé DÉPASSE la cible de son enveloppe, l'excédent est
+  // compensé en réduisant proportionnellement les autres enveloppes.
   let envelopes = [
-    { pct: 0.60, months: [5,6,7,8,9]  },  // juin → octobre
-    { pct: 0.20, months: [10,11,0]    },  // novembre → janvier
-    { pct: 0.20, months: [1,2,3,4]    }   // février → mai
+    { nom: 'Juin – octobre',    pct: 0.60, months: [5,6,7,8,9]  },
+    { nom: 'Novembre – janvier', pct: 0.20, months: [10,11,0]    },
+    { nom: 'Février – mai',      pct: 0.20, months: [1,2,3,4]    }
   ];
 
+  // CP verrouillés par enveloppe
+  envelopes.forEach(function(env){
+    env.cpVerrouilles = needWeeks(a).reduce(function(s, w){
+      let mois = mainMonth(a, w.week);
+      if(env.months.indexOf(mois) >= 0 && libres.indexOf(mois) < 0){
+        return s + (+((a.presence[w.week]||{}).cp) || 0);
+      }
+      return s;
+    }, 0);
+    env.cible = Math.round(generes * env.pct * 10) / 10;
+    // Budget brut des mois libres = cible − verrouillé (peut être négatif si dépassement)
+    env.budgetBrut = Math.round((env.cible - env.cpVerrouilles) * 10) / 10;
+  });
+
+  // Compensation : les excédents (budgets négatifs) réduisent proportionnellement
+  // les enveloppes qui ont encore de la place.
+  let excedent = envelopes.reduce(function(s, env){ return s + (env.budgetBrut < 0 ? -env.budgetBrut : 0); }, 0);
+  let capaciteRestante = envelopes.reduce(function(s, env){ return s + (env.budgetBrut > 0 ? env.budgetBrut : 0); }, 0);
+  envelopes.forEach(function(env){
+    if(env.budgetBrut <= 0){ env.budget = 0; return; }
+    let reduction = capaciteRestante > 0 ? excedent * (env.budgetBrut / capaciteRestante) : 0;
+    env.budget = Math.max(0, Math.round((env.budgetBrut - reduction) * 10) / 10);
+  });
+  // Mémoriser le bilan des enveloppes pour l'affichage en synthèse
+  a.cpEnveloppes = envelopes.map(function(env){
+    return { nom: env.nom, pct: env.pct, cible: env.cible, verrouille: env.cpVerrouilles, budget: env.budget };
+  });
+
   // ── COUCHE 2 : dans chaque enveloppe, ÉGALISER les HS/personne ──
-  // Principe : on ne pose JAMAIS de CP sur une semaine structurellement forte
-  // (dont le HS/personne SANS CP dépasse déjà la moyenne de l'enveloppe).
-  // On remplit les creuses jusqu'à ce qu'elles rejoignent le niveau des fortes
-  // → vraie ligne plate (option B).
+  // Principe : on ne pose JAMAIS de CP sur une semaine structurellement forte.
+  // On remplit les creuses jusqu'à rejoindre le niveau des fortes → ligne plate.
+  let reliquatTotal = 0;
   envelopes.forEach(function(env){
     let semaines = needWeeks(a).filter(function(w){
       let mois = mainMonth(a, w.week);
       return env.months.indexOf(mois) >= 0 && libres.indexOf(mois) >= 0;
     });
-    if(!semaines.length) return;
+    if(!semaines.length){ reliquatTotal += env.budget; return; }
 
-    let moisLibresEnv = env.months.filter(function(m){ return libres.indexOf(m) >= 0; });
-    let budgetEnv = Math.round(restant * env.pct * (moisLibresEnv.length / env.months.length) * 10) / 10;
+    let budgetEnv = env.budget;
     if(budgetEnv <= 0) return;
 
     // Niveau de HS/personne de chaque semaine SANS aucun CP (structurel)
@@ -7082,27 +7250,34 @@ function repartirCPAuto(moissLibres){
     let plafond = Math.max.apply(null, semaines.map(function(w){ return structurel[w.week]; }));
 
     // Remplissage itératif : à chaque pas, la semaine au plus BAS HS/personne
-    // reçoit un peu de CP — mais seulement si elle reste sous le plafond.
-    let pas = 0.5;
+    // reçoit du CP — mais seulement si elle reste sous le plafond.
+    // Pas ADAPTATIF : large au début (rapide), affiné en fin (précis).
     let placeTotal = 0;
     let secu = 0;
-    while(budgetEnv - placeTotal > 0.05 && secu < 8000){
+    while(budgetEnv - placeTotal > 0.05 && secu < 3000){
       secu++;
       let best = null, bestRatio = Infinity;
       semaines.forEach(function(w){
         let hp = hsParPersonne(a, w.week);
         if(hp.etp <= 0.5) return; // sécurité : ne pas vider une semaine
-        // Ne poser que si on reste sous le plafond (ne pas créer de nouveau pic)
         if(hp.ratio >= plafond - 0.01) return;
         if(hp.ratio < bestRatio){ bestRatio = hp.ratio; best = w; }
       });
-      if(!best) break; // toutes les semaines ont rejoint le plafond → ligne plate atteinte
-      let ajout = Math.min(pas, budgetEnv - placeTotal);
+      if(!best) break; // ligne plate atteinte : plus aucune semaine sous le plafond
+      let restAPlacer = budgetEnv - placeTotal;
+      // Pas adaptatif : 2 jours tant qu'il reste beaucoup, 0.5 en finition
+      let pas = restAPlacer > 10 ? 2 : 0.5;
+      let ajout = Math.min(pas, restAPlacer);
       if(!a.presence[best.week]) a.presence[best.week] = {cp:0, other:0};
       a.presence[best.week].cp = Math.round(((+a.presence[best.week].cp||0) + ajout) * 10) / 10;
       placeTotal = Math.round((placeTotal + ajout) * 10) / 10;
     }
+    // Le reliquat non placé de cette enveloppe est comptabilisé
+    if(budgetEnv - placeTotal > 0.05) reliquatTotal += Math.round((budgetEnv - placeTotal) * 10) / 10;
   });
+
+  // Mémoriser le reliquat pour le signaler au REX (fil conducteur / synthèse)
+  a.cpReliquat = Math.round(reliquatTotal * 10) / 10;
 
   // Mémoriser cette répartition optimale comme RÉFÉRENCE (pour le coût du choix REX)
   memoriserRepartitionOptimale(a);
