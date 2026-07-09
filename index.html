@@ -2669,8 +2669,8 @@ async function soumettreBudget() {
     val.historique.push({ type:'resoumission', date:new Date().toISOString(), par: (PROFILE&&PROFILE.nom)||'REX' });
   }
   data.validation = val;
-  await sb.from('budgets').update({statut: 'soumis', data: data}).eq('id', BUDGET_ID);
-  BUDGET_STATUT = 'soumis';
+  await sb.from('budgets').update({statut: 'soumis_dr', data: data}).eq('id', BUDGET_ID);
+  BUDGET_STATUT = 'soumis_dr';
   updateStatutBar();
   renderVersionBar();
   showToast('Version '+vLabel+' soumise au circuit de validation (Directeur Régional)', 'success');
@@ -4956,11 +4956,15 @@ function renderStepNav(id){
     html += '<button onclick="showBudgetRecap()" style="width:auto;margin:0;background:linear-gradient(135deg,var(--green),#45c87a);color:#fff;border:none;padding:10px 22px;font-weight:700">✓ Terminer et sauvegarder</button>';
   }
   html += '</div>';
-  // Bouton de réinitialisation
-  html += '<div class="demoReinitZone">'
-    + '<button class="demoReinitBtn" onclick="reinitialiserDemo()">↺ Réinitialiser la démonstration</button>'
-    + '<span class="demoReinitHint">Remet l\'agence fictive dans son état d\'origine, en effaçant les modifications.</span>'
-    + '</div>';
+  // Bouton de réinitialisation — UNIQUEMENT en mode démonstration.
+  // Sur une vraie agence, cette zone ne doit jamais apparaître (sinon la session
+  // réelle est prise pour une démo et les données semblent non persistées).
+  if (PROFILE && PROFILE._demo) {
+    html += '<div class="demoReinitZone">'
+      + '<button class="demoReinitBtn" onclick="reinitialiserDemo()">↺ Réinitialiser la démonstration</button>'
+      + '<span class="demoReinitHint">Remet l\'agence fictive dans son état d\'origine, en effaçant les modifications.</span>'
+      + '</div>';
+  }
   box.innerHTML = html;
 }
 
@@ -7033,8 +7037,12 @@ function completion() {
   let a = A();
   if (!a || a.name === 'Nouvelle agence') return {};
 
-  // Objectif : champs obligatoires non null
-  let objFields = [a.histCA, a.histTXR, a.targetCA, a.targetTXR];
+  // Objectif : l'étape est validée quand l'objectif 2027 est fixé.
+  // Champs obligatoires = les deux saisies d'objectif (targetCA, targetTXR).
+  // Les résultats 2026 (histCA/histTXR) sont du contexte (CA 2025 est même
+  // marqué « si disponible ») : ils alimentent l'analyse de cohérence mais ne
+  // conditionnent pas la validation de l'étape.
+  let objFields = [a.targetCA, a.targetTXR];
   let objFilled = objFields.filter(isFilled).length;
   let objScore = Math.round(objFilled / objFields.length * 100);
 
