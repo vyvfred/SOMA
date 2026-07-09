@@ -2633,7 +2633,10 @@ async function saveBudgetToSupabase() {
   } catch(err) {
     let s = q('somSave');
     if(s){ s.classList.remove('saving'); }
-    if(q('somSaveText')) q('somSaveText').textContent = 'Non enregistré';
+    // Motif exact (RLS, contrainte, réseau…) rendu visible en infobulle pour diagnostic.
+    let motif = (err && (err.message || err.code || err.details)) ? (err.message || err.code || err.details) : 'raison inconnue';
+    if(q('somSaveText')){ q('somSaveText').textContent = 'Non enregistré'; q('somSaveText').title = 'Non enregistré — ' + motif; }
+    if(s) s.title = 'Non enregistré — ' + motif;
     if(q('somSaveDot')) q('somSaveDot').style.background = 'var(--orange)';
     console.error('Erreur sauvegarde:', err);
   }
@@ -5595,7 +5598,7 @@ function renderRH(){
           + '</div>';
       }
 
-      return '<div style="border:1px solid var(--border);padding:14px;cursor:pointer;transition:border .15s;'+bgCard+';'+borderTop+'">'
+      return '<div data-month="'+m+'" style="border:1px solid var(--border);padding:14px;cursor:pointer;transition:border .15s;'+bgCard+';'+borderTop+'">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
         + '<b style="font-size:14px;font-family:Space Grotesk,sans-serif">'+mo+'</b>'
         + '<span>'+icon+'</span>'
@@ -5615,10 +5618,15 @@ function renderRH(){
         + '</div>';
     }).join('');
 
-    // Rendre les cartes cliquables (hors boutons)
+    // Rendre les cartes cliquables (hors boutons) : ouvrir le détail du mois.
     setTimeout(function(){
       if(!q('rhMonthCards'))return;
-      q('rhMonthCards').querySelectorAll('[data-month]').forEach(function(){});
+      q('rhMonthCards').querySelectorAll('[data-month]').forEach(function(card){
+        card.addEventListener('click', function(e){
+          if(e.target.closest('button')) return; // laisser les boutons faire leur action
+          ouvrirMois(+card.dataset.month);
+        });
+      });
     },0);
   }
 
