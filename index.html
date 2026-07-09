@@ -3362,6 +3362,9 @@ function payrollMonth(a,m){
     return payrollPayMonth(a, m);
   }
   // Sinon fallback sur le calcul mois civil
+  return payrollMonthCivil(a,m);
+}
+// Masse salariale d'un mois civil (fallback hors périodes de paie configurées)
 function payrollMonthCivil(a,m){
   // MS roulante : heures disponibles x cout horaire + HS x coef
   let msRoulant = hsRows(a).reduce((s,r)=>{
@@ -3418,9 +3421,6 @@ function coutHoraireImproductif(a){
   if(!imp.length) return (+a.costHour||0);
   let moyJour = imp.reduce((s,e)=>s+(+e.coutJour||0),0)/imp.length;
   return moyJour/7;
-}
-// fin payrollMonthCivil
-  return payrollMonthCivil(a,m);
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
 function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
