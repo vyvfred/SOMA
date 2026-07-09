@@ -1266,7 +1266,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <button class="somMenuBtn" onclick="toggleSomMenu()" title="Plus d'options">⋯</button>
       <div class="somMenuList" id="somMenuList" style="display:none">
         <button id="btnChangeAgency" style="display:none" onclick="changeAgency();toggleSomMenu()">Changer d'agence</button>
-        <button id="btnSaveMenu" style="display:none" onclick="save();toggleSomMenu()">💾 Sauvegarder maintenant</button>
+        <button id="btnSaveMenu" style="display:none" onclick="saveNow();toggleSomMenu()">💾 Sauvegarder maintenant</button>
         <button onclick="openChangePwd();toggleSomMenu()">Changer le mot de passe</button>
         <button onclick="doLogout()">Déconnexion</button>
       </div>
@@ -2010,6 +2010,7 @@ let PROFILE = null;    // profil métier (role, agence, region_id...)
 let DR_LIST = [];      // liste des DR pour l'affectation CG
 let BUDGET_ID = null;  // id du budget actif dans Supabase
 let BUDGET_STATUT = 'brouillon';
+let _lastSaveError = null;  // dernier motif de refus serveur (pour affichage/diagnostic)
 let PENDING_DECISION = null; // {decision, niveau}
 // ── Gestion des versions de budget (V1/V2/V3) ──
 let ACTIVE_VERSION = 'v1';           // version en cours d'édition
@@ -2610,7 +2611,7 @@ async function saveBudgetToSupabase() {
     // Charger l'enregistrement existant pour préserver les autres versions
     let versions = {};
     if (BUDGET_ID) {
-      const {data: existing} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single().catch(()=>({data:null}));
+      const {data: existing} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
       if (existing && existing.data && existing.data.versions) {
         versions = existing.data.versions;
       }
@@ -2629,16 +2630,21 @@ async function saveBudgetToSupabase() {
       if (error) throw error;
       if (data) BUDGET_ID = data.id;
     }
+    _lastSaveError = null;
     markSaved();
+    return null;
   } catch(err) {
     let s = q('somSave');
     if(s){ s.classList.remove('saving'); }
-    // Motif exact (RLS, contrainte, réseau…) rendu visible en infobulle pour diagnostic.
+    // Motif exact renvoyé par le serveur (RLS, contrainte, réseau…).
     let motif = (err && (err.message || err.code || err.details)) ? (err.message || err.code || err.details) : 'raison inconnue';
     if(q('somSaveText')){ q('somSaveText').textContent = 'Non enregistré'; q('somSaveText').title = 'Non enregistré — ' + motif; }
     if(s) s.title = 'Non enregistré — ' + motif;
     if(q('somSaveDot')) q('somSaveDot').style.background = 'var(--orange)';
+    // Rendre le motif visible à l'écran, sans spammer l'auto-save (une fois par message).
+    if(_lastSaveError !== motif){ _lastSaveError = motif; if(typeof showToast==='function') showToast('Sauvegarde refusée : ' + motif, 'warn'); }
     console.error('Erreur sauvegarde:', err);
+    return err;
   }
 }
 
@@ -3542,7 +3548,7 @@ async function switchVersion(v){
   BUDGET_META.activeVersion = v;
   let a = A();
   // Recharger depuis Supabase pour récupérer la version cible
-  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single().catch(()=>({data:null}));
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   if(data && data.data && data.data.versions && data.data.versions[v] && Object.keys(data.data.versions[v]).length){
     S.agencies[S.active] = {...agency(a.name), ...data.data.versions[v], name: a.name};
     migrateState();
@@ -3567,7 +3573,7 @@ async function switchVersion(v){
 
 async function dupliquerVersion(){
   // Trouver la prochaine version libre
-  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single().catch(()=>({data:null}));
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
   let cible = null;
   for(let v of ['v1','v2','v3']){
@@ -4712,7 +4718,7 @@ async function renderVersionBar(){
   }
   bar.style.display = '';
   // Charger l'état des versions
-  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single().catch(()=>({data:null}));
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
   let meta = (data && data.data && data.data.meta) ? data.data.meta : BUDGET_META;
 
@@ -4753,7 +4759,7 @@ async function showVersionCompare(){
   if(!BUDGET_ID){ alert('Sauvegardez d\'abord le budget.'); return; }
   // Sauvegarder la version courante pour comparer des données à jour
   await saveBudgetToSupabase();
-  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single().catch(()=>({data:null}));
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
   let meta = (data && data.data && data.data.meta) ? data.data.meta : BUDGET_META;
   let nom = A().name;
@@ -6596,7 +6602,17 @@ function save(){
   // Sync moisActif avant sauvegarde
   let a = A();
   if (a) a.moisActif = _activeMonth;
-  saveBudgetToSupabase();
+  return saveBudgetToSupabase();
+}
+// Sauvegarde manuelle : affiche le détail complet renvoyé par le serveur en cas de refus.
+async function saveNow(){
+  let err = await save();
+  if(err){
+    let detail = [err.message, err.details, err.hint, err.code].filter(Boolean).join('\n');
+    alert('La sauvegarde a été refusée par le serveur.\n\n'
+      + (detail || 'Raison inconnue')
+      + '\n\nCe détail vient de Supabase. Le plus souvent : un droit d\'accès (politique RLS) manquant sur la table « budgets » pour ce compte, ou une contrainte de table.');
+  }
 }
 function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='budget_2027_v48.json';a.click()}
 
@@ -6929,7 +6945,7 @@ async function saveRefAgences() {
     if (!data.costHour && data.tauxHoraireBrut && data.tauxChargePatronal) {
       data.costHour = Math.round(+data.tauxHoraireBrut * (1 + +data.tauxChargePatronal/100) * 100) / 100;
     }
-    const {data: existing} = await sb.from('budgets').select('id,data').eq('agence', nom).eq('annee', 2027).single().catch(() => ({data:null}));
+    const {data: existing} = await sb.from('budgets').select('id,data').eq('agence', nom).eq('annee', 2027).single();
     if (existing) {
       const merged = {...existing.data, ...data, cgLocked: true};
       await sb.from('budgets').update({data: merged}).eq('id', existing.id);
@@ -7752,7 +7768,7 @@ async function handleRegistreImport(event){
         let filtered=employees.filter(function(emp){
           return ['DEA','AA','TAXI','TPMR','REGULATEUR','REX','FACTURIERE'].includes(emp.qual);
         });
-        let existing=await sb.from('budgets').select('id,data').eq('agence',agNom).eq('annee',2027).single().catch(function(){return {data:null};});
+        let existing=await sb.from('budgets').select('id,data').eq('agence',agNom).eq('annee',2027).single();
         if(existing.data){
           let merged=Object.assign({},existing.data.data||{});
           merged.employees=filtered;
@@ -7827,7 +7843,7 @@ async function handleRefAgencesImport(event){
         else if(d.tauxHoraireBrut&&d.tauxChargePatronal)d.costHour=Math.round(d.tauxHoraireBrut*(1+d.tauxChargePatronal/100)*100)/100;
         if(idx.caObj>=0&&row[idx.caObj])d.targetCA=+row[idx.caObj]||null;
         // Upsert dans Supabase
-        let existing=await sb.from('budgets').select('id,data').eq('agence',ag.nom).eq('annee',2027).single().catch(function(){return {data:null};});
+        let existing=await sb.from('budgets').select('id,data').eq('agence',ag.nom).eq('annee',2027).single();
         if(existing.data){
           let merged=Object.assign({},existing.data.data||{},d);
           await sb.from('budgets').update({data:merged}).eq('id',existing.data.id);
