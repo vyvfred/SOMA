@@ -174,6 +174,7 @@ tr.subtotal td{background:rgba(71,38,131,.15)!important;font-weight:700;color:va
 .day{min-height:105px;border:1px solid var(--border);padding:10px;background:var(--card);transition:all .15s;}
 .day:hover{border-color:var(--violet2);transform:translateY(-2px);box-shadow:0 8px 20px var(--shadow);}
 .day.vac{background:rgba(255,143,0,.08);border-color:rgba(255,143,0,.2);}
+.day.weekend{background:rgba(139,127,255,.10);border-color:rgba(139,127,255,.28);}
 .day.ferie{background:rgba(196,83,0,.08);border-color:rgba(196,83,0,.2);}
 .day.empty{opacity:.2;}
 .dh{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
@@ -1347,7 +1348,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <label class="objKpi" for="targetTXR">
         <span class="objKpiLabel">TXR cible <span class="objKpiHelp" title="Taux de recette par heure : chiffre d'affaires ÷ heures de conduite. Généralement proche du TXR réalisé en 2026.">?</span></span>
         <span class="objKpiField">
-          <input id="targetTXR" type="text" inputmode="numeric" placeholder="0" autocomplete="off">
+          <input id="targetTXR" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
           <span class="objKpiUnit">€/h</span>
         </span>
       </label>
@@ -3483,7 +3484,7 @@ function bind(){
   let a=A();
   ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxChargePatronal','costHour','hsCostRate','actSan','actSai','actTP'].forEach(id=>{
     let e=q(id);if(!e)return;
-    if(e.type==='checkbox'){e.checked=!!a[id];}else{e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
+    if(e.type==='checkbox'){e.checked=!!a[id];}else if(document.activeElement!==e){e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
     e.oninput=ev=>{
     // Vérifier si le champ est verrouillé par le CG
     let cgLockedFields=['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxChargePatronal','costHour'];
@@ -5046,6 +5047,7 @@ function renderCal(){
   if(q('calLegend')){
     q('calLegend').innerHTML='<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;font-size:12px;color:var(--ink65)">'
       +'<span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;background:rgba(255,143,0,.15);border:1px solid rgba(255,143,0,.4);display:inline-block"></span>Vacances scolaires (zone '+a.schoolZone+')</span>'
+      +'<span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;background:rgba(139,127,255,.15);border:1px solid rgba(139,127,255,.45);display:inline-block"></span>Samedi / Dimanche</span>'
       +'<span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;background:rgba(196,83,0,.18);border:1px solid var(--orange);display:inline-block"></span>Jour férié</span>'
       +'<span style="display:flex;align-items:center;gap:6px"><span style="width:14px;height:14px;background:var(--card);border:1px solid var(--border);display:inline-block"></span>Jour ouvré</span>'
       +'</div>';
@@ -5059,16 +5061,20 @@ function renderCal(){
   // Compteurs du mois pour le résumé
   let nbFeries=days.filter(d=>d.type==='ferie').length;
   let nbVacances=days.filter(d=>d.type==='vacances').length;
+  let nbWeekend=days.filter(d=>d.type==='samedi'||d.type==='dimanche').length;
 
   days.forEach(d=>{
     let isFerie=d.type==='ferie';
     let isVac=d.type==='vacances';
+    let isWeekend=d.type==='samedi'||d.type==='dimanche';
+    let libJour=d.type==='samedi'?'Samedi':d.type==='dimanche'?'Dimanche':d.type;
     let badge='';
     if(isFerie)badge='<span style="background:var(--orange);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em">Férié</span>';
     else if(isVac)badge='<span style="background:#FF8F00;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em">Vacances</span>';
-    h+='<div class="day '+(isVac?'vac':'')+' '+(isFerie?'ferie':'')+'">'
+    else if(isWeekend)badge='<span style="background:#8B7FFF;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em">'+libJour+'</span>';
+    h+='<div class="day '+(isVac?'vac':'')+' '+(isWeekend?'weekend':'')+' '+(isFerie?'ferie':'')+'">'
       +'<div class="dh"><span class="dt">'+d.day+'</span>'+badge+'</div>'
-      +'<div class="small" style="margin-bottom:4px">'+(isFerie?'Férié':isVac?'Vacances':d.type)+' • S'+d.week+'</div>'
+      +'<div class="small" style="margin-bottom:4px">'+(isFerie?'Férié':isVac?'Vacances':isWeekend?libJour:d.type)+' • S'+d.week+'</div>'
       +'<div>San '+euro(d.ca.san)+(a.actSai?'<div>Sais '+euro(d.ca.sai)+'</div>':'')+(a.actTP?'<div>TP '+euro(d.ca.tp)+'</div>':'')+'</div>'
       +'<div class="tot">'+euro(d.total)+'</div>'
       +'</div>';
@@ -5082,6 +5088,7 @@ function renderCal(){
       +'<span>📅 '+days.length+' jours</span>'
       +'<span style="color:var(--orange)">🔴 '+nbFeries+' férié(s)</span>'
       +'<span style="color:#FF8F00">🟠 '+nbVacances+' jour(s) de vacances</span>'
+      +'<span style="color:#8B7FFF">🟣 '+nbWeekend+' samedi/dimanche</span>'
       +'</div>';
   }
 
@@ -5545,11 +5552,12 @@ function renderRH(){
     progressHTML += '<div style="font-size:12px;color:var(--ink65)">CP restants à répartir : <b style="color:'+(Math.abs(cpLibres)<1?'var(--green)':'var(--accent-blue)')+'">'+cpLibres.toFixed(1)+' J</b></div>'
       + '</div>';
 
-    let aideHTML = '<div class="rhHelp">'
-      + '<span>💡</span>'
-      + '<span><b>Cliquez sur un mois</b> pour voir le détail de ses semaines et ajuster la charge. '
-      + 'Quand un mois vous convient, <b>validez-le</b> pour suivre votre avancement. '
-      + 'Le bouton <b>« Répartir les congés automatiquement »</b> place vos jours de CP sur l\'année en évitant les semaines déjà tendues. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,\'conges\')" title="Pourquoi cette règle ?">?</span></span>'
+    let aideHTML = '<div class="rhHelp" style="flex-direction:column;align-items:stretch;gap:6px">'
+      + '<div style="font-weight:700;font-family:Space Grotesk,sans-serif">Comment travailler ce module</div>'
+      + '<div><b>1.</b> Semaine par semaine, posez les congés (CP) et les autres absences.</div>'
+      + '<div><b>2.</b> Vérifiez l\'équilibre du mois : aucune semaine ne doit rester en tension.</div>'
+      + '<div><b>3.</b> Validez le mois — c\'est réversible.</div>'
+      + '<div style="font-size:12px;color:var(--ink65);border-top:1px solid var(--border);padding-top:6px">Vous ne saisissez que <b>deux colonnes</b> : congés et autres absences. Tout le reste est calculé. Astuce : <b>« Répartir les congés automatiquement »</b> place vos CP sur l\'année en évitant les semaines déjà tendues. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,\'conges\')" title="Pourquoi cette règle ?">?</span></div>'
       + '</div>';
     q('rhMonthCards').innerHTML = progressHTML + aideHTML + M.map(function(mo,m){
       let weeksOfMonth = hsR.filter(function(r){
@@ -5585,6 +5593,12 @@ function renderRH(){
       let bgCard = estVerrouille ? 'background:rgba(41,134,81,.08);' : estActif ? 'background:rgba(74,158,255,.06);' : '';
       let borderTop = estVerrouille ? 'border-top:2px solid var(--green)' : estActif ? 'border-top:2px solid var(--accent-blue)' : 'border-top:2px solid '+color;
       let icon = estVerrouille ? '🔒' : txHsM>0.20 ? '🔴' : txHsM>0.10 ? '🟡' : '🟢';
+      // Pastille d'état du mois : Validé / À équilibrer / À valider
+      let etatLib, etatBg, etatFg;
+      if(estVerrouille){ etatLib='Validé'; etatBg='rgba(41,134,81,.12)'; etatFg='var(--green)'; }
+      else if(tensions>0){ etatLib='À équilibrer'; etatBg='rgba(196,83,0,.14)'; etatFg='var(--orange)'; }
+      else { etatLib='À valider'; etatBg='rgba(74,158,255,.12)'; etatFg='var(--blue2)'; }
+      let pastille='<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:999px;background:'+etatBg+';color:'+etatFg+'">'+etatLib+'</span>';
       let tensionRate = weeksOfMonth.length>0 ? Math.round((tensions+warnings*0.5)/weeksOfMonth.length*100) : 0;
       let barColor = estVerrouille ? 'var(--green)' : color;
 
@@ -5596,18 +5610,18 @@ function renderRH(){
           + '</div>';
       } else if (estActif) {
         btns = '<div style="display:flex;gap:6px;margin-top:8px">'
-          + '<button onclick="verrouilerMois('+m+')" style="flex:1;font-size:10px;padding:5px 6px;color:var(--green);background:rgba(41,134,81,.1);border:1px solid var(--green)">✓ Valider ce mois</button>'
+          + '<button onclick="verrouilerMois('+m+')" title="Verrouille le mois en lecture seule, une fois les congés posés et l\'équilibre vérifié. Réversible à tout moment." style="flex:1;font-size:10px;padding:5px 6px;color:var(--green);background:rgba(41,134,81,.1);border:1px solid var(--green)">✓ Valider ce mois</button>'
           + '</div>';
       } else {
         btns = '<div style="display:flex;gap:6px;margin-top:8px">'
-          + '<button onclick="ouvrirMois('+m+')" style="flex:1;font-size:10px;padding:5px 6px;color:var(--blue2);background:var(--blue-light);border:1px solid var(--blue2)">✎ Travailler</button>'
+          + '<button onclick="ouvrirMois('+m+')" title="Ouvre le détail des semaines pour poser les congés et les absences" style="flex:1;font-size:10px;padding:5px 6px;color:var(--blue2);background:var(--blue-light);border:1px solid var(--blue2)">✎ Travailler</button>'
           + '</div>';
       }
 
       return '<div data-month="'+m+'" style="border:1px solid var(--border);padding:14px;cursor:pointer;transition:border .15s;'+bgCard+';'+borderTop+'">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
         + '<b style="font-size:14px;font-family:Space Grotesk,sans-serif">'+mo+'</b>'
-        + '<span>'+icon+'</span>'
+        + '<span style="display:flex;align-items:center;gap:6px">'+pastille+'<span>'+icon+'</span></span>'
         + '</div>'
         + '<div style="font-family:DM Mono,monospace;font-size:12px;color:var(--ink65);margin-bottom:4px">'+euro(caM)+'</div>'
         + ((nbFeriesM>0||nbVacM>0) ? '<div style="display:flex;gap:6px;margin-bottom:6px;font-size:10px">'+(nbFeriesM>0?'<span style="color:var(--orange)">🔴 '+nbFeriesM+'j férié</span>':'')+(nbVacM>0?'<span style="color:#FF8F00">🟠 '+nbVacM+'j vac.</span>':'')+'</div>' : '')
@@ -5683,9 +5697,9 @@ function showWeekDetail(m){
   if(q('rhWeekDetailTitle'))q('rhWeekDetailTitle').textContent='Détail semaines — '+M[m];
   let header='<tr>'
     +'<th>Sem.</th><th>Cap. (h)</th>'
-    +'<th title="Congés payés en jours">CP (J)</th>'
+    +'<th title="Congés payés en jours — à saisir" style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ CP (J)</th>'
     +'<th>Mal.+AT %</th><th>Mal.+AT (h)</th>'
-    +'<th title="Autres absences en jours">Autres (J)</th>'
+    +'<th title="Autres absences en jours — à saisir" style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ Autres (J)</th>'
     +'<th><b>Dispo (h)</b></th><th>Besoin (h)</th>'
     +'<th><b>Écart</b></th><th><b>HS (h)</b></th>'
     +'<th title="Heures supplémentaires par personne présente"><b>HS/pers</b></th>'
@@ -5760,12 +5774,13 @@ function showWeekDetail(m){
   // ── Bandeau verrouillage (défini avant utilisation) ──
   let bandeauVerr = estVerrouille
     ? '<div style="padding:8px 14px;background:rgba(41,134,81,.1);border-bottom:1px solid var(--green);color:var(--green);font-size:12px;display:flex;align-items:center;justify-content:space-between"><span>🔒 Mois validé — lecture seule</span><button onclick="deverrouillerMois('+m+')" style="font-size:11px;padding:4px 8px;color:var(--green);border:1px solid var(--green);background:transparent">Déverrouiller</button></div>'
-    : '<div style="padding:8px 14px;background:rgba(74,158,255,.06);border-bottom:1px solid rgba(74,158,255,.2);color:var(--ink65);font-size:12px;display:flex;align-items:center;justify-content:space-between"><span>✎ Mois en cours de saisie</span><button onclick="verrouilerMois('+m+')" style="font-size:11px;padding:4px 8px;color:var(--green);border:1px solid var(--green);background:rgba(41,134,81,.1)">✓ Valider ce mois</button></div>';
+    : '<div style="padding:8px 14px;background:rgba(74,158,255,.06);border-bottom:1px solid rgba(74,158,255,.2);color:var(--ink65);font-size:12px;display:flex;align-items:center;justify-content:space-between"><span>✎ Mois en cours de saisie</span><button onclick="verrouilerMois('+m+')" title="Verrouille le mois en lecture seule. Réversible à tout moment." style="font-size:11px;padding:4px 8px;color:var(--green);border:1px solid var(--green);background:rgba(41,134,81,.1)">✓ Valider ce mois</button></div>';
 
   // Insérer les deux bandeaux au début du détail (statut puis impact)
   let bd = document.getElementById('rhWeekBandeau');
   if(!bd){bd=document.createElement('div');bd.id='rhWeekBandeau';q('rhWeekDetail').insertBefore(bd,q('rhWeekDetail').firstChild);}
-  bd.innerHTML=bandeauVerr+bandeauImpact;
+  let introDetail='<div style="padding:8px 14px;font-size:12px;color:var(--ink65);border-bottom:1px solid var(--border)">Pour chaque semaine, indiquez les <b style="color:var(--violet2)">congés (CP)</b> et les <b style="color:var(--violet2)">autres absences</b>. SOMA en déduit les heures disponibles, les heures supplémentaires et leur coût. <span style="color:var(--ink30)">Seules les colonnes surlignées sont à saisir.</span></div>';
+  bd.innerHTML=introDetail+bandeauVerr+bandeauImpact;
 
   if(q('rhWeekDetail')){
     q('rhWeekDetail').style.display='block';
