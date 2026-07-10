@@ -3270,12 +3270,12 @@ function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,t
 function A(){return S.agencies[S.active]}
 function between(d,s,e){return d>=s&&d<=e}
 function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
-function typeDay(date,a){let iso=date.toISOString().slice(0,10),wd=date.getDay();if(feries.includes(iso))return 'ferie';if(wd===0)return 'dimanche';if(wd===6)return 'samedi';if(isVac(iso,a.schoolZone))return 'vacances';return 'semaine'}
+function typeDay(date,a){let iso=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0'),wd=date.getDay();if(feries.includes(iso))return 'ferie';if(wd===0)return 'dimanche';if(wd===6)return 'samedi';if(isVac(iso,a.schoolZone))return 'vacances';return 'semaine'}
 function isoWeek(date){let d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())),day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-y)/86400000)+1)/7)}
 function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0};a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp})}}}
 function monthCA(a,m){if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)}
 function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
-function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>x.week-y.week)}
+function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>{let dx=x.days[0],dy=y.days[0];return (dx.month-dy.month)||(dx.day-dy.day)})}
 function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
 function isRoulant(qual){return ['DEA','AA','TAXI','TPMR'].includes((qual||'').toUpperCase())}
 // Un salarié est-il présent à une date donnée (selon dateEntree/dateSortie) ?
@@ -3637,6 +3637,7 @@ document.addEventListener('DOMContentLoaded', function(){
   main.addEventListener('change', function(e){
     if(e.target.matches('input,select,textarea')) scheduleAutosave();
   });
+  injecterPastillesAide();
 });
 
 // ═══ SPRINT UX 1 — Barre supérieure : fonctions ═══
@@ -5705,19 +5706,19 @@ function showWeekDetail(m){
     +'<th title="Heures supplémentaires par personne présente"><b>HS/pers</b></th>'
     +'<th>Charge</th><th title="Impact financier d\'ajouter 1J de CP">Impact 1J CP</th>'
     +'</tr>';
-  // Moyenne HS/personne de l'agence (référence pour le langage de charge)
-  let _tousRatios = needWeeks(a).map(function(w){ return hsParPersonne(a, w.week).ratio; });
-  let _moyRatio = _tousRatios.length ? _tousRatios.reduce(function(s,r){return s+r;},0)/_tousRatios.length : 0;
   let rows=weeksOfMonth.map(function(hr){
     let p=pres(a,hr.week);
     // Charge de la semaine (HS par personne présente) + langage naturel
     let hp = hsParPersonne(a, hr.week);
+    // Verdict ABSOLU : part des HS dans la capacité de la semaine.
+    // Cohérent avec la tension mensuelle (>20% surcharge, >10% soutenue).
+    let txSem = p.base > 0 ? hp.hs / p.base : 0;
     let chargeTxt, chargeStyle, chargeDot;
     if(hp.hs < 0.5){
       chargeTxt='aucune tension'; chargeDot='var(--green)'; chargeStyle='color:var(--green)';
-    } else if(hp.ratio > _moyRatio*1.4){
+    } else if(txSem > 0.20){
       chargeTxt='surcharge'; chargeDot='var(--orange)'; chargeStyle='color:var(--orange);font-weight:700';
-    } else if(hp.ratio > _moyRatio*0.9){
+    } else if(txSem > 0.10){
       chargeTxt='charge soutenue'; chargeDot='#F59E0B'; chargeStyle='color:#B26A00;font-weight:600';
     } else {
       chargeTxt='charge légère'; chargeDot='#7Cc47f'; chargeStyle='color:var(--green)';
@@ -7302,30 +7303,36 @@ function repartirCPAuto(moissLibres){
     let budgetEnv = env.budget;
     if(budgetEnv <= 0) return;
 
-    // Niveau de HS/personne de chaque semaine SANS aucun CP (structurel)
-    // (on a déjà vidé les CP des mois libres plus haut)
-    let structurel = {};
-    semaines.forEach(function(w){ structurel[w.week] = hsParPersonne(a, w.week).ratio; });
-    // Le "plafond" = la semaine la plus forte de l'enveloppe : on ne cherche pas
-    // à la dépasser. Les semaines dont le structurel atteint ce plafond sont "fortes"
-    // et resteront intouchées par l'automatique.
-    let plafond = Math.max.apply(null, semaines.map(function(w){ return structurel[w.week]; }));
-
     // Remplissage itératif : à chaque pas, la semaine au plus BAS HS/personne
-    // reçoit du CP — mais seulement si elle reste sous le plafond.
+    // reçoit du CP. On place la TOTALITÉ du budget de l'enveloppe (les congés
+    // générés doivent être posés), en gardant la charge aussi plate que possible :
+    // remplir toujours la semaine la plus creuse fait monter la ligne uniformément
+    // et ne charge les semaines fortes qu'en dernier recours.
     // Pas ADAPTATIF : large au début (rapide), affiné en fin (précis).
     let placeTotal = 0;
     let secu = 0;
-    while(budgetEnv - placeTotal > 0.05 && secu < 3000){
+    while(budgetEnv - placeTotal > 0.05 && secu < 5000){
       secu++;
-      let best = null, bestRatio = Infinity;
+      // 1) ratio HS/personne minimal parmi les semaines éligibles
+      let minR = Infinity;
       semaines.forEach(function(w){
         let hp = hsParPersonne(a, w.week);
-        if(hp.etp <= 0.5) return; // sécurité : ne pas vider une semaine
-        if(hp.ratio >= plafond - 0.01) return;
-        if(hp.ratio < bestRatio){ bestRatio = hp.ratio; best = w; }
+        if(hp.etp <= 0.5) return;
+        if(hp.ratio < minR) minR = hp.ratio;
       });
-      if(!best) break; // ligne plate atteinte : plus aucune semaine sous le plafond
+      if(minR === Infinity) break; // aucune semaine éligible (sécurité effectif)
+      // 2) parmi les semaines les plus creuses, celle qui porte le MOINS de CP
+      //    (densité CP/ETP) → répartition égale même sans écart d'HS.
+      let best = null, bestDens = Infinity;
+      semaines.forEach(function(w){
+        let hp = hsParPersonne(a, w.week);
+        if(hp.etp <= 0.5) return;
+        if(hp.ratio > minR + 0.01) return; // uniquement les semaines au plus bas niveau
+        let cpNow = +((a.presence[w.week]||{}).cp) || 0;
+        let dens = hp.etp > 0 ? cpNow / hp.etp : cpNow;
+        if(dens < bestDens){ bestDens = dens; best = w; }
+      });
+      if(!best) break;
       let restAPlacer = budgetEnv - placeTotal;
       // Pas adaptatif : 2 jours tant qu'il reste beaucoup, 0.5 en finition
       let pas = restAPlacer > 10 ? 2 : 0.5;
@@ -7334,7 +7341,7 @@ function repartirCPAuto(moissLibres){
       a.presence[best.week].cp = Math.round(((+a.presence[best.week].cp||0) + ajout) * 10) / 10;
       placeTotal = Math.round((placeTotal + ajout) * 10) / 10;
     }
-    // Le reliquat non placé de cette enveloppe est comptabilisé
+    // Reliquat éventuel (uniquement si la sécurité effectif bloque toutes les semaines)
     if(budgetEnv - placeTotal > 0.05) reliquatTotal += Math.round((budgetEnv - placeTotal) * 10) / 10;
   });
 
@@ -8269,12 +8276,14 @@ function renderAide(){
 
   let idx = 0;
   function renderSection(title, list){
+    if(!list || !list.length) return; // section absente (ex. pas de questions générales) → on saute, sans casser la FAQ
     if(title){
       html += '<h3 style="margin:20px 0 10px;color:var(--violet2)">'+title+'</h3>';
     }
     list.forEach(function(qa){
       let i = idx++;
-      html += '<div style="border:1px solid var(--border);margin-bottom:8px;background:var(--bg2)">'
+      let keyAttr = qa[2] ? ' data-aidekey="'+qa[2]+'"' : '';
+      html += '<div'+keyAttr+' data-faqidx="'+i+'" style="border:1px solid var(--border);margin-bottom:8px;background:var(--bg2)">'
         + '<button onclick="toggleFaq('+i+')" style="width:100%;text-align:left;padding:14px 16px;background:transparent;border:none;color:var(--ink);font-size:14px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px">'
         + '<span>'+qa[0]+'</span><span id="faqIcon'+i+'" style="color:var(--violet2);font-size:18px;flex-shrink:0">+</span>'
         + '</button>'
@@ -8300,6 +8309,58 @@ function toggleFaq(i){
     ans.style.display='none';
     if(icon)icon.textContent='+';
   }
+}
+
+// Correspondance onglet → question d'aide (par texte, robuste au réordonnancement).
+// Rôles non listés / onglets non mappés : on atterrit en haut de la FAQ du rôle.
+const AIDE_ONGLET_Q = {
+  rex: {
+    objectif: 'Par où je commence',
+    refs: 'références CA journalières',
+    team: 'importer mon équipe',
+    rh: 'répartition automatique des congés',
+    cal: 'courbe de charge'
+  }
+};
+// Clic sur la pastille « ? » d'un onglet : ouvre l'onglet Aide et déroule la bonne question.
+function ouvrirAideOnglet(panelId){
+  show('aide');
+  setTimeout(function(){
+    let box = q('faqContent'); if(!box) return;
+    let map = AIDE_ONGLET_Q[PROFILE.role] || {};
+    let needle = map[panelId];
+    let target = null;
+    if(needle){
+      let btns = box.querySelectorAll('button');
+      for(let bi=0; bi<btns.length; bi++){
+        if(btns[bi].textContent.indexOf(needle) >= 0){ target = btns[bi]; break; }
+      }
+    }
+    if(target){
+      let wrap = target.closest('[data-faqidx]');
+      let idx = wrap ? wrap.getAttribute('data-faqidx') : null;
+      let ans = idx!==null ? q('faqAnswer'+idx) : null;
+      if(ans && ans.style.display==='none' && idx!==null) toggleFaq(+idx);
+      (wrap||target).scrollIntoView({behavior:'smooth', block:'center'});
+    } else {
+      box.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }, 80);
+}
+// Ajoute une pastille « ? » cliquable au titre de chaque onglet (sauf l'onglet Aide).
+function injecterPastillesAide(){
+  document.querySelectorAll('section.panel').forEach(function(sec){
+    if(sec.id==='aide') return;
+    let h = sec.querySelector('h2');
+    if(!h || h.querySelector('.aideOngletPastille')) return;
+    let span = document.createElement('span');
+    span.className = 'pourquoiPicto aideOngletPastille';
+    span.title = 'Aide sur cet onglet';
+    span.textContent = '?';
+    span.style.marginLeft = '8px';
+    span.setAttribute('onclick', "ouvrirAideOnglet('"+sec.id+"')");
+    h.appendChild(span);
+  });
 }
 
 async function renderGraphiques(){
