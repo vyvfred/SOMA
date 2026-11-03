@@ -8065,7 +8065,8 @@ async function handleRefAgencesImport(event){
       // Trouver la ligne d'en-tête (contient "Agence")
       let headerRow=-1;
       for(let i=0;i<rows.length;i++){
-        if(rows[i].some(function(c){return (c+'').toLowerCase().includes('agence');})){
+        // En-tête : contient « agence » et au moins une autre colonne (pas une ligne de titre)
+        if(rows[i].some(function(c){return (c+'').toLowerCase().includes('agence');})&&rows[i].filter(function(c){return (c+'').trim()!=='';}).length>=2){
           headerRow=i;break;
         }
       }
@@ -8622,7 +8623,7 @@ function handleVarDecImport(event){
     try{
       let wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
       let rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header:1, defval:''});
-      let hr = rows.findIndex(function(r){ return r.some(function(c){ return (c+'').toLowerCase().includes('agence'); }); });
+      let hr = rows.findIndex(function(r){ return r.some(function(c){ return (c+'').toLowerCase().includes('agence'); }) && r.filter(function(c){ return (c+'').trim() !== ''; }).length >= 2; });
       if(hr < 0){ showVarDecMsg('En-tête « Agence » non trouvée.', 'bad'); return; }
       let h = rows[hr].map(function(x){ return (x+'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); });
       let col = {
