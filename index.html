@@ -1744,7 +1744,6 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
         <input id="costHour" type="text" placeholder="calculé" style="background:var(--bg2);color:var(--ink65)" readonly>
         <div id="costHourHint" style="font-size:11px;color:var(--ink65);margin-top:4px"></div>
       </div>
-      <div><label>Coefficient HS</label><input id="hsCostRate" type="number"></div>
       <div><label>&nbsp;</label><button onclick="prefillCharges()">Pré-remplir standards</button></div>
     </div>
     <h3 style="margin:18px 0 6px">Masse salariale non-roulante (ligne unique)</h3>
@@ -3623,7 +3622,7 @@ function gaugeRow(label,value){let v=Math.max(0,Math.min(100,Number(value)||0));
 
 function bind(){
   let a=A();
-  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','hsCostRate','msNRBrutMensuel','msNRTauxCharges','actSan','actSai','actTP'].forEach(id=>{
+  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','actSan','actSai','actTP'].forEach(id=>{
     let e=q(id);if(!e)return;
     if(e.type==='checkbox'){e.checked=!!a[id];}else if(document.activeElement!==e){e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
     e.oninput=ev=>{
@@ -7718,7 +7717,7 @@ function tensionColor(hsHeures, seuils) {
 
 function impactCPSemaine(a, week, deltaCPjours) {
   // Impact financier d'ajouter/retirer deltaCPjours sur cette semaine
-  // 1J de CP = 7h. Si semaine en HS, retirer 1J = +7h HS = +7*costHour*hsCostRate
+  // 1J de CP = 7h. Si semaine en HS, retirer 1J = +7h HS = +7*coût horaire*coefficient HS du mois (barème 25/50)
   // Si semaine en sous-charge, ajouter 1J = économie nulle (pas de HS à éviter)
   let hr = hsRows(a).find(function(r){ return r.week === week; }) || {hs:0, gap:0};
   let hsDelta = -deltaCPjours * 7; // retirer CP augmente les HS
