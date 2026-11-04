@@ -1819,7 +1819,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <details class="objCollapse" id="prevCollapse" open>
       <summary>Détail du compte de résultat (SIG, 12 mois)</summary>
       <div class="objCollapseBody">
-        <div id="prevPaieBadge" style="display:none;padding:6px 12px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:12px;color:var(--blue2);margin-bottom:12px;border-radius:var(--radius-sm)">ℹ La ligne <b>Charges de personnel</b> est calculée selon les périodes de paie 2027 (et non par mois civil). Les mois 5 semaines ont une charge plus élevée.</div>
+        <div id="prevPaieBadge" style="display:none;padding:6px 12px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:12px;color:var(--blue2);margin-bottom:12px;border-radius:var(--radius-sm)">ℹ La ligne <b>Charges de personnel</b> est calculée selon les périodes de paie 2027 (et non par mois civil). Les heures supplémentaires de la 5e semaine des mois de 5 semaines (janvier, avril, juillet, octobre) sont lissées sur les deux mois suivants du trimestre.</div>
         <div class="tablewrap"><table id="prevTable"></table></div>
       </div>
     </details>
@@ -3187,7 +3187,7 @@ const CG_PARCOURS = [
       '<b>« Réinitialiser par défaut »</b> remet le calendrier standard (paie de janvier : du 7 décembre 2026 au 10 janvier 2027).'
     ],
     fini:'Les dates correspondent au calendrier de paie réel. Si le calendrier standard convient, il n\'y a rien à modifier.',
-    vigilance:['Sans agence ouverte, une modification n\'est enregistrée nulle part.','Les mois de paie à 5 semaines ont une masse salariale plus élevée : c\'est normal.'],
+    vigilance:['Sans agence ouverte, une modification n\'est enregistrée nulle part.','Mois de paie à 5 semaines : les heures supplémentaires de la 5e semaine sont lissées sur le trimestre (colonne « dont lissage 5e semaine »).'],
     aide:'Les dates s\'appliquent',
     etat:function(e){ let a=A(); let ouverte=a && a.name && a.name!=='Nouvelle agence';
       return { ok:null, txt: ouverte ? 'Agence ouverte : '+a.name : 'Aucune agence ouverte — calendrier standard affiché' }; } },
@@ -8417,7 +8417,51 @@ function payrollPayMonth(a, moisIdx) {
   // DR pro-rata
   let msDR = msNRMensuel(a)!==null ? 0 : (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 * (nbJoursPeriode / nbJoursAn);
 
-  return ms + msNonRoulants + msHSImp + repasPeriode + msDR;
+  // Lissage de la 5e semaine de variables sur le trimestre (voir lissage5eSemaine)
+  return ms + msNonRoulants + msHSImp + repasPeriode + msDR + lissage5eSemaine(a, moisIdx);
+}
+
+// ── Lissage de la 5e semaine de variables (règle du contrôle de gestion, nov. 2026) ──
+// Chaque trimestre compte un mois de paie à 5 semaines de variables (janvier, avril, juillet, octobre)
+// et deux mois à 4 semaines. On ne garde que 4 semaines de variables par mois et on lisse la 5e :
+//   mois à 5 semaines : − (coût des HS du mois : taux plein + majorations 25 % et 50 %) / 5 × 2/3
+//   chacun des 2 mois à 4 semaines du trimestre : + la moitié de ce montant.
+// Le total du trimestre est inchangé ; chaque mois porte 4 semaines 1/3 de variables.
+function nbSemPeriode(p){
+  if(!p || !p.debut || !p.fin) return 0;
+  return Math.round(((new Date(p.fin) - new Date(p.debut)) / 86400000 + 1) / 7);
+}
+// Coût des heures supplémentaires rattachées à un mois de paie (roulants + improductifs ;
+// pour janvier, les HS de décembre 2026 saisies dans « Variables déc. 2026 », charges comprises)
+function coutHSPeriodePaie(a, moisIdx){
+  let periodes = a.periodesPaie || buildPeriodesPaie();
+  let p = periodes[moisIdx]; if(!p) return 0;
+  let debut = new Date(p.debut), fin = new Date(p.fin);
+  let total = 0;
+  hsRows(a).forEach(function(r){
+    let jours = a.cal.filter(function(d){ return d.week === r.week; });
+    if(!jours.length) return;
+    let dedans = jours.filter(function(d){ let dt = new Date(2027, d.month, d.day); return dt >= debut && dt <= fin; }).length;
+    if(!dedans) return;
+    let ratio = dedans / jours.length, m = mainMonth(a, r.week);
+    total += r.hs * chMois(a, m) * coefHSMois(a, m) * (1 + TAUX_PRECARITE_CDD*partCDDSemaine(a, r.week)) * ratio;
+    let hsImp = a.hsImproductif && a.hsImproductif[r.week] ? +a.hsImproductif[r.week] : 0;
+    if(hsImp) total += hsImp * coutHoraireImproductif(a) * coefHSMois(a, m) * ratio;
+  });
+  if(moisIdx === 0){
+    let det = varDecDetail(a);
+    if(det) total += ((+det.hs25||0) + (+det.hs50||0)) * (1 + (+a.tauxChargePatronal||0)/100);
+  }
+  return total;
+}
+function lissage5eSemaine(a, moisIdx){
+  let periodes = a.periodesPaie || buildPeriodesPaie();
+  let t = Math.floor(moisIdx / 3), mois = [3*t, 3*t+1, 3*t+2];
+  let m5 = mois.filter(function(m){ return nbSemPeriode(periodes[m]) === 5; });
+  if(m5.length !== 1) return 0; // trimestre sans (ou avec plusieurs) mois à 5 semaines : pas de lissage
+  let x = coutHSPeriodePaie(a, m5[0]) / 5 * 2/3;
+  if(moisIdx === m5[0]) return -x;
+  return nbSemPeriode(periodes[moisIdx]) === 4 ? x / 2 : 0;
 }
 
 // Calcul de la période non couverte (charges à reporter sur 2028)
@@ -8471,7 +8515,7 @@ function renderPeriodes(){
     insight.style.display = '';
     let nb5sem = a.periodesPaie.filter(function(p){return p.semaines===5;}).length;
     let hasDec = varDec2026Total(a) > 0;
-    let p = 'Le calendrier de paie 2027 compte <b>'+nb5sem+' mois à 5 semaines</b>, dont la charge de personnel sera plus élevée. ';
+    let p = 'Le calendrier de paie 2027 compte <b>'+nb5sem+' mois à 5 semaines</b> : leurs heures travaillées restent plus nombreuses, mais les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. ';
     if(hasDec){
       p += 'Les variables de décembre 2026 sont renseignées.';
     } else {
@@ -8498,20 +8542,24 @@ function renderPeriodes(){
     + '<th>Nb semaines</th>'
     + '<th>MS calculée</th>'
     + '<th>dont variables déc. 2026</th>'
+    + '<th title="4 semaines de variables par mois : la 5e semaine de HS est lissée sur le trimestre">dont lissage 5e semaine</th>'
     + '</tr>';
 
   let rows = a.periodesPaie.map(function(p, i) {
     let ms = payrollPayMonth(a, i);
     let msStr = a.costHour && a.cal && a.cal.length ? euro(Math.round(ms)) : '—';
     let dec2026 = i === 0 && varDec2026Total(a) > 0 ? euro(Math.round(varDec2026Total(a))) : '';
-    let isTrimestre = p.nbSem === 5;
+    let isTrimestre = nbSemPeriode(p) === 5;
+    let lis = a.costHour && a.cal && a.cal.length ? lissage5eSemaine(a, i) : 0;
+    let lisStr = Math.abs(lis) >= 0.5 ? (lis > 0 ? '+' : '') + euro(Math.round(lis)) : '';
     return '<tr style="' + (isTrimestre ? 'background:rgba(74,158,255,.05)' : '') + '">'
       + '<td><b>' + p.mois + '</b>' + (isTrimestre ? ' <span style="font-size:10px;color:var(--blue2);font-weight:700">5 sem.</span>' : '') + '</td>'
       + '<td><input type="date" value="' + p.debut + '" data-i="' + i + '" onchange="setPeriodeDate(+this.dataset.i,\'debut\',this.value)" style="width:150px;font-size:12px"></td>'
       + '<td><input type="date" value="' + p.fin + '" data-i="' + i + '" onchange="setPeriodeDate(+this.dataset.i,\'fin\',this.value)" style="width:150px;font-size:12px"></td>'
-      + '<td style="text-align:center;font-family:DM Mono,monospace">' + p.nbSem + '</td>'
+      + '<td style="text-align:center;font-family:DM Mono,monospace">' + nbSemPeriode(p) + '</td>'
       + '<td class="num"><b>' + msStr + '</b></td>'
       + '<td class="num" style="color:var(--blue2)">' + dec2026 + '</td>'
+      + '<td class="num" style="color:' + (lis < 0 ? 'var(--green)' : 'var(--orange)') + '">' + lisStr + '</td>'
       + '</tr>';
   }).join('');
 
@@ -8536,7 +8584,7 @@ function renderPeriodes(){
     tfoot.innerHTML = '<tr style="background:var(--bg2)">'
       + '<td colspan="4"><b>Total masse salariale 2027 (selon périodes de paie)</b></td>'
       + '<td class="num"><b style="color:var(--violet2)">' + euro(Math.round(totalMS)) + '</b></td>'
-      + '<td></td></tr>';
+      + '<td></td><td></td></tr>';
   }
 }
 
@@ -8794,7 +8842,7 @@ const FAQ_CG_SECTIONS = [
     ['Pourquoi certains salariés n\'apparaissent pas après l\'import ?', 'Cinq raisons possibles : le salarié est sorti avant le 1er janvier 2027 ; il entre après le 31 décembre 2027 ; sa date de sortie est illisible ; son emploi n\'est ni roulant, ni régulateur, ni REX, ni facturière (administratif pur) ; ou le nom de son agence n\'est pas reconnu. Enfin, si le REX a déjà construit son équipe, elle n\'est pas remplacée : le message d\'import vous le signale, agence par agence. Une entrée ou une sortie prévue en 2027 est gardée, avec sa date.'],
   ]},
   { t: 'Étape 2 — Périodes de paie', items: [
-    ['Comment fonctionnent les périodes de paie ?', 'Chaque mois de paie collecte les variables d\'une période qui ne coïncide pas avec le mois civil (par défaut, la paie de janvier couvre du 7 décembre 2026 au 10 janvier 2027). SOMA rattache le coût des heures et des variables à la bonne période. Certains mois comptent 5 semaines : leur masse salariale est plus élevée, c\'est normal. Les heures du 6 au 31 décembre 2027 passent sur la paie de janvier 2028 : leur montant est affiché à part, en charges à reporter.'],
+    ['Comment fonctionnent les périodes de paie ?', 'Chaque mois de paie collecte les variables d\'une période qui ne coïncide pas avec le mois civil (par défaut, la paie de janvier couvre du 7 décembre 2026 au 10 janvier 2027). SOMA rattache le coût des heures et des variables à la bonne période. Chaque trimestre compte un mois de paie à 5 semaines (janvier, avril, juillet, octobre). On ne garde que 4 semaines de variables par mois : les heures supplémentaires de la 5e semaine sont lissées sur le trimestre (le mois à 5 semaines est diminué des 2/3 de cette semaine, chacun des deux mois suivants en reçoit 1/3). Les heures du 6 au 31 décembre 2027 passent sur la paie de janvier 2028 : leur montant est affiché à part, en charges à reporter.'],
     ['Les dates s\'appliquent-elles à toutes les agences ?', 'Non : les périodes sont propres à chaque agence. Ouvrez l\'agence (« Ouvrir une agence »), puis revenez sur Périodes de paie pour vérifier ou corriger ses dates ; la modification est enregistrée automatiquement. Sans agence ouverte, l\'écran montre le calendrier standard, et une modification n\'est enregistrée nulle part. Si le calendrier standard correspond à votre paie, il n\'y a rien à faire. « Réinitialiser par défaut » remet le calendrier standard sur l\'agence ouverte.'],
     ['Pourquoi la masse salariale ne colle pas au temps travaillé du mois ?', 'Parce que la paie suit ses propres périodes, décalées par rapport aux mois civils, et qu\'elle intègre des éléments variables (heures supplémentaires, indemnités) rattachés à la période où ils sont payés, pas à celle où ils sont travaillés.'],
   ]},
