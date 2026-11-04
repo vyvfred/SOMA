@@ -2607,6 +2607,15 @@ async function loadBudgetFromSupabase(agence) {
   render();
 }
 
+
+// Écriture contrôlée : une modification refusée par les droits de la base ne renvoie pas d'erreur
+// (0 ligne modifiée). On la transforme en erreur visible au lieu d'afficher « Enregistré ».
+async function ecrire(req){
+  const res = await req.select('id');
+  if(res.error) return res;
+  if(!res.data || !res.data.length) return { data: [], error: { message: 'Enregistrement refusé : vos droits ne permettent pas de modifier cette donnée.' } };
+  return res;
+}
 async function saveBudgetToSupabase() {
   const a = A();
   if (!a || a.name === 'Nouvelle agence') return;
@@ -2629,7 +2638,7 @@ async function saveBudgetToSupabase() {
     if (validation) fullData.validation = validation;
     const payload = { agence: a.name, annee: 2027, data: fullData, statut: BUDGET_STATUT };
     if (BUDGET_ID) {
-      const {error} = await sb.from('budgets').update({data: fullData, statut: BUDGET_STATUT}).eq('id', BUDGET_ID);
+      const {error} = await ecrire(sb.from('budgets').update({data: fullData, statut: BUDGET_STATUT}).eq('id', BUDGET_ID));
       if (error) throw error;
     } else {
       const {data, error} = await sb.from('budgets').insert(payload).select().single();
@@ -2684,7 +2693,8 @@ async function soumettreBudget() {
     val.historique.push({ type:'resoumission', date:new Date().toISOString(), par: (PROFILE&&PROFILE.nom)||'REX' });
   }
   data.validation = val;
-  await sb.from('budgets').update({statut: 'soumis_dr', data: data}).eq('id', BUDGET_ID);
+  const sub = await ecrire(sb.from('budgets').update({statut: 'soumis_dr', data: data}).eq('id', BUDGET_ID));
+  if (sub.error) { showToast('Soumission refusée : ' + sub.error.message, 'error'); return; }
   BUDGET_STATUT = 'soumis_dr';
   updateStatutBar();
   renderVersionBar();
@@ -2725,12 +2735,14 @@ async function updateStatutBar() {
 }
 
 async function soumettreDF() {
-  await sb.from('budgets').update({statut:'soumis_df'}).eq('id', BUDGET_ID);
+  const r = await ecrire(sb.from('budgets').update({statut:'soumis_df'}).eq('id', BUDGET_ID));
+  if (r.error) { showToast('Soumission refusée : ' + r.error.message, 'error'); return; }
   BUDGET_STATUT = 'soumis_df'; updateStatutBar();
 }
 
 async function soumettreDG() {
-  await sb.from('budgets').update({statut:'soumis_dg'}).eq('id', BUDGET_ID);
+  const r = await ecrire(sb.from('budgets').update({statut:'soumis_dg'}).eq('id', BUDGET_ID));
+  if (r.error) { showToast('Soumission refusée : ' + r.error.message, 'error'); return; }
   BUDGET_STATUT = 'soumis_dg'; updateStatutBar();
 }
 
@@ -3015,7 +3027,8 @@ async function confirmDecision() {
   // 'orientation' : pas de changement de statut, juste une trace
 
   if (newStatut) {
-    await sb.from('budgets').update({ statut: newStatut }).eq('id', budgetId);
+    const r = await ecrire(sb.from('budgets').update({ statut: newStatut }).eq('id', budgetId));
+    if (r.error) { alert('Décision non enregistrée : ' + r.error.message); return; }
   }
 
   if (decision === 'valide') confettiValidation();
@@ -3317,20 +3330,9 @@ async function renderCgParcours(){
 }
 
 async function saveAffectation(agenceNom, drUserId) {
-  if (!drUserId) {
-    await sb.from('agences').update({region_id: null}).eq('nom', agenceNom);
-    return;
-  }
-  // Récupérer ou créer la région du DR
-  const {data: drProfile} = await sb.from('profiles').select('region_id,nom').eq('id', drUserId).single();
-  let regionId = drProfile?.region_id;
-  if (!regionId) {
-    // Créer une région pour ce DR
-    const {data: newRegion} = await sb.from('regions').insert({nom: drProfile.nom}).select().single();
-    regionId = newRegion.id;
-    await sb.from('profiles').update({region_id: regionId}).eq('id', drUserId);
-  }
-  await sb.from('agences').update({region_id: regionId}).eq('nom', agenceNom);
+  // Fonction serveur affecter_dr : crée la région du DR si besoin et rattache l'agence (CG et admin uniquement)
+  const { error } = await sb.rpc('affecter_dr', { p_agence: agenceNom, p_dr: drUserId || null });
+  if (error) { showToast('Affectation refusée : ' + error.message, 'error'); return; }
   _cgEtat = null; renderCgGuide('affectation');
 }
 
@@ -3747,7 +3749,8 @@ async function dupliquerVersion(){
   BUDGET_META.activeVersion = cible;
   ACTIVE_VERSION = cible;
   const fullData = { versions: versions, meta: BUDGET_META };
-  await sb.from('budgets').update({data: fullData}).eq('id', BUDGET_ID);
+  const dup = await ecrire(sb.from('budgets').update({data: fullData}).eq('id', BUDGET_ID));
+  if (dup.error) { showToast('Duplication refusée : ' + dup.error.message, 'error'); return; }
   renderVersionBar();
   render();
   showToast('Version '+VERSION_LABELS[cible]+' créée à partir de '+VERSION_LABELS[ACTIVE_VERSION], 'success');
@@ -4449,7 +4452,8 @@ async function deciderBudget(agenceNom, decision){
     data.validation.statut = 'refuse';
   }
   let nouveauStatut = res.refus ? 'brouillon' : (res.definitif ? 'valide_pdg' : 'soumis');
-  await sb.from('budgets').update({ data:data, statut:nouveauStatut }).eq('id', rec.id);
+  const ecr = await ecrire(sb.from('budgets').update({ data:data, statut:nouveauStatut }).eq('id', rec.id));
+  if (ecr.error) { showToast('Décision non enregistrée : ' + ecr.error.message, 'error'); return; }
 
   showToast(res.message, res.refus ? 'info' : 'success');
   renderValidationCollegial(); // rafraîchir la pile
@@ -6950,12 +6954,14 @@ function copySQLAdmin() {
 
 
 async function adminUpdateRole(userId, newRole) {
-  await sb.from('profiles').update({role: newRole}).eq('id', userId);
+  const r = await ecrire(sb.from('profiles').update({role: newRole}).eq('id', userId));
+  if (r.error) { showAdminMsg('Rôle non modifié : ' + r.error.message, 'bad'); return; }
   showAdminMsg('Rôle mis à jour.', 'ok');
 }
 
 async function adminUpdateAgence(userId, agence) {
-  await sb.from('profiles').update({agence: agence || null}).eq('id', userId);
+  const r = await ecrire(sb.from('profiles').update({agence: agence || null}).eq('id', userId));
+  if (r.error) { showAdminMsg('Agence non modifiée : ' + r.error.message, 'bad'); return; }
   showAdminMsg('Agence mise à jour.', 'ok');
 }
 
@@ -6973,7 +6979,8 @@ async function adminDeleteUser(userId, nom) {
 }
 
 async function adminForceStatut(budgetId, newStatut) {
-  await sb.from('budgets').update({statut: newStatut}).eq('id', budgetId);
+  const r = await ecrire(sb.from('budgets').update({statut: newStatut}).eq('id', budgetId));
+  if (r.error) { showAdminMsg('Statut non modifié : ' + r.error.message, 'bad'); return; }
   showAdminMsg('Statut forcé : ' + statutLabel(newStatut), 'ok');
   await renderAdminBudgets();
 }
@@ -7164,7 +7171,7 @@ async function saveRefAgences() {
     const {data: existing} = await sb.from('budgets').select('id,data').eq('agence', nom).eq('annee', 2027).single();
     let res;
     if (existing) {
-      res = await sb.from('budgets').update({data: fusionnerRefCG(existing.data, data)}).eq('id', existing.id);
+      res = await ecrire(sb.from('budgets').update({data: fusionnerRefCG(existing.data, data)}).eq('id', existing.id));
     } else if (Object.keys(data).some(function(k){ return CG_KEYS_SANS_VERROU.indexOf(k) < 0; })) {
       res = await sb.from('budgets').insert({agence: nom, annee: 2027, data: appliquerRefCG({ratioMaintien: data.ratioMaintien}, data), statut: 'brouillon'});
     } else {
@@ -8021,7 +8028,7 @@ async function handleRegistreImport(event){
       }
 
       // Sauvegarder dans Supabase pour chaque agence
-      let count=0,totalSal=0,gardees=[];
+      let count=0,totalSal=0,gardees=[],refusees=[];
       for(let agNom in parAgence){
         let employees=parAgence[agNom];
         // Filtrer : exclure ADMIN pur (garder roulants + REX + REGULATEUR + FACTURIERE)
@@ -8046,9 +8053,11 @@ async function handleRegistreImport(event){
           } else {
             merged.employees=filtered;
           }
-          await sb.from('budgets').update({data:merged}).eq('id',existing.data.id);
+          let wr=await ecrire(sb.from('budgets').update({data:merged}).eq('id',existing.data.id));
+          if(wr.error){refusees.push(agNom);continue;}
         } else {
-          await sb.from('budgets').insert({agence:agNom,annee:2027,data:{employees:filtered},statut:'brouillon'});
+          let wr=await sb.from('budgets').insert({agence:agNom,annee:2027,data:{employees:filtered},statut:'brouillon'});
+          if(wr.error){refusees.push(agNom);continue;}
         }
         count++;
         totalSal+=filtered.length;
@@ -8057,6 +8066,7 @@ async function handleRegistreImport(event){
       event.target.value='';
       let msgReg=count+' agences mises à jour ('+totalSal+' salariés importés)';
       if(gardees.length)msgReg+=' — équipe déjà construite par le REX, non remplacée : '+gardees.join(', ');
+      if(refusees.length)msgReg+=' — ⚠ enregistrement refusé pour : '+refusees.join(', ');
       showRefAgencesMsg(msgReg,'ok');
       renderRefAgences();
     }catch(err){showRefAgencesMsg('Erreur : '+err.message,'bad');console.error(err);}
@@ -8131,7 +8141,7 @@ async function handleRefAgencesImport(event){
         let existing=await sb.from('budgets').select('id,data').eq('agence',ag.nom).eq('annee',2027).single();
         let res;
         if(existing.data){
-          res=await sb.from('budgets').update({data:fusionnerRefCG(existing.data.data,d)}).eq('id',existing.data.id);
+          res=await ecrire(sb.from('budgets').update({data:fusionnerRefCG(existing.data.data,d)}).eq('id',existing.data.id));
         } else {
           res=await sb.from('budgets').insert({agence:ag.nom,annee:2027,data:appliquerRefCG({},d),statut:'brouillon'});
         }
@@ -8608,7 +8618,7 @@ async function saveVariablesDec(){
     let data = { variablesDec2026Detail: c.saisi ? det : null, variablesDec2026: c.saisi ? Math.round(c.total) : null };
     const {data: existing} = await sb.from('budgets').select('id,data').eq('agence', n).eq('annee', 2027).single();
     let res;
-    if(existing) res = await sb.from('budgets').update({data: fusionnerRefCG(existing.data, data)}).eq('id', existing.id);
+    if(existing) res = await ecrire(sb.from('budgets').update({data: fusionnerRefCG(existing.data, data)}).eq('id', existing.id));
     else if(c.saisi) res = await sb.from('budgets').insert({agence: n, annee: 2027, data: appliquerRefCG({}, data), statut: 'brouillon'});
     if(res && res.error){ echecs.push(n); continue; }
     // Agence ouverte : mettre à jour l'état en mémoire (sinon l'auto-save réécrirait l'ancien)
