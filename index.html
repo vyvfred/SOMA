@@ -1726,6 +1726,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <span class="objInsightText" id="cgInsightText"></span>
     </div>
     <p class="hint" style="margin-bottom:16px">Saisissez les charges pour <b id="cgAgenceName"></b>. Choisissez le mode (mensuel, annuel ou % CA) et le type (fixe ou variable) pour chaque poste. Les lignes CA et Charges de personnel sont calculées automatiquement.</p>
+    <div id="cgStructureNote" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:13px;color:var(--blue2)"></div>
     <div class="grid c3">
       <div>
         <label>Taux horaire brut au 1er janvier (€/h)</label>
@@ -2038,7 +2039,20 @@ let BUDGET_META = {                   // métadonnées communes à toutes les ve
 };
 
 const M=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
-const T=[{"label":"Chiffre d'affaires","type":"product"},{"label":"Achats Matières premières et sous traitance","type":"charge"},{"label":"Variations stock marchandises et autres approvisionnements","type":"charge"},{"label":"MARGE BRUTE GLOBALE","type":"subtotal"},{"label":"Electricité - eau - chauffage","type":"charge"},{"label":"Matériels ambulances","type":"charge"},{"label":"Carburant","type":"charge"},{"label":"Entretiens petits équipements","type":"charge"},{"label":"Fourniture bureau - vêtements","type":"charge"},{"label":"Sous traitance","type":"charge"},{"label":"Crédit bail et location véhicules","type":"charge"},{"label":"Location téléphonie - informatique - mobilité","type":"charge"},{"label":"Location immobilières et charges locatives","type":"charge"},{"label":"Entretiens véhicules - batîment","type":"charge"},{"label":"Maintenance informatique","type":"charge"},{"label":"Assurance","type":"charge"},{"label":"Formation - documentation","type":"charge"},{"label":"Honoraires et prestations de services","type":"charge"},{"label":"Publicité - cadeaux","type":"charge"},{"label":"Frais de déplacement - missions réceptions","type":"charge"},{"label":"Péages","type":"charge"},{"label":"Affranchissement","type":"charge"},{"label":"Téléphonie - internet","type":"charge"},{"label":"Frais bancaires et cotisations","type":"charge"},{"label":"Autres Achats et charges externes","type":"subtotal"},{"label":"VALEUR AJOUTEE","type":"subtotal"},{"label":"Subventions d'exploitation","type":"product"},{"label":"Impôts, taxes et versements assimilés","type":"charge"},{"label":"Charges de personnel","type":"charge"},{"label":"EXCEDENT BRUT D'EXPLOITATION","type":"subtotal"},{"label":"Reprises s/ charges et transferts","type":"product"},{"label":"Autres produits","type":"product"},{"label":"Dotations amortissements et provisions","type":"charge"},{"label":"Autres charges","type":"charge"},{"label":"RESULTAT D'EXPLOITATION","type":"subtotal"},{"label":"Produits financiers","type":"product"},{"label":"Charges financières","type":"charge"},{"label":"RESULTAT FINANCIER","type":"subtotal"},{"label":"RESULTAT COURANT AVANT IMPOT","type":"subtotal"},{"label":"Produits exceptionnels","type":"product"},{"label":"Charges exceptionnelles","type":"charge"},{"label":"RESULTAT EXCEPTIONNEL","type":"subtotal"},{"label":"RESULTAT NET","type":"subtotal"}];
+const T=[{"label":"Chiffre d'affaires","type":"product"},{"label":"Achats Matières premières et sous traitance","type":"charge"},{"label":"Variations stock marchandises et autres approvisionnements","type":"charge"},{"label":"MARGE BRUTE GLOBALE","type":"subtotal"},{"label":"Electricité - eau - chauffage","type":"charge"},{"label":"Matériels ambulances","type":"charge"},{"label":"Carburant","type":"charge"},{"label":"Entretiens petits équipements","type":"charge"},{"label":"Fourniture bureau - vêtements","type":"charge"},{"label":"Sous traitance","type":"charge"},{"label":"Crédit bail et location véhicules","type":"charge"},{"label":"Location téléphonie - informatique - mobilité","type":"charge"},{"label":"Location immobilières et charges locatives","type":"charge"},{"label":"Entretiens véhicules - batîment","type":"charge"},{"label":"Maintenance informatique","type":"charge"},{"label":"Assurance","type":"charge"},{"label":"Formation - documentation","type":"charge"},{"label":"Honoraires et prestations de services","type":"charge"},{"label":"Publicité - cadeaux","type":"charge"},{"label":"Frais de déplacement - missions réceptions","type":"charge"},{"label":"Péages","type":"charge"},{"label":"Affranchissement","type":"charge"},{"label":"Téléphonie - internet","type":"charge"},{"label":"Frais bancaires et cotisations","type":"charge"},{"label":"Autres Achats et charges externes","type":"subtotal"},{"label":"VALEUR AJOUTEE","type":"subtotal"},{"label":"Subventions d'exploitation","type":"product"},{"label":"Impôts, taxes et versements assimilés","type":"charge"},{"label":"Charges de personnel","type":"charge"},{"label":"EXCEDENT BRUT D'EXPLOITATION","type":"subtotal"},{"label":"Reprises s/ charges et transferts","type":"product"},{"label":"Autres produits","type":"product"},{"label":"Dotations amortissements et provisions","type":"charge"},{"label":"Autres charges","type":"charge"},{"label":"RESULTAT D'EXPLOITATION","type":"subtotal"},{"label":"Produits financiers","type":"product"},{"label":"Charges financières","type":"charge"},{"label":"RESULTAT FINANCIER","type":"subtotal"},{"label":"RESULTAT COURANT AVANT IMPOT","type":"subtotal"},{"label":"Produits exceptionnels","type":"product"},{"label":"Charges exceptionnelles","type":"charge"},{"label":"RESULTAT EXCEPTIONNEL","type":"subtotal"},{"label":"Impôt sur les sociétés","type":"charge"},{"label":"Participation aux bénéfices","type":"charge"},{"label":"RESULTAT NET","type":"subtotal"}];
+// Structures hors agences (demande du CG, nov. 2026) : le CG saisit tout leur compte de résultat ligne par ligne,
+// CA et charges de personnel compris. Seul le Siège porte l'IS et la participation.
+const STRUCTURES=['CENTRE DE FORMATION','EXCEPTIONNEL','RESEAU ADHERENT','SIEGE'];
+const LIGNES_SIEGE=['Impôt sur les sociétés','Participation aux bénéfices'];
+function estStructure(a){return !!a&&STRUCTURES.indexOf(a.name)>=0}
+function estSiege(a){return !!a&&a.name==='SIEGE'}
+// CA d'une structure : saisi (mensuel ou annuel). Le mode « % du CA » n'a pas de sens pour le CA lui-même.
+// Le REX d'une agence voit son compte de résultat jusqu'au résultat d'exploitation ;
+// les lignes en dessous ne sont visibles qu'à partir du Directeur Régional.
+function vueExploitation(a){return !!PROFILE&&PROFILE.role==='rex'&&!estStructure(a)}
+function resultatAffiche(a){return vueExploitation(a)?{lib:"Résultat d'exploitation",libMin:"résultat d'exploitation",val:ann(a,"RESULTAT D'EXPLOITATION")}:{lib:'Résultat net',libMin:'résultat',val:ann(a,"RESULTAT NET")}}
+function lignesSIG(a,consolide){let l=T.filter(function(r){return consolide||estSiege(a)||LIGNES_SIEGE.indexOf(r.label)<0;});if(!consolide&&vueExploitation(a)){let i=l.findIndex(function(r){return r.label==="RESULTAT D'EXPLOITATION";});l=l.slice(0,i+1);}return l}
+function caStructure(a,m){let x=a.rex&&a.rex["Chiffre d'affaires"];if(!x)return 0;if(x.mode==='annual')return (+x.annual||0)/12;if(x.mode==='month')return x.values&&x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0;return 0}
 const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['previsionnel','Prévisionnel'],['finance','Synthèse'],['aide','Aide']];
 const panelsCG=[['cgdash','Tableau de bord'],['refagences','Données agences'],['periodes','Périodes de paie'],['variablesdec','Variables déc. 2026'],['affectation','Affectation DR'],['comparative','Vue comparative'],['graphiques','Graphiques'],['consolidation','Consolidation'],['objectif','Ouvrir une agence'],['cg','Charges CG'],['rex','Prévisionnel'],['finance','Synthèse'],['controle','Contrôles'],['validation','Budgets à valider'],['aide','Aide']];
 // Regroupement des onglets CG en sections thématiques (le travail du CG n'est pas séquentiel)
@@ -3334,7 +3348,7 @@ function isVac(iso,z){return (vac[z]||vac.B).some(x=>between(iso,x[0],x[1]))}
 function typeDay(date,a){let iso=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0'),wd=date.getDay();if(feries.includes(iso))return 'ferie';if(wd===0)return 'dimanche';if(wd===6)return 'samedi';if(isVac(iso,a.schoolZone))return 'vacances';return 'semaine'}
 function isoWeek(date){let d=new Date(Date.UTC(date.getFullYear(),date.getMonth(),date.getDate())),day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));return Math.ceil((((d-y)/86400000)+1)/7)}
 function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0};a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp})}}}
-function monthCA(a,m){if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)}
+function monthCA(a,m){if(estStructure(a))return caStructure(a,m);if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)}
 function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
 function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>{let dx=x.days[0],dy=y.days[0];return (dx.month-dy.month)||(dx.day-dy.day)})}
 function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
@@ -3419,6 +3433,8 @@ function refAgenceSeuilsBase(a) {
 }
 function hsTot(a){return hsRows(a).reduce((o,r)=>{o.ca+=r.ca;o.need+=r.hours;o.av+=r.av;o.hs+=r.hs;return o},{ca:0,need:0,av:0,hs:0})}
 function payrollMonth(a,m){
+  // Structure : charges de personnel saisies par le CG
+  if(estStructure(a)) return manual(a,'Charges de personnel',m);
   // Si les périodes de paie sont configurées, utiliser le calcul comptable
   if(a.periodesPaie && a.periodesPaie.length && a.costHour && a.cal && a.cal.length){
     return payrollPayMonth(a, m);
@@ -3565,7 +3581,7 @@ function msNRMois(a, m){
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
 function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
-function sig(a,m){let v=l=>manual(a,l,m),ca=monthCA(a,m),marge=ca-v("Achats Matières premières et sous traitance")-v("Variations stock marchandises et autres approvisionnements"),aa=["Electricité - eau - chauffage","Matériels ambulances","Carburant","Entretiens petits équipements","Fourniture bureau - vêtements","Sous traitance","Crédit bail et location véhicules","Location téléphonie - informatique - mobilité","Location immobilières et charges locatives","Entretiens véhicules - batîment","Maintenance informatique","Assurance","Formation - documentation","Honoraires et prestations de services","Publicité - cadeaux","Frais de déplacement - missions réceptions","Péages","Affranchissement","Téléphonie - internet","Frais bancaires et cotisations"].reduce((s,l)=>s+v(l),0),va=marge-aa,pay=payrollMonth(a,m),ebe=va+v("Subventions d'exploitation")-v("Impôts, taxes et versements assimilés")-pay,rex=ebe+v("Reprises s/ charges et transferts")+v("Autres produits")-v("Dotations amortissements et provisions")-v("Autres charges"),rf=v("Produits financiers")-v("Charges financières"),rcai=rex+rf,re=v("Produits exceptionnels")-v("Charges exceptionnelles"),rn=rcai+re;return {"Chiffre d'affaires":ca,"Charges de personnel":pay,"MARGE BRUTE GLOBALE":marge,"Autres Achats et charges externes":aa,"VALEUR AJOUTEE":va,"EXCEDENT BRUT D'EXPLOITATION":ebe,"RESULTAT D'EXPLOITATION":rex,"RESULTAT FINANCIER":rf,"RESULTAT COURANT AVANT IMPOT":rcai,"RESULTAT EXCEPTIONNEL":re,"RESULTAT NET":rn}}
+function sig(a,m){let v=l=>manual(a,l,m),ca=monthCA(a,m),marge=ca-v("Achats Matières premières et sous traitance")-v("Variations stock marchandises et autres approvisionnements"),aa=["Electricité - eau - chauffage","Matériels ambulances","Carburant","Entretiens petits équipements","Fourniture bureau - vêtements","Sous traitance","Crédit bail et location véhicules","Location téléphonie - informatique - mobilité","Location immobilières et charges locatives","Entretiens véhicules - batîment","Maintenance informatique","Assurance","Formation - documentation","Honoraires et prestations de services","Publicité - cadeaux","Frais de déplacement - missions réceptions","Péages","Affranchissement","Téléphonie - internet","Frais bancaires et cotisations"].reduce((s,l)=>s+v(l),0),va=marge-aa,pay=payrollMonth(a,m),ebe=va+v("Subventions d'exploitation")-v("Impôts, taxes et versements assimilés")-pay,rex=ebe+v("Reprises s/ charges et transferts")+v("Autres produits")-v("Dotations amortissements et provisions")-v("Autres charges"),rf=v("Produits financiers")-v("Charges financières"),rcai=rex+rf,re=v("Produits exceptionnels")-v("Charges exceptionnelles"),rn=rcai+re-v("Impôt sur les sociétés")-v("Participation aux bénéfices");return {"Chiffre d'affaires":ca,"Charges de personnel":pay,"MARGE BRUTE GLOBALE":marge,"Autres Achats et charges externes":aa,"VALEUR AJOUTEE":va,"EXCEDENT BRUT D'EXPLOITATION":ebe,"RESULTAT D'EXPLOITATION":rex,"RESULTAT FINANCIER":rf,"RESULTAT COURANT AVANT IMPOT":rcai,"RESULTAT EXCEPTIONNEL":re,"RESULTAT NET":rn}}
 function amount(a,l,m){let row=T.find(r=>r.label===l);if(l==="Chiffre d'affaires"||l==="Charges de personnel"||row?.type==='subtotal')return sig(a,m)[l]||0;return manual(a,l,m)}
 function ann(a,l){return M.reduce((s,_,m)=>s+amount(a,l,m),0)}
 
@@ -4667,7 +4683,7 @@ function collectAnomalies(){
   let ca = ann(a,"Chiffre d'affaires");
   let caObj = +a.targetCA || 0;
   let txr = +a.targetTXR || 0;
-  let net = ann(a,"RESULTAT NET");
+  let net = resultatAffiche(a).val;
   let ms = ann(a,"Charges de personnel");
   let tauxMS = ca ? ms/ca*100 : 0;
   let nbRoulants = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
@@ -4711,7 +4727,7 @@ function collectAnomalies(){
   }
   if(ca > 0){
     if(net < 0){
-      anomalies.push({panel:'previsionnel', level:'warn', text:'Budget deficitaire ('+euro(net)+')'});
+      anomalies.push({panel:'previsionnel', level:'warn', text:(vueExploitation(a)?'Résultat d\'exploitation déficitaire (':'Budget déficitaire (')+euro(net)+')'});
     }
     if(tauxMS > 85){
       anomalies.push({panel:'previsionnel', level:'warn', text:'Masse salariale elevee ('+pct(tauxMS)+' du CA)'});
@@ -4935,14 +4951,16 @@ async function showVersionCompare(){
     ['Charges de personnel', function(c){return euro(c.ms);}, 'low'],
     ['MS / CA', function(c){return pct(c.msRatio);}, 'low'],
     ['Résultat d\'exploitation', function(c){return euro(c.rexpl);}, 'high'],
-    ['Résultat net', function(c){return euro(c.net);}, 'high'],
-    ['Résultat net / CA', function(c){return pct(c.netRatio);}, 'high'],
+    ['Résultat net', function(c){return euro(c.net);}, 'high', true],
+    ['Résultat net / CA', function(c){return pct(c.netRatio);}, 'high', true],
     ['Effectif (ETP)', function(c){return c.etp.toFixed(1);}, 'neutral'],
     ['Nombre de salariés', function(c){return c.nbSal;}, 'neutral'],
     ['Heures supplémentaires', function(c){return Math.round(c.hs)+' h';}, 'low'],
     ['CP générés', function(c){return c.cpG.toFixed(0)+' J';}, 'neutral'],
     ['CP planifiés', function(c){return c.cpP.toFixed(0)+' J';}, 'neutral']
   ];
+  // Le REX d'une agence ne voit pas les lignes sous le résultat d'exploitation
+  if(vueExploitation(A())) lignes = lignes.filter(function(l){ return !l[3]; });
 
   let html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">';
   // En-tête
@@ -6096,14 +6114,14 @@ function renderCoherence(){
     +'Si vos références CA dépassent significativement ce montant, des tensions HS apparaîtront.</div>':'');
 }
 
-function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*coefHSMoyen(a),hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+gaugeRow('Résultat net / CA',netRate)+gaugeRow('Coût HS / CA',hsRate)}
+function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['REX 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=vueExploitation(a)?makeTripleBars([{value:rex,cls:'budget'}],['REX']):makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['REX','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*coefHSMoyen(a),hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('REX / CA',rexRate)+(vueExploitation(a)?'':gaugeRow('Résultat net / CA',netRate))+gaugeRow('Coût HS / CA',hsRate)}
 
 function cgBadgeType(x){return x.chargeType==='fixe'?'<span class="badgeFixe">fixe</span>':'<span class="badgeVar">variable</span>'}
 function cgCellType(x,safe){return '<td>'+cgBadgeType(x)+`<select onchange="setRexType('${safe}',this.value)" style="margin-top:5px"><option value="fixe" ${x.chargeType==='fixe'?'selected':''}>charge fixe</option><option value="variable" ${x.chargeType==='variable'?'selected':''}>charge variable</option></select></td>`}
 function cgCellMode(x,safe){return `<td><select onchange="setRexMode('${safe}',this.value)"><option value="month" ${x.mode==='month'?'selected':''}>saisie mensuelle</option><option value="annual" ${x.mode==='annual'?'selected':''}>montant annuel</option><option value="pct" ${x.mode==='pct'?'selected':''}>% CA mensuel</option></select></td>`}
 function cgCellKey(x,safe){if(x.mode==='annual')return '<td><label>Montant annuel</label><input value="'+( x.annual||0)+'" type="number" onchange="setRexAnnual(\''+safe+'\',this.value)"><label>Clé</label><select onchange="setRexKey(\''+safe+'\',this.value)"><option value="monthly12" '+(x.allocationKey==='monthly12'?'selected':'')+'>division par 12</option><option value="ca" '+(x.allocationKey==='ca'?'selected':'')+'>% du CA mensuel</option></select></td>';if(x.mode==='pct')return '<td><label>% CA mensuel</label><input value="'+(x.pct||0)+'" type="number" onchange="setRexVal(\''+safe+'\',0,this.value)"></td>';return '<td><span class="hint">saisie par mois</span></td>'}
 function cgRowMonths(a,r,x,safe){return M.map(function(_,m){if(x.mode==='month')return '<td><input value="'+(x.values[m]||0)+'" type="number" onchange="setRexVal(\''+safe+'\','+m+',this.value)"></td>';return '<td class="num locked">'+euro(manual(a,r.label,m))+'</td>'}).join('')}
-function cgBuildRow(a,r){let x=a.rex[r.label],safe=r.label.replace(/'/g,"\'"),total=M.reduce((s,_,m)=>s+manual(a,r.label,m),0);if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe';if(!x.allocationKey)x.allocationKey='monthly12';return '<tr><td><b>'+r.label+'</b></td>'+cgCellType(x,safe)+cgCellMode(x,safe)+cgCellKey(x,safe)+cgRowMonths(a,r,x,safe)+'<td class="num"><b>'+euro(total)+'</b></td></tr>'}
+function cgBuildRow(a,r){let x=a.rex[r.label],safe=r.label.replace(/'/g,"\'"),total=M.reduce((s,_,m)=>s+manual(a,r.label,m),0);if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe';if(!x.allocationKey)x.allocationKey='monthly12';return '<tr><td><b>'+r.label+'</b></td>'+cgCellType(x,safe)+(r.label==="Chiffre d'affaires"?cgCellMode(x,safe).replace(/<option value="pct"[^<]*<\/option>/,''):cgCellMode(x,safe))+cgCellKey(x,safe)+cgRowMonths(a,r,x,safe)+'<td class="num"><b>'+euro(total)+'</b></td></tr>'}
 function renderCgInsight(a){
   if(!a || a.name === 'Nouvelle agence') return;
   // Titre avec nom d'agence
@@ -6149,10 +6167,10 @@ function renderCgInsight(a){
   }
 }
 
-function renderCG(){let a=A();if(!q('cgTable'))return;renderCgInsight(a);let header='<tr><th>Poste officiel</th><th>Type</th><th>Mode</th><th>Clé / valeur</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th></tr>';let rows=T.filter(r=>r.type!=='subtotal'&&r.label!=="Chiffre d'affaires"&&r.label!=="Charges de personnel").map(r=>cgBuildRow(a,r)).join('');q('cgTable').innerHTML=header+rows}
+function renderCG(){let a=A();if(!q('cgTable'))return;renderCgInsight(a);if(q('cgStructureNote')){q('cgStructureNote').style.display=estStructure(a)?'':'none';q('cgStructureNote').innerHTML=estStructure(a)?'ℹ <b>'+a.name+'</b> est une structure hors agence : vous saisissez tout son compte de résultat ligne par ligne, <b>chiffre d\'affaires et charges de personnel compris</b> (pas de calendrier ni d\'équipe).'+(estSiege(a)?' Le Siège porte aussi l\'<b>impôt sur les sociétés</b> et la <b>participation aux bénéfices</b> : le résultat net = résultat courant avant impôt + résultat exceptionnel − IS − participation.':''):''}let header='<tr><th>Poste officiel</th><th>Type</th><th>Mode</th><th>Clé / valeur</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th></tr>';let st=estStructure(a);let rows=T.filter(r=>r.type!=='subtotal'&&(st||(r.label!=="Chiffre d'affaires"&&r.label!=="Charges de personnel"))&&(estSiege(a)||LIGNES_SIEGE.indexOf(r.label)<0)).map(r=>{if(!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(null),mode:'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:'monthly12',pct:0,annual:0};return cgBuildRow(a,r)}).join('');q('cgTable').innerHTML=header+rows}
 
 function renderControl(){if(!q('auditKpis'))return;let a=A(),s=chargesSummary(a),ca=s.ca;q('auditKpis').innerHTML=[['Charges fixes',euro(s.fixed),pct(ca?s.fixed/ca*100:0)],['Charges variables',euro(s.variable),pct(ca?s.variable/ca*100:0)],['Charges personnel',euro(s.payroll),pct(ca?s.payroll/ca*100:0)],['HS annuelles',s.hs.toFixed(0)+' h',''],['REX',euro(ann(a,"RESULTAT D'EXPLOITATION")),pct(ca?ann(a,"RESULTAT D'EXPLOITATION")/ca*100:0)],['Résultat net',euro(ann(a,"RESULTAT NET")),pct(ca?ann(a,"RESULTAT NET")/ca*100:0)]].map(x=>`<div class="auditItem"><span>${x[0]}</span><b>${x[1]}</b><small>${x[2]||''}</small></div>`).join('');if(q('auditAlerts'))q('auditAlerts').innerHTML=auditAlerts(a).map(x=>`<div class="alertLine ${x[0]}"><b>${x[1]}</b><br>${x[2]}</div>`).join('')}
-function renderREX(){let a=A(),ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");kpis('rexKpis',[['CA',euro(ca)],['Charges personnel',euro(ann(a,"Charges de personnel")),pct(ca?ann(a,"Charges de personnel")/ca*100:0)],['VA',euro(ann(a,"VALEUR AJOUTEE"))],['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION"))],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)]]);if(q('rexTable'))q('rexTable').innerHTML='<tr><th>Rubrique officielle</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th><th>% CA</th></tr>'+T.map(r=>{let total=ann(a,r.label),cls=r.type==='subtotal'?'subtotal':r.type;return `<tr class="${cls}"><td><b>${r.label}</b></td>`+M.map((_,m)=>`<td class="num">${euro(amount(a,r.label,m))}</td>`).join('')+`<td class="num"><b>${euro(total)}</b></td><td class="num">${pct(ca?total/ca*100:0)}</td></tr>`}).join('')}
+function renderREX(){let a=A(),ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");kpis('rexKpis',[['CA',euro(ca)],['Charges personnel',euro(ann(a,"Charges de personnel")),pct(ca?ann(a,"Charges de personnel")/ca*100:0)],['VA',euro(ann(a,"VALEUR AJOUTEE"))],['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION"))],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)]]);if(q('rexTable'))q('rexTable').innerHTML='<tr><th>Rubrique officielle</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th><th>% CA</th></tr>'+lignesSIG(a).map(r=>{let total=ann(a,r.label),cls=r.type==='subtotal'?'subtotal':r.type;return `<tr class="${cls}"><td><b>${r.label}</b></td>`+M.map((_,m)=>`<td class="num">${euro(amount(a,r.label,m))}</td>`).join('')+`<td class="num"><b>${euro(total)}</b></td><td class="num">${pct(ca?total/ca*100:0)}</td></tr>`}).join('')}
 function renderPrevInsight(a, ca, net, tauxMS){
   let insight = q('prevInsight'), txt = q('prevInsightText');
   if(!insight || !txt) return;
@@ -6173,9 +6191,9 @@ function renderPrevInsight(a, ca, net, tauxMS){
   // Jugement du résultat
   let phrase;
   if(net > 0){
-    phrase = 'Votre budget dégage un résultat positif de <b>' + euro(net) + '</b>. ';
+    phrase = 'Votre budget dégage un ' + resultatAffiche(a).libMin + ' positif de <b>' + euro(net) + '</b>. ';
   } else if(net < 0){
-    phrase = 'Votre budget présente un résultat déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
+    phrase = 'Votre budget présente un ' + resultatAffiche(a).libMin + ' déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
   } else {
     phrase = 'Votre budget est à l\'équilibre. ';
   }
@@ -6198,13 +6216,13 @@ function renderPrevisionnel(){
     q('prevPaieBadge').style.display=hasPaie?'':'none';
   }
   if(!q('prevTable'))return;
-  let ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");
+  let ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),res=resultatAffiche(a),net=res.val;
   let ms=ann(a,"Charges de personnel"),ebe=ann(a,"EXCEDENT BRUT D'EXPLOITATION");
   let tauxMS = ca?ms/ca*100:0;
   // 4 KPI décisifs : mon budget tient-il ?
   if(q('prevKpis'))q('prevKpis').innerHTML=[
     ['CA budgété',euro(ca),''],
-    ['Résultat net',euro(net),ca?pct(net/ca*100):''],
+    [res.lib,euro(net),ca?pct(net/ca*100):''],
     ['Masse salariale / CA',pct(tauxMS),tauxMS>85?'⚠ élevé':tauxMS>75?'à surveiller':'maîtrisé'],
     ['EBE',euro(ebe),ca?pct(ebe/ca*100):'']
   ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
@@ -6212,7 +6230,7 @@ function renderPrevisionnel(){
   renderPrevInsight(a, ca, net, tauxMS);
   // Tableau SIG complet — lecture seule
   let header='<tr><th>Rubrique</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th><th>% CA</th></tr>';
-  let rows=T.map(function(r){
+  let rows=lignesSIG(a).map(function(r){
     let total=ann(a,r.label);
     let cls=r.type==='subtotal'?'subtotal':'';
     let pctCA=ca?pct(total/ca*100):'—';
@@ -6329,7 +6347,7 @@ function renderSynthese(){
   if(q('synthTitle')) q('synthTitle').textContent = 'Synthèse du budget — ' + a.name + ' 2027';
 
   let ca = ann(a,"Chiffre d'affaires");
-  let net = ann(a,"RESULTAT NET");
+  let res = resultatAffiche(a), net = res.val;
   let ms = ann(a,"Charges de personnel");
   let caObj = +a.targetCA || 0;
   let ecart = ca - caObj;
@@ -6342,7 +6360,7 @@ function renderSynthese(){
   if(q('synthKpis')){
     q('synthKpis').innerHTML = [
       ['CA budgété', euro(ca), ''],
-      ['Résultat net', euro(net), ca?pct(net/ca*100):''],
+      [res.lib, euro(net), ca?pct(net/ca*100):''],
       ['Masse salariale / CA', pct(tauxMS), tauxMS>85?'⚠ élevé':tauxMS>75?'à surveiller':'maîtrisé'],
       ['Écart à l\'objectif', (ecart>=0?'+':'')+euro(ecart), caObj?(ecart>=0?'objectif atteint':'sous l\'objectif'):'']
     ].map(function(x){return '<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>';}).join('');
@@ -6354,7 +6372,7 @@ function renderSynthese(){
   let estValideur = ['dr','df','dg','pdg'].includes(role);
   // Évaluer la santé : équilibré si résultat >= 0 et MS/CA raisonnable
   let problemes = [];
-  if(net < 0) problemes.push('résultat déficitaire');
+  if(net < 0) problemes.push(res.libMin + ' déficitaire');
   if(tauxMS > 85) problemes.push('masse salariale élevée');
   if(caObj && ecart < -caObj*0.03) problemes.push('objectif de CA non atteint');
 
@@ -6388,8 +6406,8 @@ function renderSynthese(){
       else p += 'Ce budget est en retrait de ' + euro(Math.abs(ecart)) + ' par rapport à l\'objectif. ';
     }
     // Résultat
-    if(net > 0) p += 'Il dégage un résultat positif de <b>' + euro(net) + '</b>. ';
-    else if(net < 0) p += 'Il présente un résultat déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
+    if(net > 0) p += 'Il dégage un ' + res.libMin + ' positif de <b>' + euro(net) + '</b>. ';
+    else if(net < 0) p += 'Il présente un ' + res.libMin + ' déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
     // MS
     if(tauxMS > 85) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) est élevée. ';
     else if(tauxMS > 0) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) est dans la norme. ';
@@ -6405,7 +6423,7 @@ function renderSynthese(){
   renderEnveloppesCP(a);
 }
 
-function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),t=hsTot(a);kpis('finKpis',[['CA calendrier',euro(ca)],['Charges personnel',euro(ms),'présence + HS'],['REX',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)],['MS / CA',pct(ca?ms/ca*100:0)],['HS',t.hs.toFixed(0)+' h']])}
+function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),t=hsTot(a);kpis('finKpis',[['CA calendrier',euro(ca)],['Charges personnel',euro(ms),'présence + HS'],['REX',euro(rex),pct(ca?rex/ca*100:0)]].concat(vueExploitation(a)?[]:[['Résultat net',euro(net),pct(ca?net/ca*100:0)]]).concat([['MS / CA',pct(ca?ms/ca*100:0)],['HS',t.hs.toFixed(0)+' h']]))}
 
 // ═══════════════════════════════════════════════
 // ACTIONS UTILISATEUR
@@ -9275,6 +9293,18 @@ async function exportConsolidation(){
   ws3['!cols'] = [{wch:26},{wch:6},{wch:14},{wch:14},{wch:16},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws3, 'Indicateurs');
 
+  // ── Feuille 4 : Compte de résultat consolidé ──
+  try{
+    let c = consolideReseau(budgets||[]);
+    let wsSIG = [['Rubrique','Agences'].concat(STRUCTURES.map(function(n){return LIB_STRUCTURES[n];})).concat(['Consolidé'])];
+    T.forEach(function(r){
+      wsSIG.push([r.label, Math.round(c.agences[r.label])].concat(STRUCTURES.map(function(n){return Math.round(c.structures[n].s[r.label]);})).concat([Math.round(c.total[r.label])]));
+    });
+    let ws4 = XLSX.utils.aoa_to_sheet(wsSIG);
+    ws4['!cols'] = [{wch:46},{wch:14},{wch:14},{wch:14},{wch:16},{wch:14},{wch:14}];
+    XLSX.utils.book_append_sheet(wb, ws4, 'Compte de résultat');
+  }catch(e){ console.warn('Compte de résultat consolidé non exporté', e); }
+
   // Générer et télécharger
   let filename = 'SOMA_Consolidation_'+date.replace(/\//g,'-')+'.xlsx';
   XLSX.writeFile(wb, filename);
@@ -9290,13 +9320,82 @@ async function exportConsolidation(){
   }
 }
 
+
+// ═══ COMPTE DE RÉSULTAT CONSOLIDÉ (demande du CG, nov. 2026) ═══
+// Somme des agences et des 4 structures, version soumise sinon active (budgetData).
+// Le SIG d'une entité est calculé une fois par mois (un appel à sig par mois).
+function sigAnnuelEntite(a){
+  let out={};T.forEach(function(r){out[r.label]=0;});
+  for(let m=0;m<12;m++){
+    let sg=sig(a,m);
+    T.forEach(function(r){
+      let v=(r.type==='subtotal'||r.label==="Chiffre d'affaires"||r.label==="Charges de personnel")?(sg[r.label]||0):manual(a,r.label,m);
+      out[r.label]+=v;
+    });
+  }
+  return out;
+}
+function entiteDepuisBudget(nom, raw){
+  let d=budgetData(raw);
+  if(!d||!Object.keys(d).length) return null;
+  let a=JSON.parse(JSON.stringify(d));
+  a.name=nom;
+  if(!a.rex)a.rex={};
+  if(!a.refs)a.refs={san:refs(),sai:refs(),tp:refs()};
+  if(!a.employees)a.employees=[];if(!a.presence)a.presence={};
+  if(!a.sick)a.sick=Array(12).fill(null);if(!a.hs50)a.hs50=Array(12).fill(null);
+  if(!a.cal)a.cal=[];
+  return a;
+}
+function consolideReseau(budgets){
+  let map={};(budgets||[]).forEach(function(b){map[b.agence]=b;});
+  let zero=function(){let o={};T.forEach(function(r){o[r.label]=0;});return o;};
+  let agencesTot=zero(), parStructure={}, nbAgences=0, erreurs=[];
+  agencesReseau().forEach(function(ag){
+    let b=map[ag.nom]; if(!b) return;
+    try{ let a=entiteDepuisBudget(ag.nom,b.data); if(!a) return;
+      let s=sigAnnuelEntite(a); T.forEach(function(r){agencesTot[r.label]+=s[r.label];}); nbAgences++;
+    }catch(e){ erreurs.push(ag.nom); }
+  });
+  STRUCTURES.forEach(function(nom){
+    let b=map[nom], s=zero();
+    if(b){ try{ let a=entiteDepuisBudget(nom,b.data); if(a) s=sigAnnuelEntite(a); }catch(e){ erreurs.push(nom); } }
+    parStructure[nom]={ s:s, present:!!b, statut:b?b.statut:null };
+  });
+  let total=zero();
+  T.forEach(function(r){ total[r.label]=agencesTot[r.label]+STRUCTURES.reduce(function(x,n){return x+parStructure[n].s[r.label];},0); });
+  return { agences:agencesTot, nbAgences:nbAgences, structures:parStructure, total:total, erreurs:erreurs };
+}
+const LIB_STRUCTURES={'CENTRE DE FORMATION':'Formation','EXCEPTIONNEL':'Exceptionnel','RESEAU ADHERENT':'Réseau adhérent','SIEGE':'Siège'};
+function consolideHtml(c){
+  let ca=c.total["Chiffre d'affaires"];
+  let h='<details class="objCollapse" id="consoSIG" open style="margin-top:18px"><summary>Compte de résultat consolidé 2027</summary><div class="objCollapseBody">'
+    +'<p class="hint" style="margin-bottom:10px">Somme des <b>'+c.nbAgences+' agences</b> budgétées et des 4 structures (version soumise, sinon version active). '
+    +'Le résultat net = résultat courant avant impôt + résultat exceptionnel − impôt sur les sociétés − participation aux bénéfices (portés par le Siège).</p>';
+  let manquantes=STRUCTURES.filter(function(n){return !c.structures[n].present;}).map(function(n){return LIB_STRUCTURES[n];});
+  if(manquantes.length) h+='<div style="font-size:12px;color:var(--orange);margin-bottom:10px">⚠ Structures pas encore saisies : '+manquantes.join(', ')+'.</div>';
+  if(c.erreurs.length) h+='<div style="font-size:12px;color:var(--orange);margin-bottom:10px">⚠ Calcul impossible pour : '+c.erreurs.join(', ')+'.</div>';
+  h+='<div class="tablewrap"><table id="consoSIGTable"><tr><th>Rubrique</th><th>Agences</th>'
+    +STRUCTURES.map(function(n){return '<th>'+LIB_STRUCTURES[n]+'</th>';}).join('')+'<th>Consolidé</th><th>% CA</th></tr>';
+  T.forEach(function(r){
+    let cls=r.type==='subtotal'?' class="subtotal"':'';
+    let cell=function(v){return '<td class="num'+((!v)?' zeroVal':'')+'">'+euro(v)+'</td>';};
+    h+='<tr'+cls+'><td><b>'+r.label+'</b></td>'+cell(c.agences[r.label])
+      +STRUCTURES.map(function(n){return cell(c.structures[n].s[r.label]);}).join('')
+      +'<td class="num"><b>'+euro(c.total[r.label])+'</b></td><td class="num">'+(ca?pct(c.total[r.label]/ca*100):'—')+'</td></tr>';
+  });
+  return h+'</table></div></div></details>';
+}
+
 function renderConsolidation(){
   let box=q('consolidationContent');
   if(!box)return;
   box.innerHTML='<div class="loading">Chargement...</div>';
   sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027)
     .then(function(res){
-      let budgets=res.data||[];
+      let tousBudgets=res.data||[];
+      let nomsAgences=agencesReseau().map(function(x){return x.nom;});
+      let budgets=tousBudgets.filter(function(b){return nomsAgences.indexOf(b.agence)>=0;});
       let map={};
       budgets.forEach(function(b){map[b.agence]=b;});
       
@@ -9413,6 +9512,7 @@ function renderConsolidation(){
           txt.innerHTML=p;
         }
       })();
+      try{ html+=consolideHtml(consolideReseau(tousBudgets)); }catch(e){ html+='<div class="alert critique">Compte de résultat consolidé indisponible : '+e.message+'</div>'; }
       box.innerHTML=html;
     }).catch(function(e){box.innerHTML='<div class="alert critique">Erreur : '+e.message+'</div>';});
 }
