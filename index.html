@@ -2032,6 +2032,30 @@ let _lastSaveError = null;  // dernier motif de refus serveur (pour affichage/di
 let PENDING_DECISION = null; // {decision, niveau}
 // ── Gestion des versions de budget (V1/V2/V3) ──
 let ACTIVE_VERSION = 'v1';           // version en cours d'édition
+// État chargé (ou dernier état enregistré) : point de départ de la fusion à l'enregistrement
+let BUDGET_BASE = null, META_BASE = null;
+// Fusion par rubrique (même code que soma-react/src/domain/fusion.js) : une session n'écrit que ce
+// qu'elle a modifié depuis BUDGET_BASE, par-dessus la version relue en base. Évite qu'un REX et le CG
+// travaillant en même temps sur le même budget effacent le travail l'un de l'autre.
+function fusionnerVersion(base, local, distant){
+  let J = function(v){ return v === undefined ? undefined : JSON.stringify(v); };
+  let copie = function(v){ return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); };
+  let loc = local || {};
+  if(!base || !distant || !Object.keys(distant).length){
+    let f = copie(loc); delete f.versions; delete f.meta;
+    return { fusion: f, locales: Object.keys(f), distantes: [] };
+  }
+  let fusion = copie(distant), locales = [], distantes = [];
+  let cles = {}; [base, loc, distant].forEach(function(o){ Object.keys(o).forEach(function(k){ cles[k] = 1; }); });
+  Object.keys(cles).forEach(function(k){
+    if(k === 'versions' || k === 'meta') return;
+    let b = J(base[k]), l = J(loc[k]), d = J(distant[k]);
+    if(l !== b){ locales.push(k); if(loc[k] === undefined) delete fusion[k]; else fusion[k] = copie(loc[k]); }
+    else if(d !== b){ distantes.push(k); }
+  });
+  delete fusion.versions; delete fusion.meta;
+  return { fusion: fusion, locales: locales, distantes: distantes };
+}
 let BUDGET_META = {                   // métadonnées communes à toutes les versions
   activeVersion: 'v1',
   submittedVersion: null,             // version choisie pour soumission
@@ -2541,7 +2565,9 @@ async function reprendreRatioReseau(a){
     if(rm!==undefined) a.ratioMaintien = rm;
   }catch(e){ /* sans réseau : le ratio reste vide, signalé dans les alertes CG */ }
 }
+let _baseChargee = null;
 async function loadBudgetFromSupabase(agence) {
+  _baseChargee = null;
   let data = null, error = null;
   try {
     const res = await sb.from('budgets')
@@ -2576,6 +2602,8 @@ async function loadBudgetFromSupabase(agence) {
     if (!versionVide && versionData && Object.keys(versionData).length) {
       S.agencies[S.active] = {...agency(agence), ...versionData, name: agence};
       migrateState();
+      // Point de départ = la version BRUTE lue en base (avant les compléments par défaut de migrateState)
+      _baseChargee = JSON.parse(JSON.stringify(versionData));
       // Restaurer le mois actif si sauvegardé
       if (S.agencies[S.active].moisActif !== null && S.agencies[S.active].moisActif !== undefined) {
         _activeMonth = S.agencies[S.active].moisActif;
@@ -2596,6 +2624,9 @@ async function loadBudgetFromSupabase(agence) {
     BUDGET_STATUT = 'brouillon';
   }
   await reprendreRatioReseau(S.agencies[S.active]);
+  // Point de départ de la fusion : l'état chargé (null si budget ou version pas encore enregistrés)
+  BUDGET_BASE = BUDGET_ID ? _baseChargee : null;
+  META_BASE = BUDGET_ID ? JSON.parse(JSON.stringify(BUDGET_META)) : null;
   // Si CG et budget soumis → afficher alertes de contrôle
   if(PROFILE&&PROFILE.role==='cg'&&BUDGET_STATUT&&BUDGET_STATUT.includes('soumis')){
     setTimeout(function(){ afficherAlertesCG(); }, 500);
@@ -2621,29 +2652,44 @@ async function saveBudgetToSupabase() {
   if (!a || a.name === 'Nouvelle agence') return;
   markSaving();
   try {
-    // Charger l'enregistrement existant pour préserver les autres versions
-    let versions = {}, validation = null;
+    // Relire la version en base et n'y écrire que ce que cette session a modifié (fusion par rubrique)
+    let versions = {}, validation = null, metaBase = null, distant = null;
     if (BUDGET_ID) {
       const {data: existing} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
       if (existing && existing.data && existing.data.versions) {
         versions = existing.data.versions;
+        distant = versions[ACTIVE_VERSION] || null;
       }
       if (existing && existing.data && existing.data.validation) validation = existing.data.validation;
+      if (existing && existing.data && existing.data.meta) metaBase = existing.data.meta;
     }
-    // Écrire la version active (COPIE PROFONDE, sans embarquer les autres versions dans a)
     let aClean = JSON.parse(JSON.stringify(a));
     delete aClean.versions; delete aClean.meta;
-    versions[ACTIVE_VERSION] = aClean;
-    const fullData = { versions: versions, meta: BUDGET_META };
+    let avant = BUDGET_BASE;
+    let fv = fusionnerVersion(avant, aClean, distant);
+    let fm = META_BASE ? fusionnerVersion(META_BASE, BUDGET_META, metaBase) : { fusion: BUDGET_META };
+    versions[ACTIVE_VERSION] = fv.fusion;
+    const fullData = { versions: versions, meta: fm.fusion };
     if (validation) fullData.validation = validation;
-    const payload = { agence: a.name, annee: 2027, data: fullData, statut: BUDGET_STATUT };
+    // Le statut n'est jamais réécrit par une sauvegarde : seules la soumission, les décisions et l'admin le changent
+    const payload = { agence: a.name, annee: 2027, data: fullData, statut: 'brouillon' };
     if (BUDGET_ID) {
-      const {error} = await ecrire(sb.from('budgets').update({data: fullData, statut: BUDGET_STATUT}).eq('id', BUDGET_ID));
+      const {error} = await ecrire(sb.from('budgets').update({data: fullData}).eq('id', BUDGET_ID));
       if (error) throw error;
     } else {
       const {data, error} = await sb.from('budgets').insert(payload).select().single();
       if (error) throw error;
       if (data) BUDGET_ID = data.id;
+    }
+    BUDGET_BASE = JSON.parse(JSON.stringify(fv.fusion));
+    META_BASE = JSON.parse(JSON.stringify(fm.fusion));
+    // Rubriques enregistrées entre-temps par quelqu'un d'autre : reportées à l'écran
+    if (avant && fv.distantes.length) {
+      let cur = A(), J = function(v){ return JSON.stringify(v); }, maj = false;
+      fv.distantes.forEach(function(k){
+        if (cur && J(cur[k]) === J(avant[k])) { cur[k] = fv.fusion[k] === undefined ? cur[k] : JSON.parse(JSON.stringify(fv.fusion[k])); maj = true; }
+      });
+      if (maj) { showToast('Budget mis à jour avec les modifications enregistrées par un autre utilisateur', 'info'); render(); }
     }
     _lastSaveError = null;
     markSaved();
@@ -3708,6 +3754,8 @@ async function switchVersion(v){
   if(data && data.data && data.data.versions && data.data.versions[v] && Object.keys(data.data.versions[v]).length){
     S.agencies[S.active] = {...agency(a.name), ...data.data.versions[v], name: a.name};
     migrateState();
+    BUDGET_BASE = JSON.parse(JSON.stringify(data.data.versions[v]));
+    META_BASE = data.data.meta ? JSON.parse(JSON.stringify(data.data.meta)) : null;
     renderVersionBar();
     render();
     showToast('Version '+VERSION_LABELS[v]+' active', 'info');
@@ -3721,6 +3769,7 @@ async function switchVersion(v){
     if(ref.histCA) na.histCA = ref.histCA;
     if(ref.histTXR2026){ na.histTXR2026 = ref.histTXR2026; na.histTXR = ref.histTXR2026; na.targetTXR = ref.histTXR2026; }
     migrateState();
+    BUDGET_BASE = null;
     renderVersionBar();
     render();
     showToast('Version '+VERSION_LABELS[v]+' vide — repartez de zéro ou dupliquez une autre version', 'warn');
@@ -3749,8 +3798,11 @@ async function dupliquerVersion(){
   BUDGET_META.activeVersion = cible;
   ACTIVE_VERSION = cible;
   const fullData = { versions: versions, meta: BUDGET_META };
+  if (data && data.data && data.data.validation) fullData.validation = data.data.validation;
   const dup = await ecrire(sb.from('budgets').update({data: fullData}).eq('id', BUDGET_ID));
   if (dup.error) { showToast('Duplication refusée : ' + dup.error.message, 'error'); return; }
+  BUDGET_BASE = JSON.parse(JSON.stringify(copie));
+  META_BASE = JSON.parse(JSON.stringify(BUDGET_META));
   renderVersionBar();
   render();
   showToast('Version '+VERSION_LABELS[cible]+' créée à partir de '+VERSION_LABELS[ACTIVE_VERSION], 'success');
