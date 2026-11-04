@@ -3445,6 +3445,8 @@ function baseHNonRoulant(a){return a.employees.filter(e=>!isRoulant(e.qual)&&e.q
 function mainMonth(a,w){let c={};a.cal.filter(d=>d.week==w).forEach(d=>c[d.month]=(c[d.month]||0)+1);return +(Object.entries(c).sort((x,y)=>y[1]-x[1])[0]?.[0]||0)}
 function pres(a,w){
   let base=baseHWeek(a,w);
+  // Semaine partielle de l'année (1er-3 janvier, 27-31 décembre) : base au prorata des jours
+  let nbj=a.cal.filter(d=>d.week===w).length; if(nbj && nbj<7) base=base*nbj/7;
   let p=a.presence[w]||{cp:0,other:0};
   let m=mainMonth(a,w);
   let rate=a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]:0;
@@ -3612,7 +3614,8 @@ function partCDDSemaine(a, week){
 function coutRoulantSemaine(a, r, mTaux){
   let m = mainMonth(a, r.week);
   let ch = chMois(a, mTaux===undefined ? m : mTaux);
-  let cout = (r.av*ch) + (r.hs*ch*coefHSMois(a,m)) + ((r.mal||0)*ch*ratioMaintien(a));
+  // Heures travaillées + heures supplémentaires + maintien sur arrêts + indemnité de congés payés (salaire maintenu)
+  let cout = (r.av*ch) + (r.hs*ch*coefHSMois(a,m)) + ((r.mal||0)*ch*ratioMaintien(a)) + ((r.cpH||0)*ch);
   return cout * (1 + TAUX_PRECARITE_CDD*partCDDSemaine(a, r.week));
 }
 // Ligne globale non-roulante (saisie CG) : coût mensuel chargé, ou null si non saisie
@@ -4752,8 +4755,8 @@ function collectAnomalies(){
   }
   if(caObj && txr && nbRoulants > 0){
     let tauxMalMoy = a.sick.filter(function(v){return v!==null;}).reduce(function(s,v){return s+(+v||0);},0) / (a.sick.filter(function(v){return v!==null;}).length || 12);
-    let dispoHebdoMoy = baseH(a) * (1 - tauxMalMoy/100);
-    let caMaxSansHS = Math.round(dispoHebdoMoy * txr * 52);
+    let dispoHebdoMoy = heuresDispoAnnuelles(a)/52; // maladie ET congés déduits (audit nov. 2026)
+    let caMaxSansHS = Math.round(heuresDispoAnnuelles(a) * txr);
     let tauxCharge = caMaxSansHS ? Math.round(caObj / caMaxSansHS * 100) : 0;
     if(tauxCharge > 115){
       anomalies.push({panel:'objectif', level:'warn', text:'Objectif superieur a la capacite de l\'effectif ('+tauxCharge+' %)'});
@@ -5314,8 +5317,8 @@ function renderTeamKpis(a){
   }
   if(caObj && txr){
     let tauxMalMoy = a.sick.filter(function(v){return v!==null;}).reduce(function(s,v){return s+(+v||0);},0) / (a.sick.filter(function(v){return v!==null;}).length || 12);
-    let dispoHebdoMoy = baseH(a) * (1 - tauxMalMoy/100);
-    let caMaxSansHS = Math.round(dispoHebdoMoy * txr * 52);
+    let dispoHebdoMoy = heuresDispoAnnuelles(a)/52; // maladie ET congés déduits (audit nov. 2026)
+    let caMaxSansHS = Math.round(heuresDispoAnnuelles(a) * txr);
     let ecart = caMaxSansHS - caObj;
     insight.style.display = '';
     if(caMaxSansHS >= caObj){
@@ -6034,8 +6037,8 @@ function renderObjectifInsight(){
 
   // ── Cas 3 : tout est là → interpréter ──
   let tauxMalMoy = a.sick.filter(function(v){return v!==null;}).reduce(function(s,v){return s+(+v||0);},0) / (a.sick.filter(function(v){return v!==null;}).length || 12);
-  let dispoHebdoMoy = baseHebdo * (1 - tauxMalMoy/100);
-  let caMaxSansHS = Math.round(dispoHebdoMoy * txr * 52);
+  let dispoHebdoMoy = heuresDispoAnnuelles(a)/52; // maladie ET congés déduits (audit nov. 2026)
+  let caMaxSansHS = Math.round(heuresDispoAnnuelles(a) * txr);
   let tauxCharge = caMaxSansHS ? Math.round(caObj / caMaxSansHS * 100) : 0;
 
   // Évolution vs 2026
@@ -6101,8 +6104,8 @@ function renderCoherence(){
   card.style.display='';
 
   // Capacité annuelle
-  let dispoHebdoMoy=baseHebdo*(1-tauxMalMoy/100);
-  let caMaxSansHS=Math.round(dispoHebdoMoy*txr*52);
+  let dispoHebdoMoy=heuresDispoAnnuelles(a)/52; // maladie ET congés déduits (audit nov. 2026)
+  let caMaxSansHS=Math.round(heuresDispoAnnuelles(a)*txr);
   let caMaxAvecHS20=Math.round(caMaxSansHS*1.20);
   let caMaxAvecHS10=Math.round(caMaxSansHS*1.10);
 
@@ -7447,22 +7450,43 @@ function completionBadge(score) {
 // ═══════════════════════════════════════════════
 // GESTION CP
 // ═══════════════════════════════════════════════
+// Congés payés : 25 jours ouvrés par an (5 semaines légales = 175 h pour un temps plein), soit 25/12 par mois.
+const CP_JOURS_MOIS = 25/12;
 function cpGeneres(a) {
-  // CP générés : chaque salarié génère 2.5J par mois de PRÉSENCE (hors absence maladie).
-  // Roulants et improductifs partagent le même taux d'absentéisme mensuel (paramétrage 2027).
-  let salaries = a.employees.filter(e => e.qual !== 'FACTURIERE');
+  // CP générés, en jours de 7 h retirés de la présence ROULANTE (audit nov. 2026) :
+  // 25/12 j par mois de présence hors maladie, au prorata du temps de travail (heures / 35) et de la part roulante.
+  // Les non-roulants n'entrent pas : leurs congés n'enlèvent pas de capacité de production.
+  let salaries = a.employees.filter(e => isRoulant(e.qual));
   if (!salaries.length) return 0;
   let totalJ = 0;
   M.forEach(function(_, m) {
-    let tauxMalRoulant = a.sick[m] !== null && a.sick[m] !== undefined ? +a.sick[m] / 100 : 0;
+    let tauxMal = a.sick[m] !== null && a.sick[m] !== undefined ? +a.sick[m] / 100 : 0;
     let dateRef = '2027-' + String(m+1).padStart(2,'0') + '-15';
     salaries.forEach(function(e){
       if(!empPresent(e, dateRef)) return;
-      let taux = tauxMalRoulant;
-      totalJ += 2.5 * (1 - taux);
+      totalJ += CP_JOURS_MOIS * (1 - tauxMal) * ((+e.hours||0) / 35) * ((+e.pctRoulant||100) / 100);
     });
   });
   return Math.round(totalJ * 10) / 10;
+}
+// Heures roulantes disponibles sur l'année hors heures supplémentaires : base contractuelle moins
+// la maladie (taux moyen saisi, sinon cible) et les congés générés. Ne dépend pas du placement des CP.
+function heuresDispoAnnuelles(a) {
+  let remplis = (a.sick||[]).filter(function(v){ return v!==null && v!==undefined; });
+  let mal = remplis.length ? remplis.reduce(function(s,v){ return s+(+v||0); },0)/remplis.length/100 : (+a.targetAbsRate||0)/100;
+  return Math.max(0, baseH(a)*52*(1-mal) - cpGeneres(a)*7);
+}
+// Indicateurs d'une agence lus depuis les données brutes d'un budget, PAR LE MOTEUR (mêmes chiffres que l'écran
+// de l'agence) : capacité hors HS, HS, CP générés et planifiés. Utilisé par la Consolidation, l'export, les graphiques.
+function indicateursMoteur(nom, d, txr){
+  let r = { caMax:0, hs:0, cpGen:0, cpPlan:0 };
+  try{
+    let e = entiteDepuisBudget(nom, d); if(!e) return r;
+    r.caMax = txr>0 ? Math.round(heuresDispoAnnuelles(e)*txr) : 0;
+    r.hs = txr>0 && (+e.targetTXR||0)>0 ? Math.round(hsTot(e).hs) : 0;
+    r.cpGen = cpGeneres(e); r.cpPlan = Math.round(cpPlanifies(e)*10)/10;
+  }catch(err){ /* données incomplètes : indicateurs à 0 */ }
+  return r;
 }
 
 function cpPlanifies(a) {
@@ -8243,10 +8267,10 @@ function afficherAlertesCG(){
   // CA vs capacité
   let baseHebdo=baseH(a),txr=+a.targetTXR||0;
   if(baseHebdo>0&&txr>0){
-    let caMax=Math.round(baseHebdo*txr*52);
+    let caMax=Math.round(heuresDispoAnnuelles(a)*txr); // maladie et congés déduits
     let caB=ann(a,"Chiffre d'affaires");
     if(caB>caMax*1.15)alertes.push({t:'crit',m:'CA budgete ('+euro(caB)+') depasse de plus de 15% la capacite max ('+euro(caMax)+'). Verifier les references CA.'});
-    else if(caB>caMax)alertes.push({t:'warn',m:'CA budgété supérieur à la capacité max sans HS. Des heures supplémentaires importantes sont nécessaires.'});
+    else if(caB>caMax)alertes.push({t:'warn',m:'CA budgété supérieur à la capacité max sans HS (maladie et congés déduits). Des heures supplémentaires importantes sont nécessaires.'});
   }
   // CP équilibre
   let cpGen=cpGeneres(a),cpPlan=cpPlanifies(a),tol=Math.max(0.5,cpGen*0.05);
@@ -8820,7 +8844,7 @@ const FAQ = {
     ['Qu\'est-ce que le coût du choix que je vois en synthèse ?', 'SOMA calcule la répartition des congés qui minimise le coût des heures supplémentaires. Vous pouvez choisir de vous en écarter, par exemple pour accorder des congés à un moment qui compte pour votre équipe. Ce choix a parfois un surcoût. SOMA le chiffre non pour vous en dissuader, mais pour que vous puissiez l\'assumer et le justifier lors de la validation.'],
     ['Comment lire la courbe de charge et les couleurs des semaines ?', 'La courbe montre les heures supplémentaires par personne présente, semaine par semaine. Une courbe plate signifie une charge équitable. Les trois zones colorées correspondent aux périodes légales de congés. Dans le détail des semaines, chaque semaine porte un verdict en langage clair : aucune tension, charge légère, charge soutenue ou surcharge. Une semaine en surcharge mérite votre attention.'],
     ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste.'],
-    ['Comment sont calculés les congés générés ?', 'Chaque mois de présence génère environ 2,5 jours de congés payés. SOMA calcule automatiquement le total de congés à écouler sur l\'année à partir de votre effectif et de son temps de présence. C\'est ce stock que la répartition automatique distribue ensuite sur vos semaines.'],
+    ['Comment sont calculés les congés générés ?', 'Un salarié roulant à temps plein génère 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant en génère au prorata ; les régulateurs et responsables ne sont pas comptés, car leurs congés ne retirent pas de capacité de production. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce stock que la répartition automatique distribue ensuite sur vos semaines.'],
     ['Que veut dire verrouiller un mois ?', 'Verrouiller un mois indique à SOMA que vous avez ajusté ce mois manuellement et qu\'il ne doit plus y toucher lors des répartitions automatiques. Le moteur travaille alors autour de vos mois verrouillés. C\'est utile quand vous savez qu\'un mois particulier doit rester tel que vous l\'avez réglé.'],
     ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
     ['Comment sont pris en compte les régulateurs et responsables ?', 'Ce sont du personnel improductif : ils ne produisent pas de chiffre d\'affaires sur la route, mais ils ont un coût. SOMA les intègre dans la masse salariale sans les compter dans la capacité roulante. Leur coût est saisi en une seule ligne globale par le contrôleur de gestion : vous n\'avez pas de salaire à renseigner. Leur absentéisme suit le même taux que les roulants. Sur l\'écran Présence, vous pouvez seulement déclarer leurs heures supplémentaires. Chaque agence en a, c\'est normal.'],
@@ -8985,8 +9009,7 @@ async function renderGraphiques(){
     let caB2027=d.cal&&d.cal.length?d.cal.reduce(function(s,day){return s+(day.total||0);},0):0;
     let txr=+d.histTXR2026||+d.targetTXR||0;
     let baseHebdo=d.employees?d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);}).reduce(function(s,e){return s+(+e.hours||0)*(+e.pctRoulant||100)/100;},0):0;
-    let mal=+d.targetAbsRate||8;
-    let caMax=txr>0?baseHebdo*(1-mal/100)*txr*52:0;
+    let caMax=indicateursMoteur(ag.nom, d, txr).caMax;
     let txCharge=caMax>0?Math.round(caB2027/caMax*100):0;
     return {nom:ag.nom,ca2025:ca2025,ca2026:ca2026,caB2027:caB2027,txr:txr,txCharge:txCharge,hasData:(ca2025||ca2026||caB2027)};
   }).filter(function(r){return r.hasData;});
@@ -9132,7 +9155,7 @@ async function renderComparative(){
       let baseHs=d.employees?d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
         .reduce(function(s,e){return s+(+e.hours||0)*(+e.pctRoulant||100)/100;},0):0;
       let caB=d.cal.reduce(function(s,day){return s+(day.total||0);},0);
-      let caMax=baseHs*(1-(+d.targetAbsRate||8)/100)*(+d.histTXR2026||+d.targetTXR||40)*52;
+      let caMax=indicateursMoteur(ag.nom, d, +d.targetTXR||+d.histTXR2026||0).caMax;
       tauxHS=caMax>0?Math.round(Math.max(0,(caB-caMax)/caMax*100)):null;
     }
     // Statut
@@ -9281,16 +9304,16 @@ async function exportConsolidation(){
     // CA et HS
     let caB = 0;
     if(d.cal && d.cal.length) caB = d.cal.reduce(function(s,day){return s+(day.total||0);},0);
-    let txr = +d.histTXR2026 || +d.targetTXR || 0;
-    let mal = +d.targetAbsRate || 8;
-    let caMax = txr > 0 ? Math.round(baseHebdo*(1-mal/100)*txr*52) : 0;
+    // Mêmes calculs que l'écran de l'agence (moteur) : TXR cible, maladie et congés déduits
+    let txr = +d.targetTXR || +d.histTXR2026 || 0;
+    let im = indicateursMoteur(ag.nom, d, txr);
+    let caMax = im.caMax;
     let txCharge = caMax > 0 ? Math.round(caB/caMax*100) : 0;
-    let hs = txr > 0 ? Math.round(Math.max(0, caB/txr - baseHebdo*(1-mal/100)*52)) : 0;
+    let hs = im.hs;
 
     // CP
-    let nbSal = d.employees ? d.employees.filter(function(e){return e.qual!=='FACTURIERE';}).length : 0;
-    let cpGen = Math.round(nbSal*2.5*12*10)/10;
-    let cpPlan = d.presence ? Math.round(Object.values(d.presence).reduce(function(s,p){return s+(+p.cp||0);},0)*10)/10 : 0;
+    let cpGen = im.cpGen;
+    let cpPlan = im.cpPlan;
 
     wsData.push([
       ag.nom, ag.zone, statut, dateStr,
@@ -9341,9 +9364,8 @@ async function exportConsolidation(){
     }
     let etp = Math.round(baseHebdo/35*100)/100;
     let caB = d.cal ? d.cal.reduce(function(s,day){return s+(day.total||0);},0) : 0;
-    let txr = +d.histTXR2026||+d.targetTXR||0;
-    let mal = +d.targetAbsRate||8;
-    let caMax = txr>0?Math.round(baseHebdo*(1-mal/100)*txr*52):0;
+    let txr = +d.targetTXR||+d.histTXR2026||0;
+    let caMax = indicateursMoteur(ag.nom, d, txr).caMax;
     let tauxHS = caMax>0?Math.round(Math.max(0,(caB-caMax)/caMax*100)):null;
     wsComp.push([
       ag.nom, ag.zone,
@@ -9510,18 +9532,18 @@ function renderConsolidation(){
             .reduce(function(s,e){return s+(+e.hours||0)*(+e.pctRoulant||100)/100;},0);
         }
         let txr=+d.targetTXR||0;
-        let malMoy=d.sick?d.sick.filter(function(v){return v!==null;}).reduce(function(s,v){return s+(+v||0);},0)/(d.sick.filter(function(v){return v!==null;}).length||12):8;
-        caMax=Math.round(baseH*(1-malMoy/100)*txr*52);
+        // Indicateurs calculés par le moteur : mêmes chiffres que l'écran de l'agence
+        let im=indicateursMoteur(ag.nom, d, txr);
+        caMax=im.caMax;
         txCharge=caMax>0?Math.round(caB/caMax*100):0;
 
         // HS annuelles (approximation)
         let caObj=+d.targetCA||caB;
-        hsAnn=txr>0?Math.round(Math.max(0,(caB-caMax*txr/txr))):0;
+        hsAnn=im.hs;
 
         // CP équilibre
-        let nbSal=d.employees?d.employees.filter(function(e){return e.qual!=='FACTURIERE';}).length:0;
-        let cpGen=Math.round(nbSal*2.5*12*10)/10;
-        let cpPlan=d.presence?Object.values(d.presence).reduce(function(s,p){return s+(+p.cp||0);},0):0;
+        let cpGen=im.cpGen;
+        let cpPlan=im.cpPlan;
         let cpEcart=Math.round((cpGen-cpPlan)*10)/10;
         cpEq=cpGen>0?cpEcart.toFixed(1)+' J'+'restant':'—';
 
