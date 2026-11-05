@@ -8052,6 +8052,10 @@ async function handleRegistreImport(event){
       let iContrat=header.findIndex(function(h){return h.includes('contrat');});
       let iEmploi=header.findIndex(function(h){return h.includes('libelle');});
       let iHoraire=header.findIndex(function(h){return h.includes('horaire');});
+      let iEtp=header.findIndex(function(h){return h==='etp';});
+      let sansAcc=function(x){ return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
+      let nombreFr=function(v){ return typeof v==='number' ? v : parseFloat(String(v).replace(/[\s\u00a0]/g,'').replace(',','.')); };
+      const QUALS_BUDGETEES=['DEA','AA','TAXI','TPMR','REGULATEUR','REX','FACTURIERE'];
 
       // Grouper par agence avec fill-down
       let parAgence={};
@@ -8073,16 +8077,21 @@ async function handleRegistreImport(event){
         let entree=iEntree>=0?dateImport(row[iEntree]):'';
         if(entree&&entree>'2027-12-31')continue;
 
-        let agSoma=AGENCE_MAP[lastAgence.toUpperCase()];
-        if(!agSoma)continue;
+        // Accents ignorés (Angoulême, Chambéry, Châtellerault…) ; structures (Siège) saisies directement par le CG
+        let agSoma=AGENCE_MAP[sansAcc(lastAgence).toUpperCase()];
+        if(!agSoma||STRUCTURES.indexOf(agSoma)>=0)continue;
 
         let prenom=(row[iPrenom]||'').toString().trim();
         let emploi=(row[iEmploi]||'').toString();
         let contrat=contratImport(row[iContrat]);
-        let horaireMensuel=+row[iHoraire]||152;
+        // Horaire mensuel (virgule décimale acceptée). À 0 : ETP du registre ; sans heures ni ETP : salarié écarté
+        let horaireMensuel=nombreFr(row[iHoraire]);
+        if(!(horaireMensuel>0)){ let etp=iEtp>=0?nombreFr(row[iEtp]):0; if(etp>0) horaireMensuel=etp*151.67; else continue; }
         let heuresHebdo=Math.round(horaireMensuel/4.33*10)/10;
 
         let m=mapEmploi(emploi);
+        // Seuls les emplois budgétés dans SOMA (roulants, régulateurs, REX, facturières) sont importés
+        if(QUALS_BUDGETEES.indexOf(m.qual)<0)continue;
         // Exclure facturières et purement administratifs du personnel budgété roulant
         // mais on les garde en base avec leur qualif
         if(!parAgence[agSoma])parAgence[agSoma]=[];
