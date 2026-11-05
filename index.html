@@ -106,7 +106,7 @@ button.warn{color:#FF8F00;border-color:rgba(255,143,0,.2);background:rgba(255,14
 .statut.complement_dr,.statut.complement_df{background:rgba(255,143,0,.12);color:#FF8F00;}
 
 /* ── LAYOUT ── */
-.app{display:grid;grid-template-columns:250px 1fr;min-height:calc(100vh - 70px);gap:16px;padding:16px;}
+.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:calc(100vh - 70px);gap:16px;padding:16px;}
 
 /* ── SIDEBAR ── */
 nav{padding:16px 8px;border-right:1px solid var(--border);background:var(--bg2);width:260px;min-width:260px;transition:width .25s ease,min-width .25s ease;overflow:hidden;position:relative;}
@@ -124,7 +124,7 @@ nav.collapsed .navbtnLabel{display:none;}
 nav.collapsed .navbtnNum{font-weight:700;color:inherit;}
 
 /* ── MAIN ── */
-main{padding:28px 34px;position:relative;z-index:1;}
+main{padding:28px 34px;position:relative;z-index:1;min-width:0;}
 .panel{display:none;animation:panelIn .35s cubic-bezier(.34,1.2,.64,1);}
 .panel.active{display:block;}
 @keyframes panelIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -162,6 +162,11 @@ select option{background:var(--bg2);}
 table{width:100%;border-collapse:collapse;background:var(--card);}
 th,td{padding:8px 10px;border-bottom:1px solid var(--border);font-size:12px;font-family:Outfit,sans-serif;}
 th{position:sticky;top:0;background:var(--bg2);color:var(--ink65);font-family:Outfit,sans-serif;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.08em;z-index:2;border-bottom:1px solid var(--border2);}
+/* Grands tableaux : la première colonne (agence, rubrique) reste visible quand on fait défiler à droite */
+#refAgencesTable td:first-child,#prevTable td:first-child,#rexTable td:first-child,#cgTable td:first-child,#varDecTable td:first-child{position:sticky;left:0;z-index:1;background:var(--card);}
+#refAgencesTable th:first-child,#prevTable th:first-child,#rexTable th:first-child,#cgTable th:first-child,#varDecTable th:first-child{position:sticky;left:0;z-index:3;}
+#prevTable td:first-child,#rexTable td:first-child{min-width:210px;}
+#prevTable tr.subtotal td:first-child,#rexTable tr.subtotal td:first-child{background:linear-gradient(rgba(71,38,131,.15),rgba(71,38,131,.15)),var(--card)!important;}
 .num{text-align:right;font-family:DM Mono,monospace;}
 tr:nth-child(even) td{background:rgba(255,255,255,.02);}
 tr:hover td{background:var(--violet-light)!important;transition:background .1s;}
@@ -337,13 +342,13 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 
 /* Tablette : sidebar plus étroite */
 @media (max-width: 1024px){
-  .app{grid-template-columns:210px 1fr;gap:12px;padding:12px;}
+  .app{grid-template-columns:210px minmax(0,1fr);gap:12px;padding:12px;}
   main{padding:20px 22px;}
 }
 
 /* Mobile : sidebar en haut, layout en colonne */
 @media (max-width: 760px){
-  .app{grid-template-columns:1fr;padding:8px;gap:10px;}
+  .app{grid-template-columns:minmax(0,1fr);padding:8px;gap:10px;}
   #nav{position:static;top:auto;display:flex;flex-wrap:wrap;gap:4px;padding:8px;}
   #nav .navgroup{width:100%;}
   #nav .navbtn{width:auto;flex:1 1 auto;min-width:calc(50% - 4px);font-size:12px;padding:9px 8px;text-align:center;}
