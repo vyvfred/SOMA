@@ -7373,6 +7373,40 @@ function showImportMsg(msg, type) {
 // ═══════════════════════════════════════════════
 function isFilled(v) { return v !== null && v !== undefined && v !== ''; }
 
+// Avancement de la construction d'un budget d'agence (vu par la chaîne de validation).
+// Cinq jalons du REX, pondérés à parts égales : objectif fixé, références CA, équipe,
+// absentéisme mensuel, mois validés. Les charges CG sont suivies à part (elles relèvent du CG).
+function avancementBudget(d, updatedAt){
+  d = d || {};
+  let refs = d.refs || {}, acts = ['san'];
+  if(d.actSai) acts.push('sai'); if(d.actTP) acts.push('tp');
+  let refTot = 0, refOk = 0;
+  acts.forEach(function(act){ for(let m=0;m<12;m++){ ['semaine','vacances','samedi','dimanche','ferie'].forEach(function(t){
+    refTot++; let mo = refs[act] && refs[act][m]; if(mo && isFilled(mo[t])) refOk++; }); } });
+  let objectif = isFilled(d.targetCA) && isFilled(d.targetTXR);
+  let refsPct = refTot ? Math.round(refOk/refTot*100) : 0;
+  let nbSalaries = (d.employees||[]).length;
+  let absSaisis = (d.sick||[]).filter(isFilled).length;
+  let moisValides = (d.moisVerrouilles||[]).length;
+  let cgLignes = T.filter(function(r){ return r.type!=='subtotal' && r.label!=="Chiffre d'affaires" && r.label!=="Charges de personnel" && LIGNES_SIEGE.indexOf(r.label)<0; });
+  let cgOk = cgLignes.filter(function(r){ let x = d.rex && d.rex[r.label]; if(!x) return false;
+    return x.mode==='annual' ? isFilled(x.annual) && +x.annual!==0 : x.mode==='pct' ? isFilled(x.pct) && +x.pct!==0 : (x.values||[]).some(function(v){ return isFilled(v) && +v!==0; }); }).length;
+  let pct = Math.round(((objectif?1:0) + refsPct/100 + (nbSalaries?1:0) + absSaisis/12 + moisValides/12) / 5 * 100);
+  let jours = updatedAt ? Math.floor((Date.now() - new Date(updatedAt).getTime()) / 86400000) : null;
+  return { pct:pct, objectif:objectif, refsPct:refsPct, nbSalaries:nbSalaries, absSaisis:absSaisis, moisValides:moisValides,
+    chargesPct: cgLignes.length ? Math.round(cgOk/cgLignes.length*100) : 0, joursSansModif:jours };
+}
+function avancementHtml(av, statut){
+  let fini = statut && statut !== 'brouillon';
+  let p = fini ? 100 : av.pct;
+  let col = p>=90 ? 'var(--green)' : p>=50 ? '#FF8F00' : 'var(--orange)';
+  let detail = 'Objectif : '+(av.objectif?'fixé':'à fixer')+'\nRéférences CA : '+av.refsPct+' %\nÉquipe : '+av.nbSalaries+' salarié'+(av.nbSalaries>1?'s':'')
+    +'\nAbsentéisme saisi : '+av.absSaisis+'/12 mois\nMois validés : '+av.moisValides+'/12\nCharges CG : '+av.chargesPct+' %';
+  let relance = !fini && av.joursSansModif!==null && av.joursSansModif>=7 ? '<div style="font-size:10px;color:var(--orange)">sans modification depuis '+av.joursSansModif+' j</div>' : '';
+  return '<div title="'+detail+'" style="min-width:160px"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:'+p+'%;height:100%;background:'+col+'"></div></div><b style="font-size:11px;color:'+col+'">'+(fini?'soumis':p+' %')+'</b></div>'
+    +'<div style="font-size:10px;color:var(--ink65)">'+av.moisValides+'/12 mois validés · charges '+av.chargesPct+' %</div>'+relance+'</div>';
+}
+
 function completion() {
   let a = A();
   if (!a || a.name === 'Nouvelle agence') return {};
@@ -8933,6 +8967,7 @@ const FAQ_CG_SECTIONS = [
     ['À quoi sert la vue comparative ?', 'Elle met les agences côte à côte sur les mêmes indicateurs : TXR, absentéisme cible, coût horaire, ETP roulants, part des heures supplémentaires dans le CA. Les médianes du réseau sont affichées en haut ; les valeurs en orange s\'en écartent significativement. Une agence n\'est jamais bonne ou mauvaise dans l\'absolu : elle l\'est par rapport à ses pairs et à son contexte.'],
     ['À quoi servent les graphiques ?', 'Ils donnent une vision d\'ensemble : l\'évolution du CA par agence (réalisé 2025 et 2026, budgété 2027) pour repérer les trajectoires atypiques, et un nuage qui situe chaque agence selon son taux de charge. Utile pour préparer une présentation à la direction.'],
     ['Comment exporter la consolidation pour la direction ?', 'Sur l\'écran Consolidation, cliquez sur « Export Excel ». Le fichier rassemble, agence par agence, le statut, la date de mise à jour, les références (CA, TXR, absentéisme, taux horaires) et les principaux indicateurs du budget.'],
+    ['Comment savoir où en sont les budgets en préparation ?', 'L\'écran Consolidation affiche, pour chaque agence, une colonne « Avancement » : la construction du budget par le REX, sur cinq jalons à parts égales (objectif fixé, références CA, équipe, absentéisme mensuel, mois validés). Survolez la barre pour le détail ; le nombre de mois validés et la part des charges saisies par le contrôle de gestion sont rappelés dessous. Un brouillon sans modification depuis une semaine ou plus est signalé en orange, et le commentaire en haut de l\'écran donne l\'avancement moyen des brouillons et la liste des agences à relancer. Un directeur régional voit ses agences ; la direction, tout le réseau. L\'export Excel reprend ces colonnes.'],
   ]},
   { t: 'Étape 7 — Valider', items: [
     ['Mon rôle dans le circuit de validation ?', 'Le circuit compte trois étapes : le DR de l\'agence, puis le contrôleur de gestion et le directeur financier ensemble, puis la Direction. Un budget arrive dans votre écran « Budgets à valider » une fois validé par le DR. Les deux validations, la vôtre et celle du directeur financier, sont nécessaires pour qu\'il passe à la Direction.'],
@@ -8989,6 +9024,7 @@ const FAQ = {
     ['Le responsable voit-il mes commentaires ?', 'Oui, en cas de refus : votre motif lui est affiché pour qu\'il sache quoi corriger. C\'est le sens même du commentaire obligatoire : rendre votre décision utile et compréhensible pour celui qui reçoit le budget.'],
     ['Comment comparer les agences entre elles ?', 'Au-delà des budgets à valider, la consolidation et la vue réseau vous permettent de situer chaque agence par rapport aux autres. Une décision de budget se juge toujours mieux avec le contexte du réseau en tête.'],
     ['Que contient ma consolidation ?', 'Pour un directeur régional, la consolidation ne montre que les agences de sa région : statut, CA budgété, capacité, alertes, et le compte de résultat consolidé de la région. Pour la direction financière et la Direction, elle couvre tout le réseau, avec les quatre structures (Formation, Exceptionnel, Réseau adhérent, Siège) ; le résultat net consolidé intègre l\'impôt sur les sociétés et la participation portés par le Siège. « Export Excel » télécharge le même périmètre.'],
+    ['Comment savoir où en sont les budgets en préparation ?', 'L\'écran Consolidation affiche, pour chaque agence, une colonne « Avancement » : la construction du budget par le REX, sur cinq jalons à parts égales (objectif fixé, références CA, équipe, absentéisme mensuel, mois validés). Survolez la barre pour le détail ; le nombre de mois validés et la part des charges saisies par le contrôle de gestion sont rappelés dessous. Un brouillon sans modification depuis une semaine ou plus est signalé en orange, et le commentaire en haut de l\'écran donne l\'avancement moyen des brouillons et la liste des agences à relancer. Un directeur régional voit ses agences ; la direction, tout le réseau. L\'export Excel reprend ces colonnes.'],
     ['Je ne vois aucune de mes agences', 'Vos agences vous sont rattachées par le contrôleur de gestion, dans l\'écran « Affectation DR ». Tant que ce n\'est pas fait, votre consolidation est vide et aucun budget ne vous parvient : contactez-le.'],
     ['Le responsable d\'exploitation voit-il le résultat net ?', 'Non. Les responsables d\'exploitation voient leur budget jusqu\'au résultat d\'exploitation, ce qu\'ils pilotent. Les lignes suivantes (charges financières, exceptionnel, impôt sur les sociétés, participation) sont visibles à partir du directeur régional.'],
     ['Directeur financier : quels écrans ?', 'Le directeur financier dispose des écrans de suivi du contrôle de gestion : tableau de bord, vue comparative, consolidation, graphiques, et la consultation de chaque agence (Ouvrir une agence, Prévisionnel, Synthèse, Contrôles). La préparation des données reste au contrôleur de gestion. Il valide à la deuxième étape du circuit, avec le contrôleur de gestion.'],
@@ -9080,7 +9116,7 @@ const AIDE_ONGLET_Q = {
     cgdash: 'Dans quel ordre', objectif: 'Dans quel ordre', refagences: 'bien préparer les références',
     periodes: 'Les dates s\'appliquent', variablesdec: 'variables de paie de décembre',
     affectation: 'affectation des DR', cg: 'saisir les charges d\'une agence', controle: 'écran Contrôles',
-    consolidation: 'suivre l\'avancement', comparative: 'vue comparative', graphiques: 'graphiques',
+    consolidation: 'où en sont les budgets', comparative: 'vue comparative', graphiques: 'graphiques',
     validation: 'valider ou refuser', rex: 'masse salariale du prévisionnel', finance: 'masse salariale du prévisionnel'
   },
   dr: {
@@ -9444,7 +9480,7 @@ async function exportConsolidation(){
     'Absentéisme cible %','Taux brut (€/h)','Charges pat. %','Coût horaire (€/h)',
     'CA budgété','Capacité max','Taux charge %',
     'HS estimées (h)','ETP roulant','CP générés (J)','CP planifiés (J)',
-    'Nbre salariés roulants'
+    'Nbre salariés roulants','Avancement %','Mois validés','Jours sans modification'
   ]);
 
   ops.forEach(function(ag){
@@ -9486,7 +9522,10 @@ async function exportConsolidation(){
       d.targetAbsRate||'', d.tauxHoraireBrut||'', d.tauxChargePatronal||'', d.costHour||'',
       caB||'', caMax||'', txCharge||'',
       hs||'', etp||'', cpGen||'', cpPlan||'',
-      nbRoulants||''
+      nbRoulants||'',
+      b ? (b.statut && b.statut!=='brouillon' ? 100 : avancementBudget(d, b.updated_at).pct) : 0,
+      b ? avancementBudget(d, b.updated_at).moisValides : 0,
+      b && b.updated_at ? avancementBudget(d, b.updated_at).joursSansModif : ''
     ]);
   });
 
@@ -9682,7 +9721,7 @@ function renderConsolidation(){
       let valides=budgets.filter(function(b){return b.statut==='valide_pdg';}).length;
       let brouillons=budgets.filter(function(b){return b.statut==='brouillon';}).length;
       let nonDeposes=total-budgets.length;
-      let caReseauTotal=0, agencesAtypiques=[];
+      let caReseauTotal=0, agencesAtypiques=[], avBrouillons=[], aRelancer=[];
 
       let html='<div class="kpis" style="margin-bottom:16px">'
         +kpiHtml(estDR?'Agences de la région':'Agences réseau',total,'')
@@ -9695,7 +9734,7 @@ function renderConsolidation(){
 
       // Tableau détaillé avec alertes
       html+='<div class="tablewrap"><table><tr>'
-        +'<th>Agence</th><th>Statut</th><th>CA budgété</th>'
+        +'<th>Agence</th><th>Statut</th><th title="Construction du budget par le REX : objectif, références CA, équipe, absentéisme, mois validés. Survolez pour le détail.">Avancement</th><th>CA budgété</th>'
         +'<th>Capacité max</th><th>Taux charge</th>'
         +'<th>HS estimées</th><th title="Jours de congés générés restant à placer dans l\'année">CP à répartir</th>'
         +'<th>Alertes</th><th>Mis à jour</th></tr>';
@@ -9705,11 +9744,14 @@ function renderConsolidation(){
         if(!b){
           html+='<tr><td><b>'+ag.nom+'</b></td>'
             +'<td><span class="statut brouillon">Non commencé</span></td>'
+            +'<td><b style="font-size:11px;color:var(--orange)">0 %</b></td>'
             +'<td colspan="7" style="color:var(--ink30);font-size:12px">Aucune donnée</td></tr>';
           return;
         }
         let d=budgetData(b.data);
         let statut=b.statut||'brouillon';
+        let av=avancementBudget(d, b.updated_at);
+        if(statut==='brouillon'){ avBrouillons.push(av.pct); if(av.joursSansModif!==null && av.joursSansModif>=7) aRelancer.push(ag.nom); }
         
         // Calculs indicateurs
         let caB=0,caMax=0,txCharge=0,hsAnn=0,cpEq='—';
@@ -9762,6 +9804,7 @@ function renderConsolidation(){
         html+='<tr>'
           +'<td><b>'+ag.nom+'</b><br><span style="font-size:10px;color:var(--ink65)">Zone '+ag.zone+'</span></td>'
           +'<td><span class="statut '+statut+'">'+statutLabel(statut)+'</span></td>'
+          +'<td>'+avancementHtml(av, statut)+'</td>'
           +'<td class="num">'+(caB>0?euro(caB):'—')+'</td>'
           +'<td class="num">'+(caMax>0?euro(caMax):'—')+'</td>'
           +'<td class="num" style="color:'+txChargeColor+';font-weight:700">'+(txCharge>0?txCharge+'%':'—')+'</td>'
@@ -9780,6 +9823,9 @@ function renderConsolidation(){
           let p='<b>'+deposes+' agence'+(deposes>1?'s':'')+' sur '+total+'</b> ont déposé leur budget';
           if(valides>0) p+=', dont <b>'+valides+'</b> validé'+(valides>1?'s':'')+' définitivement';
           p+='. ';
+          if(avBrouillons.length) p+='Les <b>'+avBrouillons.length+' budget'+(avBrouillons.length>1?'s':'')+' en brouillon</b> sont construits à <b>'+Math.round(avBrouillons.reduce(function(x,y){return x+y;},0)/avBrouillons.length)+' %</b> en moyenne. ';
+          if(nonDeposes>0) p+='<b>'+nonDeposes+'</b> agence'+(nonDeposes>1?'s n\'ont':' n\'a')+' pas encore commencé. ';
+          if(aRelancer.length) p+='<span style="color:var(--orange)">Sans modification depuis une semaine ou plus : <b>'+aRelancer.join(', ')+'</b>.</span> ';
           if(caReseauTotal>0) p+='Le CA réseau consolidé atteint <b>'+euro(caReseauTotal)+'</b>. ';
           if(agencesAtypiques.length>0){
             p+='<b>'+agencesAtypiques.length+' agence'+(agencesAtypiques.length>1?'s':'')+'</b> présente'+(agencesAtypiques.length>1?'nt':'')+' un taux de charge élevé (objectif au-dessus de la capacité) : '+agencesAtypiques.slice(0,3).join(', ')+(agencesAtypiques.length>3?'…':'')+'.';
