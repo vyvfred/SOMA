@@ -3463,12 +3463,15 @@ function pres(a,w){
   let p=a.presence[w]||{cp:0,other:0};
   let m=mainMonth(a,w);
   let rate=a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]:0;
-  // CP et autres exprimés en jours (1J = 7H)
+  // CP et autres absences exprimés en jours (1J = 7H).
+  // Autres absences (décision nov. 2026) : « payées » (formation, événements familiaux,
+  // récupération…) coûtées au taux horaire comme les congés ; « non payées » (sans solde) non coûtées.
   let cpH=(+p.cp||0)*7;
   let otherH=(+p.other||0)*7;
+  let otherPaidH=(+p.otherPaid||0)*7;
   let mal=base*rate/100;
-  let av=Math.max(0,base-cpH-mal-otherH);
-  return {base,cp:+p.cp||0,cpH,other:+p.other||0,otherH,m,rate,mal,av,etp:av/35};
+  let av=Math.max(0,base-cpH-mal-otherH-otherPaidH);
+  return {base,cp:+p.cp||0,cpH,other:+p.other||0,otherH,otherPaid:+p.otherPaid||0,otherPaidH,m,rate,mal,av,etp:av/35};
 }
 function hsRows(a){
   let seuils=refAgenceSeuilsBase(a);
@@ -3628,7 +3631,8 @@ function coutRoulantSemaine(a, r, mTaux){
   let m = mainMonth(a, r.week);
   let ch = chMois(a, mTaux===undefined ? m : mTaux);
   // Heures travaillées + heures supplémentaires + maintien sur arrêts + indemnité de congés payés (salaire maintenu)
-  let cout = (r.av*ch) + (r.hs*ch*coefHSMois(a,m)) + ((r.mal||0)*ch*ratioMaintien(a)) + ((r.cpH||0)*ch);
+  // + absences payées (formation, événements familiaux, récupération…) au taux horaire comme les congés
+  let cout = (r.av*ch) + (r.hs*ch*coefHSMois(a,m)) + ((r.mal||0)*ch*ratioMaintien(a)) + ((r.cpH||0)*ch) + ((r.otherPaidH||0)*ch);
   return cout * (1 + TAUX_PRECARITE_CDD*partCDDSemaine(a, r.week));
 }
 // Ligne globale non-roulante (saisie CG) : coût mensuel chargé, ou null si non saisie
@@ -5764,7 +5768,7 @@ function renderRH(){
       + '<div><b>1.</b> Semaine par semaine, posez les congés (CP) et les autres absences.</div>'
       + '<div><b>2.</b> Vérifiez l\'équilibre du mois : aucune semaine ne doit rester en tension.</div>'
       + '<div><b>3.</b> Validez le mois — c\'est réversible.</div>'
-      + '<div style="font-size:12px;color:var(--ink65);border-top:1px solid var(--border);padding-top:6px">Vous ne saisissez que <b>deux colonnes</b> : congés et autres absences. Tout le reste est calculé. Astuce : <b>« Répartir les congés automatiquement »</b> place vos CP sur l\'année en évitant les semaines déjà tendues. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,\'conges\')" title="Pourquoi cette règle ?">?</span></div>'
+      + '<div style="font-size:12px;color:var(--ink65);border-top:1px solid var(--border);padding-top:6px">Vous ne saisissez que <b>trois colonnes</b> : congés, absences payées et absences non payées. Tout le reste est calculé. Astuce : <b>« Répartir les congés automatiquement »</b> place vos CP sur l\'année en évitant les semaines déjà tendues. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,\'conges\')" title="Pourquoi cette règle ?">?</span></div>'
       + '</div>';
     q('rhMonthCards').innerHTML = progressHTML + aideHTML + M.map(function(mo,m){
       let weeksOfMonth = hsR.filter(function(r){
@@ -5906,7 +5910,8 @@ function showWeekDetail(m){
     +'<th>Sem.</th><th>Cap. (h)</th>'
     +'<th title="Congés payés en jours — à saisir" style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ CP (J)</th>'
     +'<th>Mal.+AT %</th><th>Mal.+AT (h)</th>'
-    +'<th title="Autres absences en jours — à saisir" style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ Autres (J)</th>'
+    +'<th title="Absences payées en jours — formation, événements familiaux, récupération… Coûtées au taux horaire comme les congés." style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ Abs. payées (J)</th>'
+    +'<th title="Absences non payées en jours — congé sans solde… Retirées de la capacité, sans coût salarial." style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ Abs. non payées (J)</th>'
     +'<th><b>Dispo (h)</b></th><th>Besoin (h)</th>'
     +'<th><b>Écart</b></th><th><b>HS (h)</b></th>'
     +'<th title="Heures supplémentaires par personne présente"><b>HS/pers</b></th>'
@@ -5936,7 +5941,8 @@ function showWeekDetail(m){
       +'<td><input type="number" value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'cp\',this.value)" style="width:55px"></td>'
       +'<td class="num">'+pct(p.rate)+'</td>'
       +'<td class="num">'+p.mal.toFixed(1)+'</td>'
-      +'<td><input type="number" value="'+(p.other||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'other\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number" value="'+(p.otherPaid||'')+'" placeholder="0" title="Absences payées (jours)" onchange="setPresence('+hr.week+',\'otherPaid\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number" value="'+(p.other||'')+'" placeholder="0" title="Absences non payées (jours)" onchange="setPresence('+hr.week+',\'other\',this.value)" style="width:55px"></td>'
       +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
       +'<td class="num">'+hr.hours.toFixed(1)+'</td>'
       +'<td class="num"><span class="'+ecartCls+'">'+hr.gap.toFixed(1)+'</span></td>'
@@ -5986,7 +5992,7 @@ function showWeekDetail(m){
   // Insérer les deux bandeaux au début du détail (statut puis impact)
   let bd = document.getElementById('rhWeekBandeau');
   if(!bd){bd=document.createElement('div');bd.id='rhWeekBandeau';q('rhWeekDetail').insertBefore(bd,q('rhWeekDetail').firstChild);}
-  let introDetail='<div style="padding:8px 14px;font-size:12px;color:var(--ink65);border-bottom:1px solid var(--border)">Pour chaque semaine, indiquez les <b style="color:var(--violet2)">congés (CP)</b> et les <b style="color:var(--violet2)">autres absences</b>. SOMA en déduit les heures disponibles, les heures supplémentaires et leur coût. <span style="color:var(--ink30)">Seules les colonnes surlignées sont à saisir.</span></div>';
+  let introDetail='<div style="padding:8px 14px;font-size:12px;color:var(--ink65);border-bottom:1px solid var(--border)">Pour chaque semaine, indiquez les <b style="color:var(--violet2)">congés (CP)</b>, les <b style="color:var(--violet2)">absences payées</b> (formation, événements familiaux, récupération…) et les <b style="color:var(--violet2)">absences non payées</b> (sans solde). SOMA en déduit les heures disponibles, les heures supplémentaires et leur coût. <span style="color:var(--ink30)">Seules les colonnes surlignées sont à saisir.</span></div>';
   bd.innerHTML=introDetail+bandeauVerr+bandeauImpact;
 
   if(q('rhWeekDetail')){
@@ -9003,7 +9009,7 @@ const FAQ = {
     ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, cliquez sur « Soumettre au DR ». Le bouton se trouve dans le bandeau « Statut du budget » de l\'écran Objectif ; il vous est aussi proposé à la fin du parcours, avec « Terminer et sauvegarder » sur la Synthèse. SOMA vous demande confirmation et vous prévient si votre absentéisme s\'écarte de la référence ou si aucun directeur régional n\'est encore affecté à votre agence. La version active devient le budget officiel : il part dans le circuit de validation (directeur régional, puis contrôle de gestion et direction financière, puis Direction) et n\'est plus modifiable tant qu\'il est en validation. Relisez votre synthèse avant de soumettre.'],
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
     ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent.'],
-    ['Que mettre dans « autres absences » ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), la colonne « Autres (J) » reçoit, en jours, les absences autres que les congés payés et la maladie : formation, congé sans solde, événement familial… Elles réduisent la capacité de production de la semaine, comme les congés. Dans le calcul actuel, elles ne sont pas valorisées dans la masse salariale (elles sont traitées comme des absences non rémunérées). La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
+    ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026.'],
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
     ['Qui saisit les charges hors personnel ?', 'Le contrôleur de gestion. Carburant, loyers, assurances, crédit-bail et autres charges sont saisis par lui ; ils apparaissent dans votre prévisionnel au fur et à mesure. Vous construisez le chiffre d\'affaires et la masse salariale. Si un montant vous semble faux, signalez-le au contrôle de gestion.'],
