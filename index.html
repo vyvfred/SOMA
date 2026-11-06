@@ -2537,7 +2537,7 @@ function buildNavDFDG() {
 
 function buildNavAdmin() {
   let h = '<div class="navgroup">Administration</div>';
-  [['admin','Utilisateurs & Budgets'],['consolidation','Consolidation réseau'],['affectation','Affectation DR'],['objectif','Modifier un budget'],['aide','Aide']].forEach((x,i) => {
+  [['admin','Utilisateurs & Budgets'],['consolidation','Consolidation réseau'],['affectation','Affectation DR'],['cg','Charges du réseau'],['objectif','Modifier un budget'],['aide','Aide']].forEach((x,i) => {
     h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`;
   });
   q('nav').innerHTML = h;
@@ -9352,6 +9352,8 @@ function renderAide(){
   else renderSection('', items);
   // Le DF utilise aussi les écrans de suivi du contrôle de gestion
   if(role === 'df') FAQ_CG_SECTIONS.filter(function(sct){ return sct.t.indexOf('Suivre le réseau') >= 0; }).forEach(function(sct){ renderSection('Écrans de suivi du réseau', sct.items); });
+  // L'administrateur a aussi accès au classeur des charges du réseau
+  if(role === 'admin') FAQ_CG_SECTIONS.filter(function(sct){ return sct.t.indexOf('Charges par agence') >= 0; }).forEach(function(sct){ renderSection('Charges du réseau', sct.items.slice(0,1)); });
   renderSection('Questions générales', FAQ.commun);
 
   box.innerHTML = html;
@@ -9410,7 +9412,8 @@ const AIDE_ONGLET_Q = {
   admin: {
     admin: 'Comment créer un compte',
     affectation: 'affectation des DR',
-    objectif: 'modifier un budget à la place'
+    objectif: 'modifier un budget à la place',
+    cg: 'tout le réseau en une fois'
   }
 };
 // Clic sur la pastille « ? » d'un onglet : ouvre l'onglet Aide et déroule la bonne question.
