@@ -1723,7 +1723,18 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 
 <!-- PANEL CG -->
 <section id="cg" class="panel">
-  <div class="card">
+  <div class="card" id="classeurChargesCard" style="margin-bottom:16px">
+    <h2 style="margin-bottom:8px" data-aide>Classeur des charges du réseau</h2>
+    <p class="hint" style="margin:0 0 12px">Préparez les charges de <b>toutes les agences et structures</b> dans un seul fichier Excel : une ligne par poste, une colonne par agence. Le classeur est pré-rempli avec ce qui est déjà saisi dans SOMA ; à l'import, SOMA vous montre les changements par agence avant d'enregistrer.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button onclick="telechargerClasseurCharges()">⬇ Télécharger le classeur</button>
+      <button class="secondary" onclick="q('classeurChargesInput').click()">⬆ Importer le classeur</button>
+      <input type="file" id="classeurChargesInput" accept=".xlsx,.xls" style="display:none" onchange="importerClasseurCharges(this)">
+    </div>
+    <div id="classeurApercu" style="margin-top:12px"></div>
+  </div>
+  <div class="card hint" id="cgSansAgence" style="display:none">Pour saisir ou corriger les charges d'une seule agence poste par poste, ouvrez-la avec « Ouvrir une agence ».</div>
+  <div class="card" id="cgAgenceCard">
     <h2 style="margin-bottom:var(--sp-4)" id="cgTitle">Charges</h2>
     <div class="kpis" id="cgKpis" style="margin-bottom:var(--sp-4)"></div>
     <div class="objInsight" id="cgInsight" style="display:none">
@@ -2113,7 +2124,7 @@ const SGCV_DATA = [{"name": "ARNAUD EDWIGE", "qual": "DEA", "contract": "CDI", "
 // Jours feries 2027 - source officielle (Code du travail / calendrier civil)
 const feries=['2027-01-01','2027-03-29','2027-05-01','2027-05-06','2027-05-08','2027-05-17','2027-07-14','2027-08-15','2027-11-01','2027-11-11','2027-12-25'];
 // Vacances scolaires - arrete ministeriel MENJ du 22/10/2025 (officiel pour Noel/Hiver/Printemps/Ete 2027)
-// NB: Toussaint oct-nov 2027 = date indicative non encore publiee au JO (calendrier 2027-2028 a paraitre)
+// Calendrier 2027-2028 (Toussaint et Noël 2027) publié au JO ; jours de reprise des cours exclus des vacances
 const vac={
   A:[['2027-01-01','2027-01-03'],['2027-02-13','2027-02-28'],['2027-04-10','2027-04-25'],['2027-07-03','2027-09-01'],['2027-10-23','2027-11-07'],['2027-12-18','2027-12-31']],
   B:[['2027-01-01','2027-01-03'],['2027-02-20','2027-03-07'],['2027-04-17','2027-05-02'],['2027-07-03','2027-09-01'],['2027-10-23','2027-11-07'],['2027-12-18','2027-12-31']],
@@ -2498,7 +2509,7 @@ function buildNav() {
       b.classList.add('active');
     }
     b.onclick = () => {
-      if(isCG && ['cg','controle','rex','finance'].includes(b.dataset.p) && (!A() || A().name==='Nouvelle agence')) {
+      if(isCG && ['controle','rex','finance'].includes(b.dataset.p) && (!A() || A().name==='Nouvelle agence')) {
         alert('Sélectionnez d\'abord une agence.');
         return;
       }
@@ -6257,7 +6268,7 @@ function renderCgInsight(a){
   }
 }
 
-function renderCG(){let a=A();if(!q('cgTable'))return;renderCgInsight(a);if(q('cgStructureNote')){q('cgStructureNote').style.display=estStructure(a)?'':'none';q('cgStructureNote').innerHTML=estStructure(a)?'ℹ <b>'+a.name+'</b> est une structure hors agence : vous saisissez tout son compte de résultat ligne par ligne, <b>chiffre d\'affaires et charges de personnel compris</b> (pas de calendrier ni d\'équipe).'+(estSiege(a)?' Le Siège porte aussi l\'<b>impôt sur les sociétés</b> et la <b>participation aux bénéfices</b> : le résultat net = résultat courant avant impôt + résultat exceptionnel − IS − participation.':''):''}let header='<tr><th>Poste officiel</th><th>Type</th><th>Mode</th><th>Clé / valeur</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th></tr>';let st=estStructure(a);let rows=T.filter(r=>r.type!=='subtotal'&&(st||(r.label!=="Chiffre d'affaires"&&r.label!=="Charges de personnel"))&&(estSiege(a)||LIGNES_SIEGE.indexOf(r.label)<0)).map(r=>{if(!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(null),mode:'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:'monthly12',pct:0,annual:0};return cgBuildRow(a,r)}).join('');q('cgTable').innerHTML=header+rows}
+function renderCG(){let a=A();if(!q('cgTable'))return;let sansAgence=!a||a.name==='Nouvelle agence';if(q('cgAgenceCard'))q('cgAgenceCard').style.display=sansAgence?'none':'';if(q('cgSansAgence'))q('cgSansAgence').style.display=sansAgence?'':'none';if(sansAgence)return;renderCgInsight(a);if(q('cgStructureNote')){q('cgStructureNote').style.display=estStructure(a)?'':'none';q('cgStructureNote').innerHTML=estStructure(a)?'ℹ <b>'+a.name+'</b> est une structure hors agence : vous saisissez tout son compte de résultat ligne par ligne, <b>chiffre d\'affaires et charges de personnel compris</b> (pas de calendrier ni d\'équipe).'+(estSiege(a)?' Le Siège porte aussi l\'<b>impôt sur les sociétés</b> et la <b>participation aux bénéfices</b> : le résultat net = résultat courant avant impôt + résultat exceptionnel − IS − participation.':''):''}let header='<tr><th>Poste officiel</th><th>Type</th><th>Mode</th><th>Clé / valeur</th>'+M.map(m=>'<th>'+m+'</th>').join('')+'<th>Total</th></tr>';let st=estStructure(a);let rows=T.filter(r=>r.type!=='subtotal'&&(st||(r.label!=="Chiffre d'affaires"&&r.label!=="Charges de personnel"))&&(estSiege(a)||LIGNES_SIEGE.indexOf(r.label)<0)).map(r=>{if(!a.rex[r.label])a.rex[r.label]={values:Array(12).fill(null),mode:'month',chargeType:r.type==='charge'?'variable':'fixe',allocationKey:'monthly12',pct:0,annual:0};return cgBuildRow(a,r)}).join('');q('cgTable').innerHTML=header+rows}
 
 function renderControl(){if(!q('auditKpis'))return;let a=A(),s=chargesSummary(a),ca=s.ca;q('auditKpis').innerHTML=[['Charges fixes',euro(s.fixed),pct(ca?s.fixed/ca*100:0)],['Charges variables',euro(s.variable),pct(ca?s.variable/ca*100:0)],['Charges personnel',euro(s.payroll),pct(ca?s.payroll/ca*100:0)],['HS annuelles',s.hs.toFixed(0)+' h',''],['Résultat d\'exploitation',euro(ann(a,"RESULTAT D'EXPLOITATION")),pct(ca?ann(a,"RESULTAT D'EXPLOITATION")/ca*100:0)],['Résultat net',euro(ann(a,"RESULTAT NET")),pct(ca?ann(a,"RESULTAT NET")/ca*100:0)]].map(x=>`<div class="auditItem"><span>${x[0]}</span><b>${x[1]}</b><small>${x[2]||''}</small></div>`).join('');if(q('auditAlerts'))q('auditAlerts').innerHTML=auditAlerts(a).map(x=>`<div class="alertLine ${x[0]}"><b>${x[1]}</b><br>${x[2]}</div>`).join('')}
 function renderREX(){let a=A(),ca=ann(a,"Chiffre d'affaires"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET");kpis('rexKpis',[['CA',euro(ca)],['Charges personnel',euro(ann(a,"Charges de personnel")),pct(ca?ann(a,"Charges de personnel")/ca*100:0)],['VA',euro(ann(a,"VALEUR AJOUTEE"))],['EBE',euro(ann(a,"EXCEDENT BRUT D'EXPLOITATION"))],['Résultat d\'exploitation',euro(rex),pct(ca?rex/ca*100:0)],['Résultat net',euro(net),pct(ca?net/ca*100:0)]]);if(q('rexTable'))q('rexTable').innerHTML='<tr><th>Rubrique officielle</th>'+M.map(m=>`<th>${m}</th>`).join('')+'<th>Total</th><th>% CA</th></tr>'+lignesSIG(a).map(r=>{let total=ann(a,r.label),cls=r.type==='subtotal'?'subtotal':r.type;return `<tr class="${cls}"><td><b>${r.label}</b></td>`+M.map((_,m)=>`<td class="num">${euro(amount(a,r.label,m))}</td>`).join('')+`<td class="num"><b>${euro(total)}</b></td><td class="num">${pct(ca?total/ca*100:0)}</td></tr>`}).join('')}
@@ -8734,6 +8745,258 @@ function varDec2026Total(a){
   return +a.variablesDec2026 || 0;
 }
 // Agences du réseau : opérationnelles (hors siège, centre de formation, etc.)
+// ═══ Classeur des charges du réseau (CG) ═══
+// Une feuille « Réseau » : postes en lignes, agences et structures en colonnes, montant annuel
+// (réparti ÷ 12 ou au prorata du CA selon la colonne Répartition) ou « 3,2 % » du CA.
+// Une feuille « Mensuel » facultative : un poste d'une agence saisi mois par mois.
+var CLASSEUR_MOIS = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+var CLASSEUR_REP = { monthly12: '÷ 12', ca: 'prorata CA' };
+// Postes du classeur : toutes les lignes saisissables, plus CA et charges de personnel (structures seulement)
+function postesClasseur(){
+  return T.filter(function(r){ return r.type !== 'subtotal'; }).map(function(r){ return r.label; });
+}
+// Le poste est-il saisissable pour cette entité ?
+function posteAutorise(nom, poste){
+  var structure = STRUCTURES.indexOf(nom) >= 0;
+  if(poste === "Chiffre d'affaires" || poste === 'Charges de personnel') return structure;
+  if(LIGNES_SIEGE.indexOf(poste) >= 0) return nom === 'SIEGE';
+  return true;
+}
+function fmtPctClasseur(p){ return String(Math.round((+p||0)*100)/100).replace('.', ',') + ' %'; }
+function nombreClasseur(v){
+  if(typeof v === 'number') return v;
+  var t = String(v).replace(/[\s  €]/g,'').replace(',', '.');
+  return t === '' || isNaN(+t) ? NaN : +t;
+}
+
+// entites : [{ nom, data }] — data = version du budget (soumise, sinon active) ou null
+function construireClasseurCharges(entites){
+  var postes = postesClasseur();
+  var reseau = [['Poste', 'Répartition'].concat(entites.map(function(e){ return e.nom; }))];
+  var mensuel = [['Agence', 'Poste'].concat(CLASSEUR_MOIS)];
+  postes.forEach(function(poste){
+    // Répartition de la ligne : clé la plus fréquente parmi les montants annuels
+    var cles = { monthly12: 0, ca: 0 };
+    entites.forEach(function(e){ var x = e.data && e.data.rex && e.data.rex[poste];
+      if(x && x.mode === 'annual' && +x.annual) cles[x.allocationKey === 'ca' ? 'ca' : 'monthly12']++; });
+    var cleLigne = cles.ca > cles.monthly12 ? 'ca' : 'monthly12';
+    var ligne = [poste, CLASSEUR_REP[cleLigne]];
+    entites.forEach(function(e){
+      if(!posteAutorise(e.nom, poste)){ ligne.push('—'); return; }
+      var x = e.data && e.data.rex && e.data.rex[poste];
+      if(!x){ ligne.push(''); return; }
+      if(x.mode === 'pct'){ ligne.push(+x.pct ? fmtPctClasseur(x.pct) : ''); return; }
+      if(x.mode === 'annual'){
+        var cle = x.allocationKey === 'ca' ? 'ca' : 'monthly12';
+        if(!+x.annual){ ligne.push(''); return; }
+        ligne.push(cle === cleLigne ? +x.annual : (+x.annual) + ' ' + CLASSEUR_REP[cle]); return;
+      }
+      var vals = (x.values || []).map(function(v){ return v === null || v === undefined || v === '' ? '' : +v; });
+      if(vals.some(function(v){ return v !== '' && v !== 0; })){
+        ligne.push('mensuel');
+        mensuel.push([e.nom, poste].concat(CLASSEUR_MOIS.map(function(_, m){ return vals[m] === undefined ? '' : vals[m]; })));
+      } else ligne.push('');
+    });
+    reseau.push(ligne);
+  });
+  var aide = [
+    ['Classeur des charges ' + 'du réseau — budget 2027'],
+    [''],
+    ['Feuille « Réseau » : une ligne par poste, une colonne par agence ou structure.'],
+    ['• Montant annuel en euros : réparti sur l\'année selon la colonne « Répartition » de la ligne (« ÷ 12 » ou « prorata CA »).'],
+    ['• Pourcentage du CA : écrivez par exemple « 3,2 % ». Le montant suit alors le CA mensuel de l\'agence.'],
+    ['• Pour une autre répartition sur une seule agence : « 48000 prorata CA » ou « 48000 ÷ 12 ».'],
+    ['• Case vide : la valeur actuelle dans SOMA n\'est pas modifiée. Pour mettre un poste à zéro, écrivez 0.'],
+    ['• « — » : poste non applicable (CA et charges de personnel sont calculés par SOMA pour les agences ; IS et participation sur le Siège seulement).'],
+    ['• « mensuel » : le poste est saisi mois par mois dans la feuille « Mensuel ».'],
+    [''],
+    ['Feuille « Mensuel » (facultative) : une ligne Agence + Poste avec ses 12 montants. Elle prime sur la feuille Réseau pour ce poste.'],
+    [''],
+    ['Import : écran Charges CG, « Importer le classeur ». SOMA affiche les changements par agence avant d\'enregistrer.'],
+    ['Les charges importées s\'appliquent à toutes les versions (V1, V2, V3) du budget de chaque agence.']
+  ];
+  return { reseau: reseau, mensuel: mensuel, aide: aide };
+}
+
+// Lit les feuilles (tableaux de lignes). nomsConnus : agences + structures.
+// Retour : { lignes: { nom: { poste: ligneRex } }, erreurs: [], avertissements: [] }
+function lireClasseurCharges(reseau, mensuel, nomsConnus){
+  var lignes = {}, erreurs = [], avert = [];
+  var postes = postesClasseur();
+  var norm = function(s){ return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, ' ').trim(); };
+  var parNorm = {}; nomsConnus.forEach(function(n){ parNorm[norm(n)] = n; });
+  var posteNorm = {}; postes.forEach(function(p){ posteNorm[norm(p)] = p; });
+  var poser = function(nom, poste, l){ if(!lignes[nom]) lignes[nom] = {}; lignes[nom][poste] = l; };
+  if(!reseau || !reseau.length){ erreurs.push('Feuille « Réseau » introuvable ou vide.'); return { lignes: lignes, erreurs: erreurs, avertissements: avert }; }
+  var tete = reseau[0] || [];
+  var iRep = tete.findIndex(function(h){ return norm(h).indexOf('REPARTITION') === 0; });
+  var cols = [];
+  tete.forEach(function(h, i){
+    if(i === 0 || i === iRep || !String(h || '').trim()) return;
+    var nom = parNorm[norm(h)];
+    if(!nom) erreurs.push('Colonne « ' + h + ' » : agence inconnue, ignorée.');
+    else cols.push({ i: i, nom: nom });
+  });
+  for(var r = 1; r < reseau.length; r++){
+    var row = reseau[r] || [];
+    if(!String(row[0] || '').trim()) continue;
+    var poste = posteNorm[norm(row[0])];
+    if(!poste){ erreurs.push('Ligne ' + (r + 1) + ' : poste « ' + row[0] + ' » inconnu, ignoré.'); continue; }
+    var repTxt = norm(iRep >= 0 ? row[iRep] : '');
+    var cleLigne = repTxt.indexOf('CA') >= 0 ? 'ca' : 'monthly12';
+    cols.forEach(function(c){
+      var v = row[c.i];
+      var t = String(v === null || v === undefined ? '' : v).trim();
+      if(t === '' || t === '—' || t === '-' || norm(t) === 'MENSUEL') return;
+      var ou = c.nom + ' / ' + poste;
+      if(!posteAutorise(c.nom, poste)){ erreurs.push(ou + ' : poste non applicable, valeur ignorée.'); return; }
+      if(/%\s*$/.test(t)){
+        var p = nombreClasseur(t.replace('%', ''));
+        if(isNaN(p)){ erreurs.push(ou + ' : « ' + t + ' » illisible.'); return; }
+        if(poste === "Chiffre d'affaires"){ erreurs.push(ou + ' : le CA d\'une structure ne peut pas être un % du CA.'); return; }
+        if(p > 30) avert.push(ou + ' : ' + fmtPctClasseur(p) + ' du CA, vérifiez.');
+        poser(c.nom, poste, { mode: 'pct', pct: p }); return;
+      }
+      var cle = cleLigne, txt = t;
+      var mCle = norm(t).match(/(PRORATA CA|÷ ?12|\/ ?12)$/);
+      if(mCle){ cle = mCle[1] === 'PRORATA CA' ? 'ca' : 'monthly12'; txt = t.slice(0, t.length - mCle[1].length); }
+      var n = typeof v === 'number' ? v : nombreClasseur(txt);
+      if(isNaN(n)){ erreurs.push(ou + ' : « ' + t + ' » illisible.'); return; }
+      if(STRUCTURES.indexOf(c.nom) >= 0 && cle === 'ca' && poste === "Chiffre d'affaires") cle = 'monthly12';
+      poser(c.nom, poste, { mode: 'annual', annual: n, allocationKey: cle });
+    });
+  }
+  (mensuel || []).slice(1).forEach(function(row, k){
+    if(!row || !String(row[0] || '').trim()) return;
+    var nom = parNorm[norm(row[0])], poste = posteNorm[norm(row[1])];
+    var lig = 'Mensuel ligne ' + (k + 2);
+    if(!nom){ erreurs.push(lig + ' : agence « ' + row[0] + ' » inconnue.'); return; }
+    if(!poste){ erreurs.push(lig + ' : poste « ' + row[1] + ' » inconnu.'); return; }
+    if(!posteAutorise(nom, poste)){ erreurs.push(lig + ' : ' + poste + ' non applicable pour ' + nom + '.'); return; }
+    var vals = [], ko = false;
+    for(var m = 0; m < 12; m++){
+      var v = row[2 + m], t = String(v === null || v === undefined ? '' : v).trim();
+      if(t === ''){ vals.push(null); continue; }
+      var n = typeof v === 'number' ? v : nombreClasseur(t);
+      if(isNaN(n)){ erreurs.push(lig + ' : ' + CLASSEUR_MOIS[m] + ' « ' + t + ' » illisible.'); ko = true; break; }
+      vals.push(n);
+    }
+    if(!ko) poser(nom, poste, { mode: 'month', values: vals });
+  });
+  return { lignes: lignes, erreurs: erreurs, avertissements: avert };
+}
+
+// Applique des lignes à une version (objet rex) : renvoie le nombre de postes réellement modifiés
+function appliquerLignesRex(rex, lignesEntite){
+  var n = 0;
+  Object.keys(lignesEntite).forEach(function(poste){
+    var nv = lignesEntite[poste], x = rex[poste] || { values: Array(12).fill(null), chargeType: 'variable', allocationKey: 'monthly12', pct: 0, annual: 0, mode: 'month' };
+    var avant = JSON.stringify([x.mode, x.annual, x.allocationKey, x.pct, x.values]);
+    var y = Object.assign({}, x, nv);
+    if(nv.mode === 'month') y.values = nv.values.slice();
+    if(JSON.stringify([y.mode, y.annual, y.allocationKey, y.pct, y.values]) !== avant) n++;
+    rex[poste] = y;
+  });
+  return n;
+}
+// Applique à toutes les versions d'un budget (data brute de la base). Renvoie { data, nbPostes }.
+function appliquerChargesBudget(data, lignesEntite){
+  var d = JSON.parse(JSON.stringify(data || {})), nb = 0;
+  if(d.versions){
+    Object.keys(d.versions).forEach(function(v){
+      if(!d.versions[v]) return;
+      if(!d.versions[v].rex) d.versions[v].rex = {};
+      nb = Math.max(nb, appliquerLignesRex(d.versions[v].rex, lignesEntite));
+    });
+  } else {
+    if(!d.rex) d.rex = {};
+    nb = appliquerLignesRex(d.rex, lignesEntite);
+  }
+  return { data: d, nbPostes: nb };
+}
+
+// Entités du classeur : agences puis structures
+function entitesClasseur(){ return agencesReseau().map(function(x){ return x.nom; }).concat(STRUCTURES); }
+// Feuille Excel -> tableau de lignes ; un nombre au format % devient « 3,2 % »
+function feuilleClasseurAoa(ws){
+  if(!ws) return [];
+  let aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+  Object.keys(ws).forEach(function(addr){
+    if(addr[0]==='!') return; let c = ws[addr];
+    if(c && typeof c.v==='number' && ((c.z && String(c.z).indexOf('%')>=0) || (c.w && String(c.w).indexOf('%')>=0))){
+      let rc = XLSX.utils.decode_cell(addr); if(aoa[rc.r]) aoa[rc.r][rc.c] = fmtPctClasseur(c.v*100);
+    }
+  });
+  return aoa;
+}
+async function telechargerClasseurCharges(){
+  try{
+    let {data:budgets, error} = await sb.from('budgets').select('agence,data').eq('annee',2027);
+    if(error) throw error;
+    let map = {}; (budgets||[]).forEach(function(b){ map[b.agence] = b; });
+    let c = construireClasseurCharges(entitesClasseur().map(function(nom){ return {nom:nom, data: map[nom] ? budgetData(map[nom].data) : null}; }));
+    let wb = XLSX.utils.book_new();
+    let wsA = XLSX.utils.aoa_to_sheet(c.aide); wsA['!cols']=[{wch:130}];
+    let wsR = XLSX.utils.aoa_to_sheet(c.reseau); wsR['!cols']=[{wch:46},{wch:12}].concat(c.reseau[0].slice(2).map(function(){return {wch:14};})); wsR['!freeze']={xSplit:2,ySplit:1};
+    let wsM = XLSX.utils.aoa_to_sheet(c.mensuel); wsM['!cols']=[{wch:26},{wch:46}].concat(CLASSEUR_MOIS.map(function(){return {wch:10};}));
+    XLSX.utils.book_append_sheet(wb, wsA, "Mode d'emploi");
+    XLSX.utils.book_append_sheet(wb, wsR, 'Réseau');
+    XLSX.utils.book_append_sheet(wb, wsM, 'Mensuel');
+    XLSX.writeFile(wb, 'SOMA_charges_reseau_2027_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  }catch(e){ alert('Téléchargement impossible : ' + (e.message||e)); }
+}
+let _classeurImport = null;
+async function importerClasseurCharges(input){
+  let f = input.files && input.files[0]; input.value = '';
+  if(!f) return;
+  let box = q('classeurApercu'); box.innerHTML = '<div class="hint">Lecture du classeur…</div>';
+  try{
+    let wb = XLSX.read(new Uint8Array(await f.arrayBuffer()), {type:'array'});
+    let trouve = function(n){ let k = wb.SheetNames.find(function(x){ return x.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim()===n; }); return k ? wb.Sheets[k] : null; };
+    let r = lireClasseurCharges(feuilleClasseurAoa(trouve('reseau')), feuilleClasseurAoa(trouve('mensuel')), entitesClasseur());
+    let {data:budgets, error} = await sb.from('budgets').select('id,agence,statut,data').eq('annee',2027);
+    if(error) throw error;
+    let map = {}; (budgets||[]).forEach(function(b){ map[b.agence] = b; });
+    let lignes = Object.keys(r.lignes).map(function(nom){
+      let b = map[nom], res = appliquerChargesBudget(b ? b.data : {}, r.lignes[nom]);
+      return {nom:nom, nouveau:!b, statut: b ? (b.statut||'brouillon') : 'brouillon', nbPostes: res.nbPostes};
+    }).filter(function(l){ return l.nbPostes>0; });
+    _classeurImport = {lignes: r.lignes, aEcrire: lignes};
+    let h = '';
+    if(r.erreurs.length) h += '<div style="color:var(--orange);font-size:13px;margin-bottom:8px"><b>⚠ '+r.erreurs.length+' point'+(r.erreurs.length>1?'s':'')+' ignoré'+(r.erreurs.length>1?'s':'')+' :</b><ul style="margin:4px 0 0 18px">'+r.erreurs.slice(0,15).map(function(e){return '<li>'+e+'</li>';}).join('')+(r.erreurs.length>15?'<li>…</li>':'')+'</ul></div>';
+    if(r.avertissements.length) h += '<div style="color:var(--ink65);font-size:12px;margin-bottom:8px">'+r.avertissements.map(function(e){return '• '+e;}).join('<br>')+'</div>';
+    if(!lignes.length){ box.innerHTML = h + '<div class="hint">Aucun changement par rapport à SOMA.</div>'; return; }
+    h += '<table style="font-size:13px;max-width:640px"><tr><th>Agence / structure</th><th>Postes modifiés</th><th>Statut</th></tr>'
+      + lignes.map(function(l){ return '<tr><td>'+l.nom+'</td><td class="num">'+l.nbPostes+'</td><td>'+(l.nouveau?'budget créé':'<span class="statut '+l.statut+'">'+statutLabel(l.statut)+'</span>')+'</td></tr>'; }).join('') + '</table>'
+      + '<div style="display:flex;gap:10px;margin-top:10px"><button onclick="validerClasseurCharges()">Enregistrer ces charges ('+lignes.length+' agence'+(lignes.length>1?'s':'')+')</button><button class="secondary" onclick="_classeurImport=null;q(\'classeurApercu\').innerHTML=\'\'">Annuler</button></div>';
+    box.innerHTML = h;
+  }catch(e){ box.innerHTML = '<div style="color:var(--red)">Classeur illisible : '+(e.message||e)+'</div>'; }
+}
+async function validerClasseurCharges(){
+  let imp = _classeurImport; if(!imp) return;
+  let enValidation = imp.aEcrire.filter(function(l){ return !l.nouveau && l.statut!=='brouillon'; });
+  if(enValidation.length && !confirm('Ces budgets sont déjà soumis ou en validation : '+enValidation.map(function(l){return l.nom;}).join(', ')+'.\n\nLeurs charges seront quand même mises à jour. Continuer ?')) return;
+  let box = q('classeurApercu'), ok = [], ko = [];
+  box.innerHTML = '<div class="hint">Enregistrement…</div>';
+  for(const l of imp.aEcrire){
+    try{
+      // Relecture juste avant d'écrire : on ne touche qu'aux charges, le reste du budget reste celui de la base
+      let {data:b} = await sb.from('budgets').select('id,data').eq('agence', l.nom).eq('annee', 2027).maybeSingle();
+      if(b){
+        await ecrire(sb.from('budgets').update({data: appliquerChargesBudget(b.data, imp.lignes[l.nom]).data, updated_at: new Date().toISOString()}).eq('id', b.id));
+      } else {
+        await ecrire(sb.from('budgets').insert({agence: l.nom, annee: 2027, data: appliquerChargesBudget({}, imp.lignes[l.nom]).data, statut: 'brouillon'}));
+      }
+      ok.push(l.nom);
+    }catch(e){ ko.push(l.nom + ' (' + (e.message||e) + ')'); }
+  }
+  _classeurImport = null;
+  box.innerHTML = '<div style="color:var(--green);font-size:13px">✓ Charges enregistrées pour '+ok.length+' agence'+(ok.length>1?'s':'')+'.</div>'
+    + (ko.length ? '<div style="color:var(--red);font-size:13px;margin-top:6px">Échec : '+ko.join(', ')+'</div>' : '');
+  // Agence ouverte concernée : on recharge ses données pour afficher les nouvelles charges
+  if(BUDGET_ID && A() && ok.indexOf(A().name)>=0){ await loadBudgetFromSupabase(A().name); render(); }
+}
+
 function agencesReseau(){
   return agences.filter(function(x){ return !x.type; });
 }
@@ -8959,6 +9222,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment fonctionne l\'affectation des DR ?', 'Dans l\'écran Affectation DR, choisissez pour chaque agence son directeur régional dans la liste. L\'affectation est enregistrée immédiatement. Elle détermine qui valide le budget de l\'agence à la première étape du circuit, et ce que le DR voit dans sa consolidation régionale. Une agence sans DR ne peut pas franchir la première étape de validation.'],
   ]},
   { t: 'Étape 5 — Charges par agence', items: [
+    ['Comment préparer les charges de tout le réseau en une fois ?', 'Écran « Charges CG », carte « Classeur des charges du réseau ». « Télécharger le classeur » produit un fichier Excel pré-rempli avec ce qui est déjà saisi dans SOMA. Feuille « Réseau » : une ligne par poste, une colonne par agence et par structure. Saisissez un montant annuel (réparti « ÷ 12 » ou « prorata CA » selon la colonne Répartition de la ligne) ou un pourcentage du CA (« 3,2 % »). Une case vide ne change rien ; 0 met le poste à zéro. Feuille « Mensuel », facultative : un poste d\'une agence saisi mois par mois. « Importer le classeur » affiche ensuite, par agence, le nombre de postes modifiés et les cases ignorées (agence ou poste inconnus, valeur illisible) ; rien n\'est enregistré avant votre confirmation. Les charges s\'appliquent à toutes les versions du budget de chaque agence ; SOMA vous demande une confirmation de plus si des budgets sont déjà en validation. Le reste des budgets (équipe, présence, références) n\'est jamais modifié.'],
     ['Comment saisir les charges d\'une agence ?', 'Ouvrez l\'agence avec « Ouvrir une agence » : SOMA affiche directement l\'écran Charges CG. En haut, vérifiez les taux horaires et la ligne non-roulante, repris des Données agences et modifiables ici. Puis, pour chaque poste, choisissez le <b>mode</b> : saisie par mois, montant annuel (réparti en douze mois égaux ou au prorata du CA mensuel, selon la clé), ou pourcentage du CA ; et le <b>type</b>, fixe ou variable. Le compteur « Postes saisis » suit votre avancement. La saisie est enregistrée automatiquement. Les lignes CA et Charges de personnel sont calculées par SOMA.'],
     ['Que fait « Pré-remplir standards » ?', 'Il pose des valeurs types, calculées sur le CA de l\'agence, sur 8 postes : carburant 5,2% du CA, crédit-bail et location de véhicules 5%, locations immobilières 2,8%, assurance 1,8%, impôts et taxes 4,8%, honoraires 2,6%, péages 1,3%, charges financières 0,2%. Attention : ces valeurs remplacent ce qui était déjà saisi sur ces 8 postes. Ajustez-les ensuite à la réalité de l\'agence.'],
     ['Fixe ou variable : à quoi ça sert ?', 'Ce classement ne change pas le résultat. Il sert à l\'analyse : l\'écran Contrôles et la synthèse séparent les charges fixes des charges variables, pour juger la sensibilité du résultat à l\'activité.'],
@@ -9121,7 +9385,7 @@ const AIDE_ONGLET_Q = {
   cg: {
     cgdash: 'Dans quel ordre', objectif: 'Dans quel ordre', refagences: 'bien préparer les références',
     periodes: 'Les dates s\'appliquent', variablesdec: 'variables de paie de décembre',
-    affectation: 'affectation des DR', cg: 'saisir les charges d\'une agence', controle: 'écran Contrôles',
+    affectation: 'affectation des DR', cg: 'tout le réseau en une fois', controle: 'écran Contrôles',
     consolidation: 'où en sont les budgets', comparative: 'vue comparative', graphiques: 'graphiques',
     validation: 'valider ou refuser', rex: 'masse salariale du prévisionnel', finance: 'masse salariale du prévisionnel'
   },
