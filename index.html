@@ -3549,7 +3549,7 @@ function payrollMonthCivil(a,m){
       let daysMonth=a.cal.filter(d=>d.month===m&&[1,2,3,4,5].includes(new Date(2027,d.month,d.day).getDay())).length;
       let joursHebdo=+e.joursSem||5;
       let joursActifs=Math.round(daysMonth*joursHebdo/5);
-      return s+(+e.coutJour||0)*joursActifs;
+      return s+(+e.coutJour||0)*joursActifs*(1-partRoulant(e));
     },0);
   // HS improductives : total hebdo saisi par le REX, valorisé au coût horaire improductif x majoration
   let msHSImproductif = 0;
@@ -3588,6 +3588,7 @@ function coutHoraireImproductif(a){
   let cm = msNRMensuel(a);
   if(cm!==null){
     let hHebdo = a.employees.filter(e=>!isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*(1-partRoulant(e)),0);
+    cm=Math.max(0, cm-transfertRoulantNR(a));
     return hHebdo>0 ? cm/(hHebdo*52/12) : (+a.costHour||0);
   }
   let imp = a.employees.filter(e=>!isRoulant(e.qual)&&e.qual!=='FACTURIERE'&&(+e.coutJour||0)>0);
@@ -3664,9 +3665,15 @@ function msNRMensuel(a){
   return brut*(1+(+a.msNRTauxCharges||0)/100);
 }
 // Coût non-roulant du mois m : coût mensuel moins la part non maintenue des absences
+// Part roulante des non-roulants (régulateur, REX… avec un % roulant) : déjà comptée en masse salariale roulante,
+// elle est retirée AUTOMATIQUEMENT de la ligne non-roulants du CG (heures roulantes × coût horaire chargé du mois),
+// pour qu'elle ne soit pas comptée deux fois. Le CG saisit la ligne non-roulants complète, sans rien déduire.
+function heuresRoulantesNR(a,m){let ref=m===undefined?null:'2027-'+String(m+1).padStart(2,'0')+'-15';return (a.employees||[]).reduce(function(s,e){if(isRoulant(e.qual)||!estRoulantPart(e))return s;if(ref&&!empPresent(e,ref))return s;return s+(+e.hours||0)*partRoulant(e);},0)}
+function transfertRoulantNR(a,m){return heuresRoulantesNR(a,m)*52/12*chMois(a,m===undefined?0:m)}
 function msNRMois(a, m){
   let cm=msNRMensuel(a);
   if(cm===null) return 0;
+  cm=Math.max(0, cm-transfertRoulantNR(a,m));
   return cm*(1 - tauxAbsMois(a,m)*(1-ratioMaintien(a)));
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
@@ -6875,7 +6882,9 @@ function majAffichageParamSalarial(a){
   }
   let cm=msNRMensuel(a);
   if(q('msNRCout'))q('msNRCout').value = cm!==null ? Math.round(cm).toLocaleString('fr-FR') : '';
+  let tr=transfertRoulantNR(a);
   if(q('msNRHint'))q('msNRHint').innerHTML = (cm!==null ? 'Soit '+euro(Math.round(cm*12))+' sur l\'année avant absences. ' : '')
+    + (cm!==null&&tr>0 ? 'Part roulante des non-roulants (écran Équipe, '+heuresRoulantesNR(a).toLocaleString('fr-FR')+' h/sem.) : <b>'+euro(Math.round(tr))+' / mois</b> déduits automatiquement, déjà comptés en roulant. ' : '')
     + 'Ratio de maintien de salaire : <b>'+Math.round(ratioMaintien(a)*100)+' %</b> (paramètre réseau, écran Données agences).';
 }
 
@@ -8477,7 +8486,7 @@ function payrollPayMonth(a, moisIdx) {
     ? a.employees.filter(function(e) {
         return !['DEA','AA','TAXI','TPMR','FACTURIERE'].includes(e.qual);
       }).reduce(function(s, e) {
-        return s + (+e.coutJour || 0) * (nbJoursPeriode * (+e.joursSem || 5) / 7);
+        return s + (+e.coutJour || 0) * (1 - partRoulant(e)) * (nbJoursPeriode * (+e.joursSem || 5) / 7);
       }, 0)
     : 0;
 
@@ -8615,7 +8624,7 @@ function chargesReport2028(a) {
   // mensualisé de décembre est payé sur la paie de décembre, rien n'est reporté)
   if (msNRMensuel(a) === null) ms += (a.employees || [])
     .filter(function(e) { return !['DEA','AA','TAXI','TPMR','FACTURIERE'].includes(e.qual); })
-    .reduce(function(s, e) { return s + (+e.coutJour || 0) * nbJours * (+e.joursSem || 5) / 7; }, 0);
+    .reduce(function(s, e) { return s + (+e.coutJour || 0) * (1 - partRoulant(e)) * nbJours * (+e.joursSem || 5) / 7; }, 0);
 
   if (msNRMensuel(a) === null) ms += (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 * (nbJours / 365);
 
@@ -9216,7 +9225,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment bien préparer les références des agences ?', 'Pour chaque agence : le CA 2025 et 2026, le TXR 2026 (CA par heure travaillée), le taux d\'absentéisme cible (maladie et accident du travail), le taux horaire brut au 1er janvier et au 1er juin, le taux de charges patronales des roulants, et la ligne de masse salariale non-roulante (salaire brut mensuel total et taux de charges). SOMA calcule le coût horaire chargé. Ces données servent de socle au REX et de point de comparaison entre agences : plus elles sont justes, plus les budgets seront réalistes et faciles à juger.'],
     ['Comment pré-remplir les données de toutes les agences ?', 'Avec « Importer données agences » : un fichier Excel, une ligne par agence. Colonnes reconnues par leur intitulé : Agence, CA 2025, CA 2026, TXR 2026, Absentéisme %, Taux brut 1er janvier, Taux brut 1er juin, Charges patronales %, MS non-roulante brut mensuel, Charges non-roulants %. L\'import écrit directement dans le budget de chaque agence, même si le REX l\'a déjà commencé. Vous pouvez ensuite ajuster agence par agence dans le tableau.'],
     ['Que se passe-t-il quand je clique sur « Enregistrer » ?', 'Seules les agences pour lesquelles vous avez saisi quelque chose sont enregistrées. Les valeurs vont dans le budget de l\'agence (toutes ses versions V1, V2, V3), le coût horaire est recalculé, et les champs de référence sont verrouillés côté REX. Le ratio de maintien de salaire est recopié dans toutes les agences. Un message vous indique le nombre d\'agences enregistrées, et le nom de celles qui auraient été refusées par le serveur.'],
-    ['Comment saisir la masse salariale non-roulante ?', 'Une seule ligne par agence : le salaire brut mensuel total des non-roulants (régulateurs, responsables, administratifs et quote-part du DR) et leur taux de charges. SOMA en déduit le coût mensuel chargé. Cette ligne unique évite qu\'un REX puisse déduire le salaire de son DR en consultant le budget. Elle se saisit dans Données agences ou sur l\'écran Charges CG de l\'agence. Sur les paies par période, elle compte pour un salaire mensuel par mois de paie, diminué de la part non maintenue des absences. Si un régulateur ou un responsable a une part roulante dans l\'écran Équipe (par exemple 30 %), cette part est déjà comptée dans la masse salariale roulante : retirez-la de la ligne non-roulants pour ne pas la compter deux fois.'],
+    ['Comment saisir la masse salariale non-roulante ?', 'Une seule ligne par agence : le salaire brut mensuel total des non-roulants (régulateurs, responsables, administratifs et quote-part du DR) et leur taux de charges. SOMA en déduit le coût mensuel chargé. Cette ligne unique évite qu\'un REX puisse déduire le salaire de son DR en consultant le budget. Elle se saisit dans Données agences ou sur l\'écran Charges CG de l\'agence. Sur les paies par période, elle compte pour un salaire mensuel par mois de paie, diminué de la part non maintenue des absences. Saisissez la ligne complète : si un régulateur ou un responsable a une part roulante dans l\'écran Équipe (par exemple 30 %), SOMA la compte en masse salariale roulante et la retire automatiquement de la ligne non-roulants (heures roulantes × coût horaire chargé), pour ne pas la compter deux fois. Le montant déduit est affiché sous la ligne.'],
     ['Où régler le ratio de maintien de salaire ?', 'En haut de l\'écran Données agences. C\'est un paramètre unique pour tout le réseau : la part du salaire que l\'entreprise continue de payer pendant un arrêt maladie ou AT. Il est recopié dans toutes les agences à l\'enregistrement, et repris automatiquement par une agence dont le budget est créé plus tard. Tant qu\'il est vide, SOMA déduit les absences à 100%, ce qui sous-estime la masse salariale des agences à fort absentéisme.'],
     ['Pourquoi deux taux horaires ?', 'Le Smic est revalorisé en général au 1er janvier, et parfois en cours d\'année. Le taux du 1er janvier s\'applique aux heures de janvier à mai, celui du 1er juin aux heures de juin à décembre. Laissez le taux de juin vide s\'il n\'y a pas de revalorisation : celui de janvier s\'applique alors toute l\'année.'],
     ['Comment importer le registre RH ?', 'Avec « Importer registre RH », depuis l\'écran Données agences. Fichier Excel issu de la paie, première feuille, en-têtes sur la première ligne, une ligne par salarié. Colonnes utilisées : Agence (une fois par groupe suffit, elle est recopiée sur les lignes suivantes), Nom, Prenom, Date_entree, Date_sortie, Type Contrat, Libelle_emploi, Horaire_Mensuel. SOMA déduit la qualification de l\'emploi, le statut roulant ou non, les heures hebdomadaires, et le type de contrat (CDI, CDD, apprenti, intérim) : c\'est lui qui déclenche la provision de 10% de prime de précarité sur les CDD.'],
