@@ -3285,6 +3285,7 @@ function chargesCGSaisies(d){
     if(l === "Chiffre d'affaires" || l === 'Charges de personnel') return;
     let x = d.rex[l] || {};
     let saisi = x.mode === 'pct' ? (+x.pct > 0)
+      : x.mode === 'pctMois' ? (x.pcts || []).some(function(p){ return +p > 0; })
       : x.mode === 'annual' ? (+x.annual > 0)
       : (x.values || []).some(function(v){ return v !== null && v !== undefined && +v !== 0; });
     if(saisi) n++;
@@ -3677,7 +3678,7 @@ function msNRMois(a, m){
   return cm*(1 - tauxAbsMois(a,m)*(1-ratioMaintien(a)));
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
-function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
+function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='pctMois')return monthCA(a,m)*(+(x.pcts&&x.pcts[m])||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
 function sig(a,m){let v=l=>manual(a,l,m),ca=monthCA(a,m),marge=ca-v("Achats Matières premières et sous traitance")-v("Variations stock marchandises et autres approvisionnements"),aa=["Electricité - eau - chauffage","Matériels ambulances","Carburant","Entretiens petits équipements","Fourniture bureau - vêtements","Sous traitance","Crédit bail et location véhicules","Location téléphonie - informatique - mobilité","Location immobilières et charges locatives","Entretiens véhicules - batîment","Maintenance informatique","Assurance","Formation - documentation","Honoraires et prestations de services","Publicité - cadeaux","Frais de déplacement - missions réceptions","Péages","Affranchissement","Téléphonie - internet","Frais bancaires et cotisations"].reduce((s,l)=>s+v(l),0),va=marge-aa,pay=payrollMonth(a,m),qp=estStructure(a)?0:v("Quote-part MS siège")+v("Quote-part régulation mutualisée"),ebe=va+v("Subventions d'exploitation")-v("Impôts, taxes et versements assimilés")-pay-qp,rex=ebe+v("Reprises s/ charges et transferts")+v("Autres produits")-v("Dotations amortissements et provisions")-v("Autres charges"),rf=v("Produits financiers")-v("Charges financières"),rcai=rex+rf,re=v("Produits exceptionnels")-v("Charges exceptionnelles"),rn=rcai+re-v("Impôt sur les sociétés")-v("Participation aux bénéfices");return {"Chiffre d'affaires":ca,"Charges de personnel":pay,"MARGE BRUTE GLOBALE":marge,"Autres Achats et charges externes":aa,"VALEUR AJOUTEE":va,"EXCEDENT BRUT D'EXPLOITATION":ebe,"RESULTAT D'EXPLOITATION":rex,"RESULTAT FINANCIER":rf,"RESULTAT COURANT AVANT IMPOT":rcai,"RESULTAT EXCEPTIONNEL":re,"RESULTAT NET":rn}}
 function amount(a,l,m){let row=T.find(r=>r.label===l);if(l==="Chiffre d'affaires"||l==="Charges de personnel"||row?.type==='subtotal')return sig(a,m)[l]||0;return manual(a,l,m)}
 function ann(a,l){return M.reduce((s,_,m)=>s+amount(a,l,m),0)}
@@ -3692,6 +3693,7 @@ function chargesSummary(a){
     if(r.type==='charge'){if(x.chargeType==='fixe')fixed+=total;if(x.chargeType==='variable')variable+=total;if(total===0)manualEmpty++;}
     if(x.mode==='annual'&&!x.allocationKey)annualNoKey++;
     if(x.mode==='pct'&&(+x.pct||0)>20)pctHigh++;
+    if(x.mode==='pctMois'&&(x.pcts||[]).some(p=>(+p||0)>20))pctHigh++;
     if(x.mode==='month'){let vals=x.values.map(v=>+v||0),avg=vals.reduce((s,v)=>s+v,0)/12;if(avg>0){let max=Math.max(...vals),min=Math.min(...vals);if((max-min)>avg*1.5)monthlyIrregular++;}}
   });
   let payroll=ann(a,"Charges de personnel"),hs=hsTot(a).hs;
@@ -6237,10 +6239,10 @@ function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||
 
 function cgBadgeType(x){return x.chargeType==='fixe'?'<span class="badgeFixe">fixe</span>':'<span class="badgeVar">variable</span>'}
 function cgCellType(x,safe){return '<td>'+cgBadgeType(x)+`<select onchange="setRexType('${safe}',this.value)" style="margin-top:5px"><option value="fixe" ${x.chargeType==='fixe'?'selected':''}>charge fixe</option><option value="variable" ${x.chargeType==='variable'?'selected':''}>charge variable</option></select></td>`}
-function cgCellMode(x,safe){return `<td><select onchange="setRexMode('${safe}',this.value)"><option value="month" ${x.mode==='month'?'selected':''}>saisie mensuelle</option><option value="annual" ${x.mode==='annual'?'selected':''}>montant annuel</option><option value="pct" ${x.mode==='pct'?'selected':''}>% CA mensuel</option></select></td>`}
-function cgCellKey(x,safe){if(x.mode==='annual')return '<td><label>Montant annuel</label><input value="'+( x.annual||0)+'" type="number" onchange="setRexAnnual(\''+safe+'\',this.value)"><label>Clé</label><select onchange="setRexKey(\''+safe+'\',this.value)"><option value="monthly12" '+(x.allocationKey==='monthly12'?'selected':'')+'>division par 12</option><option value="ca" '+(x.allocationKey==='ca'?'selected':'')+'>% du CA mensuel</option></select></td>';if(x.mode==='pct')return '<td><label>% CA mensuel</label><input value="'+(x.pct||0)+'" type="number" onchange="setRexVal(\''+safe+'\',0,this.value)"></td>';return '<td><span class="hint">saisie par mois</span></td>'}
-function cgRowMonths(a,r,x,safe){return M.map(function(_,m){if(x.mode==='month')return '<td><input value="'+(x.values[m]||0)+'" type="number" onchange="setRexVal(\''+safe+'\','+m+',this.value)"></td>';return '<td class="num locked">'+euro(manual(a,r.label,m))+'</td>'}).join('')}
-function cgBuildRow(a,r){let x=a.rex[r.label],safe=r.label.replace(/'/g,"\'"),total=M.reduce((s,_,m)=>s+manual(a,r.label,m),0);if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe';if(!x.allocationKey)x.allocationKey='monthly12';return '<tr><td><b>'+r.label+'</b></td>'+cgCellType(x,safe)+(r.label==="Chiffre d'affaires"?cgCellMode(x,safe).replace(/<option value="pct"[^<]*<\/option>/,''):cgCellMode(x,safe))+cgCellKey(x,safe)+cgRowMonths(a,r,x,safe)+'<td class="num"><b>'+euro(total)+'</b></td></tr>'}
+function cgCellMode(x,safe){return `<td><select onchange="setRexMode('${safe}',this.value)"><option value="month" ${x.mode==='month'?'selected':''}>saisie mensuelle</option><option value="annual" ${x.mode==='annual'?'selected':''}>montant annuel</option><option value="pct" ${x.mode==='pct'?'selected':''}>% CA mensuel</option><option value="pctMois" ${x.mode==='pctMois'?'selected':''}>% CA différent chaque mois</option></select></td>`}
+function cgCellKey(x,safe){if(x.mode==='annual')return '<td><label>Montant annuel</label><input value="'+( x.annual||0)+'" type="number" onchange="setRexAnnual(\''+safe+'\',this.value)"><label>Clé</label><select onchange="setRexKey(\''+safe+'\',this.value)"><option value="monthly12" '+(x.allocationKey==='monthly12'?'selected':'')+'>division par 12</option><option value="ca" '+(x.allocationKey==='ca'?'selected':'')+'>% du CA mensuel</option></select></td>';if(x.mode==='pct')return '<td><label>% CA mensuel</label><input value="'+(x.pct||0)+'" type="number" onchange="setRexVal(\''+safe+'\',0,this.value)"></td>';if(x.mode==='pctMois')return '<td><span class="hint">% du CA saisi mois par mois</span></td>';return '<td><span class="hint">saisie par mois</span></td>'}
+function cgRowMonths(a,r,x,safe){return M.map(function(_,m){if(x.mode==='pctMois'){let p=x.pcts&&x.pcts[m];return '<td><input value="'+(p===null||p===undefined?'':p)+'" type="number" step="0.1" style="width:52px" onchange="setRexPctMois(\''+safe+'\','+m+',this.value)"> %<div class="num locked" style="font-size:10px">'+euro(manual(a,r.label,m))+'</div></td>'}if(x.mode==='month')return '<td><input value="'+(x.values[m]||0)+'" type="number" onchange="setRexVal(\''+safe+'\','+m+',this.value)"></td>';return '<td class="num locked">'+euro(manual(a,r.label,m))+'</td>'}).join('')}
+function cgBuildRow(a,r){let x=a.rex[r.label],safe=r.label.replace(/'/g,"\'"),total=M.reduce((s,_,m)=>s+manual(a,r.label,m),0);if(!x.chargeType)x.chargeType=r.type==='charge'?'variable':'fixe';if(!x.allocationKey)x.allocationKey='monthly12';return '<tr><td><b>'+r.label+'</b></td>'+cgCellType(x,safe)+(r.label==="Chiffre d'affaires"?cgCellMode(x,safe).replace(/<option value="pct(Mois)?"[^<]*<\/option>/g,''):cgCellMode(x,safe))+cgCellKey(x,safe)+cgRowMonths(a,r,x,safe)+'<td class="num"><b>'+euro(total)+'</b></td></tr>'}
 function renderCgInsight(a){
   if(!a || a.name === 'Nouvelle agence') return;
   // Titre avec nom d'agence
@@ -6780,7 +6782,8 @@ function reequilibrerSick(){
   render();
   showToast('Répartition ajustée pour respecter la moyenne du contrôle de gestion.', 'success');
 }
-function setRexMode(l,v){A().rex[l].mode=v;render()}
+function setRexMode(l,v){let x=A().rex[l];if(v==='pctMois'&&!Array.isArray(x.pcts))x.pcts=Array(12).fill(x.mode==='pct'&&+x.pct?+x.pct:null);x.mode=v;render()}
+function setRexPctMois(l,m,v){let x=A().rex[l];if(!Array.isArray(x.pcts))x.pcts=Array(12).fill(null);x.pcts[m]=v===''?null:+String(v).replace(',','.');render()}
 function setRexType(l,v){A().rex[l].chargeType=v;render()}
 function setRexKey(l,v){A().rex[l].allocationKey=v;render()}
 function setRexVal(l,m,v){let x=A().rex[l];if(x.mode==='pct')x.pct=v===''?null:+v;else x.values[m]=v===''?null:+v;render()}
@@ -7430,7 +7433,7 @@ function avancementBudget(d, updatedAt){
   let moisValides = (d.moisVerrouilles||[]).length;
   let cgLignes = T.filter(function(r){ return r.type!=='subtotal' && r.label!=="Chiffre d'affaires" && r.label!=="Charges de personnel" && LIGNES_SIEGE.indexOf(r.label)<0 && r.label!=='Quote-part régulation mutualisée'; });
   let cgOk = cgLignes.filter(function(r){ let x = d.rex && d.rex[r.label]; if(!x) return false;
-    return x.mode==='annual' ? isFilled(x.annual) && +x.annual!==0 : x.mode==='pct' ? isFilled(x.pct) && +x.pct!==0 : (x.values||[]).some(function(v){ return isFilled(v) && +v!==0; }); }).length;
+    return x.mode==='annual' ? isFilled(x.annual) && +x.annual!==0 : x.mode==='pct' ? isFilled(x.pct) && +x.pct!==0 : x.mode==='pctMois' ? (x.pcts||[]).some(function(v){ return isFilled(v) && +v!==0; }) : (x.values||[]).some(function(v){ return isFilled(v) && +v!==0; }); }).length;
   let pct = Math.round(((objectif?1:0) + refsPct/100 + (nbSalaries?1:0) + absSaisis/12 + moisValides/12) / 5 * 100);
   let jours = updatedAt ? Math.floor((Date.now() - new Date(updatedAt).getTime()) / 86400000) : null;
   return { pct:pct, objectif:objectif, refsPct:refsPct, nbSalaries:nbSalaries, absSaisis:absSaisis, moisValides:moisValides,
@@ -7504,6 +7507,7 @@ function completion() {
       let hasValue = false;
       if (x.mode === 'annual') hasValue = isFilled(x.annual);
       else if (x.mode === 'pct') hasValue = isFilled(x.pct);
+      else if (x.mode === 'pctMois') hasValue = (x.pcts || []).some(isFilled);
       else hasValue = x.values.some(v => isFilled(v));
       if (hasValue) cgFilled++;
     });
@@ -8811,6 +8815,14 @@ function construireClasseurCharges(entites){
       var x = e.data && e.data.rex && e.data.rex[poste];
       if(!x){ ligne.push(''); return; }
       if(x.mode === 'pct'){ ligne.push(+x.pct ? fmtPctClasseur(x.pct) : ''); return; }
+      if(x.mode === 'pctMois'){
+        var ps = (x.pcts || []).map(function(v){ return v === null || v === undefined || v === '' ? '' : +v; });
+        if(ps.some(function(v){ return v !== '' && v !== 0; })){
+          ligne.push('mensuel');
+          mensuel.push([e.nom, poste].concat(CLASSEUR_MOIS.map(function(_, m){ return ps[m] === '' || ps[m] === undefined ? '' : fmtPctClasseur(ps[m]); })));
+        } else ligne.push('');
+        return;
+      }
       if(x.mode === 'annual'){
         var cle = x.allocationKey === 'ca' ? 'ca' : 'monthly12';
         if(!+x.annual){ ligne.push(''); return; }
@@ -8836,6 +8848,7 @@ function construireClasseurCharges(entites){
     ['• « mensuel » : le poste est saisi mois par mois dans la feuille « Mensuel ».'],
     [''],
     ['Feuille « Mensuel » (facultative) : une ligne Agence + Poste avec ses 12 montants. Elle prime sur la feuille Réseau pour ce poste.'],
+    ['Dans « Mensuel », vous pouvez aussi écrire un % du CA différent chaque mois (par exemple « 2,1 % » en janvier, « 3 % » en juillet) : le montant suit le CA de chaque mois. Une même ligne contient soit des montants, soit des %.'],
     [''],
     ['Import : écran Charges CG, « Importer le classeur ». SOMA affiche les changements par agence avant d\'enregistrer.'],
     ['Les charges importées s\'appliquent à toutes les versions (V1, V2, V3) du budget de chaque agence.']
@@ -8898,15 +8911,25 @@ function lireClasseurCharges(reseau, mensuel, nomsConnus){
     if(!nom){ erreurs.push(lig + ' : agence « ' + row[0] + ' » inconnue.'); return; }
     if(!poste){ erreurs.push(lig + ' : poste « ' + row[1] + ' » inconnu.'); return; }
     if(!posteAutorise(nom, poste)){ erreurs.push(lig + ' : ' + poste + ' non applicable pour ' + nom + '.'); return; }
-    var vals = [], ko = false;
+    var vals = [], ko = false, nbPct = 0, nbMontant = 0;
     for(var m = 0; m < 12; m++){
       var v = row[2 + m], t = String(v === null || v === undefined ? '' : v).trim();
       if(t === ''){ vals.push(null); continue; }
-      var n = typeof v === 'number' ? v : nombreClasseur(t);
+      var estPct = /%\s*$/.test(t);
+      var n = typeof v === 'number' ? v : nombreClasseur(estPct ? t.replace('%', '') : t);
       if(isNaN(n)){ erreurs.push(lig + ' : ' + CLASSEUR_MOIS[m] + ' « ' + t + ' » illisible.'); ko = true; break; }
+      if(estPct) nbPct++; else nbMontant++;
       vals.push(n);
     }
-    if(!ko) poser(nom, poste, { mode: 'month', values: vals });
+    if(ko) return;
+    if(nbPct && nbMontant){ erreurs.push(lig + ' : ' + nom + ' / ' + poste + ' mélange des montants et des % ; écrivez soit 12 montants, soit 12 %.'); return; }
+    if(nbPct){
+      if(poste === "Chiffre d'affaires"){ erreurs.push(lig + ' : le CA d\'une structure ne peut pas être un % du CA.'); return; }
+      var maxP = Math.max.apply(null, vals.map(function(p){ return +p || 0; }));
+      if(maxP > 30) avert.push(nom + ' / ' + poste + ' : jusqu\'à ' + fmtPctClasseur(maxP) + ' du CA sur un mois, vérifiez.');
+      poser(nom, poste, { mode: 'pctMois', pcts: vals }); return;
+    }
+    poser(nom, poste, { mode: 'month', values: vals });
   });
   return { lignes: lignes, erreurs: erreurs, avertissements: avert };
 }
@@ -8916,10 +8939,11 @@ function appliquerLignesRex(rex, lignesEntite){
   var n = 0;
   Object.keys(lignesEntite).forEach(function(poste){
     var nv = lignesEntite[poste], x = rex[poste] || { values: Array(12).fill(null), chargeType: 'variable', allocationKey: 'monthly12', pct: 0, annual: 0, mode: 'month' };
-    var avant = JSON.stringify([x.mode, x.annual, x.allocationKey, x.pct, x.values]);
+    var avant = JSON.stringify([x.mode, x.annual, x.allocationKey, x.pct, x.values, x.mode === 'pctMois' ? x.pcts : null]);
     var y = Object.assign({}, x, nv);
     if(nv.mode === 'month') y.values = nv.values.slice();
-    if(JSON.stringify([y.mode, y.annual, y.allocationKey, y.pct, y.values]) !== avant) n++;
+    if(nv.mode === 'pctMois') y.pcts = nv.pcts.slice();
+    if(JSON.stringify([y.mode, y.annual, y.allocationKey, y.pct, y.values, y.mode === 'pctMois' ? y.pcts : null]) !== avant) n++;
     rex[poste] = y;
   });
   return n;
@@ -9256,6 +9280,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment saisir Formation, Exceptionnel, Réseau adhérent et Siège ?', 'Ces quatre structures se gèrent comme une agence que vous complétez entièrement : ouvrez-la avec « Ouvrir une agence » (elles sont en fin de liste), puis saisissez dans « Charges CG » tout son compte de résultat, chiffre d\'affaires et charges de personnel compris, mois par mois ou en montant annuel. Elles n\'ont ni équipe, ni calendrier, ni REX. Elles entrent dans le compte de résultat consolidé du réseau (écran Consolidation).'],
     ['Où saisir l\'impôt sur les sociétés et la participation ?', 'Sur le Siège uniquement : ouvrez SIEGE, écran « Charges CG », lignes « Impôt sur les sociétés » et « Participation aux bénéfices ». Le résultat net = résultat courant avant impôt + résultat exceptionnel − impôt sur les sociétés − participation. Ces lignes n\'existent pas pour les agences et apparaissent dans le consolidé réseau.'],
     ['Où saisir la quote-part MS siège et la régulation mutualisée ?', 'Deux lignes, juste sous « Charges de personnel », sur chaque agence : « Quote-part MS siège » et « Quote-part régulation mutualisée ». Saisissez le montant annuel de l\'agence obtenu avec votre clé de répartition : SOMA le lisse à l\'identique sur les 12 mois (répartition ÷ 12) et le déduit de l\'EBE. Mettez 0 pour une agence non concernée par la régulation mutualisée : la ligne reste en place si le périmètre évolue. Le plus rapide est le classeur « Charges du réseau » : une colonne par agence. Ces lignes n\'existent pas pour les structures ; le Siège reste à 0 en charges de personnel puisque tout son coût est ventilé sur les agences. La ligne « Charges de personnel » reste la masse salariale propre de l\'agence.'],
+    ['Comment saisir un poste en % du CA différent chaque mois (péages par exemple) ?', 'Dans « Charges CG » de l\'agence, choisissez le mode « % CA différent chaque mois » sur la ligne : une case de % apparaît pour chaque mois, avec le montant calculé dessous (CA du mois × % du mois). Un mois laissé vide vaut 0. Pour tout le réseau d\'un coup, utilisez la feuille « Mensuel » du classeur « Charges du réseau » : une ligne Agence + Poste avec 12 pourcentages (« 2,1 % », « 3 % »…), chaque agence ayant les siens. Une même ligne contient soit 12 montants, soit 12 % ; un mélange est signalé à l\'import.'],
   ]},
   { t: 'Étape 6 — Suivre le réseau', items: [
     ['Comment suivre l\'avancement des agences ?', 'Le Tableau de bord a deux vues. <b>Préparation</b> : votre parcours en 7 étapes et ce qu\'il reste à faire. <b>Supervision</b> : budgets soumis, validés, CA et résultat du réseau. L\'écran Consolidation donne l\'état de chaque agence (non commencé, brouillon, soumis, validé) et ses indicateurs clés. « Actualiser » recharge les données.'],
