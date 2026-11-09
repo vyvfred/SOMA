@@ -2887,7 +2887,7 @@ async function renderValidation() {
     // Évolution effectif : embauches/départs prévus dans l'année
     const hasMovements = d.employees ? d.employees.some(e=>e.dateEntree||e.dateSortie) : false;
     // Capacité et HS
-    let baseHebdo = d.employees ? d.employees.filter(e=>['DEA','AA','TAXI','TPMR'].includes(e.qual)).reduce((s,e)=>s+(+e.hours||0)*partRoulant(e),0) : 0;
+    let baseHebdo = d.employees ? d.employees.filter(estRoulantPart).reduce((s,e)=>s+(+e.hours||0)*partRoulant(e),0) : 0;
     let malMoy = d.sick ? d.sick.filter(v=>v!==null).reduce((s,v)=>s+(+v||0),0)/(d.sick.filter(v=>v!==null).length||1) : 8;
     let caMax = txr>0 ? Math.round(baseHebdo*(1-malMoy/100)*txr*52) : 0;
     let txCharge = caMax>0 ? Math.round(caBudget/caMax*100) : 0;
@@ -3430,7 +3430,11 @@ function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!ma
 function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
 // Part roulante d'un salarié (clé roulant / non-roulant). 0 % = non roulant ; seul un champ vide vaut 100 %.
 // (Avant nov. 2026 : « +e.pctRoulant||100 » comptait un salarié saisi à 0 % comme roulant à 100 %.)
-function partRoulant(e){let p=e&&e.pctRoulant;if(p===null||p===undefined||p==='')return 1;p=+p;return isNaN(p)?1:Math.max(0,Math.min(100,p))/100}
+// Toutes qualifications (nov. 2026) : un régulateur, un REX… peut avoir une part roulante. Champ vide : 100 % pour
+// DEA/AA/TAXI/TPMR, 0 % pour les autres. Facturière jamais roulante. La part roulante est comptée en capacité et en
+// masse salariale roulante (au coût horaire de l'agence) : le CG la retire de la ligne non-roulants.
+function partRoulant(e){if(!e||String(e.qual||'').toUpperCase()==='FACTURIERE')return 0;let d=isRoulant(e.qual)?1:0,p=e.pctRoulant;if(p===null||p===undefined||p==='')return d;p=+p;return isNaN(p)?d:Math.max(0,Math.min(100,p))/100}
+function estRoulantPart(e){return partRoulant(e)>0}
 function isRoulant(qual){return ['DEA','AA','TAXI','TPMR'].includes((qual||'').toUpperCase())}
 // Un salarié est-il présent à une date donnée (selon dateEntree/dateSortie) ?
 function empPresent(e, dateISO){
@@ -3455,7 +3459,7 @@ function weekRefDate(a, week){
 // Capacité roulante à une semaine donnée (tient compte des entrées/sorties)
 function baseHWeek(a, week){
   let dateRef = week!==undefined ? weekRefDate(a, week) : null;
-  return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>{
+  return a.employees.filter(estRoulantPart).reduce((s,e)=>{
     if(dateRef && !empPresent(e, dateRef)) return s;
     return s+(+e.hours||0)*partRoulant(e);
   },0);
@@ -3465,10 +3469,10 @@ function baseH(a){
   // Moyenne sur toutes les semaines si dates présentes, sinon calcul simple
   let hasMovements = a.employees.some(e=>e.dateEntree||e.dateSortie);
   if(!hasMovements || !a.cal || !a.cal.length){
-    return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*partRoulant(e),0);
+    return a.employees.filter(estRoulantPart).reduce((s,e)=>s+(+e.hours||0)*partRoulant(e),0);
   }
   let weeks=needWeeks(a);
-  if(!weeks.length) return a.employees.filter(e=>isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*partRoulant(e),0);
+  if(!weeks.length) return a.employees.filter(estRoulantPart).reduce((s,e)=>s+(+e.hours||0)*partRoulant(e),0);
   let total=weeks.reduce((s,w)=>s+baseHWeek(a,w.week),0);
   return total/weeks.length;
 }
@@ -3583,7 +3587,7 @@ function payrollMonthCivil(a,m){
 function coutHoraireImproductif(a){
   let cm = msNRMensuel(a);
   if(cm!==null){
-    let hHebdo = a.employees.filter(e=>!isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0),0);
+    let hHebdo = a.employees.filter(e=>!isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*(1-partRoulant(e)),0);
     return hHebdo>0 ? cm/(hHebdo*52/12) : (+a.costHour||0);
   }
   let imp = a.employees.filter(e=>!isRoulant(e.qual)&&e.qual!=='FACTURIERE'&&(+e.coutJour||0)>0);
@@ -3631,7 +3635,7 @@ function partCDDSemaine(a, week){
   let dateRef = weekRefDate(a, week);
   let tot=0, cdd=0;
   a.employees.forEach(function(e){
-    if(!isRoulant(e.qual)) return;
+    if(!estRoulantPart(e)) return;
     if(dateRef && !empPresent(e, dateRef)) return;
     let h=(+e.hours||0)*partRoulant(e);
     tot+=h; if(isCDD(e)) cdd+=h;
@@ -5337,7 +5341,7 @@ function renderTeamKpis(a){
   if(!row) return;
   // Données déduites (SOMA calcule, ne demande pas)
   let nbSal = a.employees ? a.employees.filter(function(e){return e.qual!=='FACTURIERE';}).length : 0;
-  let etpTotal = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e)/35;},0) : 0;
+  let etpTotal = a.employees ? a.employees.filter(estRoulantPart).reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e)/35;},0) : 0;
   let capaciteAn = Math.round(baseH(a) * 52);
 
   function kpi(label, val, sub){
@@ -5390,7 +5394,7 @@ function renderTeam(){
   let contracts=['CDI','CDD','APPRENTI','INTERIM'];
   let header='<tr><th>Nom</th><th>Qualif.<span class="aide-info">i<span class="aide-tip">DEA = ambulancier diplômé, AA = auxiliaire, TAXI = chauffeur taxi, TPMR = transport PMR. Ces qualifications sont roulantes. REGULATEUR et REX sont non-roulants.</span></span></th><th>Contrat</th>'
     +'<th>H. base<span class="aide-info">i<span class="aide-tip">Heures travaillées par semaine. Ex : 35h pour un temps plein, 17,5h pour un mi-temps.</span></span></th>'
-    +'<th>% roul.<span class="aide-info">i<span class="aide-tip">Part du temps passée en roulant (sur la route). 100% pour un ambulancier à temps plein roulant. Pour un salarié partagé, indiquez sa part roulante : par exemple 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif.</span></span></th>'
+    +'<th>% roul.<span class="aide-info">i<span class="aide-tip">Part du temps passée en roulant (sur la route). 100% pour un ambulancier à temps plein roulant. Pour un salarié partagé, indiquez sa part roulante : par exemple 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif. Vaut aussi pour un régulateur ou un REX qui roule une partie de son temps (0 % = ne roule pas) : sa part roulante compte dans les heures et les ETP roulants.</span></span></th>'
     +'<th>Jours/sem</th>'
     +'<th>Entrée 2027<span class="aide-info">i<span class="aide-tip">Date d\'arrivée en 2027. Laissez vide si la personne est déjà présente au 1er janvier.</span></span></th>'
     +'<th>Sortie 2027<span class="aide-info">i<span class="aide-tip">Date de départ en 2027 (fin de CDD, retraite...). Laissez vide si la personne reste toute l\'année.</span></span></th>'
@@ -5401,7 +5405,7 @@ function renderTeam(){
     let contrat = e.contract || e.contrat || 'CDI';
     let qualOpts=quals.map(q=>('<option value="'+q+'"'+(e.qual===q?' selected':'')+'>'+q+'</option>')).join('');
     let contractOpts=contracts.map(c=>('<option'+(contrat===c?' selected':'')+'>'+c+'</option>')).join('');
-    let etp=isRoulant(e.qual)?((+e.hours||0)*partRoulant(e)/35).toFixed(2):'—';
+    let etp=isRoulant(e.qual)||estRoulantPart(e)?((+e.hours||0)*partRoulant(e)/35).toFixed(2):'—';
     // Badge CDD saisonnier
     let badge = (contrat==='CDD' && (e.dateEntree||e.dateSortie))
       ? ' <span style="font-size:9px;background:var(--orange);color:#fff;padding:1px 4px">CDD</span>' : '';
@@ -6541,7 +6545,10 @@ function setAct(field,val){A()[field]=val;render()}
 function setEmp(i,f,v){
   let numFields=['hours','hoursM','hsTarget','pctRoulant','joursSem','coutJour'];
   let e=A().employees[i];
+  let avantRoulant=isRoulant(e.qual);
   e[f]=numFields.includes(f)?+v:v;
+  // Changement de famille de qualification : % roulant remis à sa valeur par défaut (100 % roulant, 0 % sinon)
+  if(f==='qual'&&isRoulant(v)!==avantRoulant)e.pctRoulant=isRoulant(v)?100:0;
   // Harmoniser name/nom et contract/contrat pour compat import registre
   if(f==='name')e.nom=v;
   if(f==='contract')e.contrat=v;
@@ -7543,7 +7550,7 @@ function cpGeneres(a) {
   // CP générés, en jours de 7 h retirés de la présence ROULANTE (audit nov. 2026) :
   // 25/12 j par mois de présence hors maladie, au prorata du temps de travail (heures / 35) et de la part roulante.
   // Les non-roulants n'entrent pas : leurs congés n'enlèvent pas de capacité de production.
-  let salaries = a.employees.filter(e => isRoulant(e.qual));
+  let salaries = a.employees.filter(estRoulantPart);
   if (!salaries.length) return 0;
   let totalJ = 0;
   M.forEach(function(_, m) {
@@ -8564,7 +8571,7 @@ function baseDec2026(a){
   if(jours <= 0) return 0;
   let h = 0, hCDD = 0;
   (a.employees || []).forEach(function(e){
-    if(!isRoulant(e.qual) || !empPresent(e, '2026-12-31')) return;
+    if(!estRoulantPart(e) || !empPresent(e, '2026-12-31')) return;
     let x = (+e.hours||0) *partRoulant(e);
     h += x; if(e.contract === 'CDD') hCDD += x;
   });
@@ -9209,7 +9216,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment bien préparer les références des agences ?', 'Pour chaque agence : le CA 2025 et 2026, le TXR 2026 (CA par heure travaillée), le taux d\'absentéisme cible (maladie et accident du travail), le taux horaire brut au 1er janvier et au 1er juin, le taux de charges patronales des roulants, et la ligne de masse salariale non-roulante (salaire brut mensuel total et taux de charges). SOMA calcule le coût horaire chargé. Ces données servent de socle au REX et de point de comparaison entre agences : plus elles sont justes, plus les budgets seront réalistes et faciles à juger.'],
     ['Comment pré-remplir les données de toutes les agences ?', 'Avec « Importer données agences » : un fichier Excel, une ligne par agence. Colonnes reconnues par leur intitulé : Agence, CA 2025, CA 2026, TXR 2026, Absentéisme %, Taux brut 1er janvier, Taux brut 1er juin, Charges patronales %, MS non-roulante brut mensuel, Charges non-roulants %. L\'import écrit directement dans le budget de chaque agence, même si le REX l\'a déjà commencé. Vous pouvez ensuite ajuster agence par agence dans le tableau.'],
     ['Que se passe-t-il quand je clique sur « Enregistrer » ?', 'Seules les agences pour lesquelles vous avez saisi quelque chose sont enregistrées. Les valeurs vont dans le budget de l\'agence (toutes ses versions V1, V2, V3), le coût horaire est recalculé, et les champs de référence sont verrouillés côté REX. Le ratio de maintien de salaire est recopié dans toutes les agences. Un message vous indique le nombre d\'agences enregistrées, et le nom de celles qui auraient été refusées par le serveur.'],
-    ['Comment saisir la masse salariale non-roulante ?', 'Une seule ligne par agence : le salaire brut mensuel total des non-roulants (régulateurs, responsables, administratifs et quote-part du DR) et leur taux de charges. SOMA en déduit le coût mensuel chargé. Cette ligne unique évite qu\'un REX puisse déduire le salaire de son DR en consultant le budget. Elle se saisit dans Données agences ou sur l\'écran Charges CG de l\'agence. Sur les paies par période, elle compte pour un salaire mensuel par mois de paie, diminué de la part non maintenue des absences.'],
+    ['Comment saisir la masse salariale non-roulante ?', 'Une seule ligne par agence : le salaire brut mensuel total des non-roulants (régulateurs, responsables, administratifs et quote-part du DR) et leur taux de charges. SOMA en déduit le coût mensuel chargé. Cette ligne unique évite qu\'un REX puisse déduire le salaire de son DR en consultant le budget. Elle se saisit dans Données agences ou sur l\'écran Charges CG de l\'agence. Sur les paies par période, elle compte pour un salaire mensuel par mois de paie, diminué de la part non maintenue des absences. Si un régulateur ou un responsable a une part roulante dans l\'écran Équipe (par exemple 30 %), cette part est déjà comptée dans la masse salariale roulante : retirez-la de la ligne non-roulants pour ne pas la compter deux fois.'],
     ['Où régler le ratio de maintien de salaire ?', 'En haut de l\'écran Données agences. C\'est un paramètre unique pour tout le réseau : la part du salaire que l\'entreprise continue de payer pendant un arrêt maladie ou AT. Il est recopié dans toutes les agences à l\'enregistrement, et repris automatiquement par une agence dont le budget est créé plus tard. Tant qu\'il est vide, SOMA déduit les absences à 100%, ce qui sous-estime la masse salariale des agences à fort absentéisme.'],
     ['Pourquoi deux taux horaires ?', 'Le Smic est revalorisé en général au 1er janvier, et parfois en cours d\'année. Le taux du 1er janvier s\'applique aux heures de janvier à mai, celui du 1er juin aux heures de juin à décembre. Laissez le taux de juin vide s\'il n\'y a pas de revalorisation : celui de janvier s\'applique alors toute l\'année.'],
     ['Comment importer le registre RH ?', 'Avec « Importer registre RH », depuis l\'écran Données agences. Fichier Excel issu de la paie, première feuille, en-têtes sur la première ligne, une ligne par salarié. Colonnes utilisées : Agence (une fois par groupe suffit, elle est recopiée sur les lignes suivantes), Nom, Prenom, Date_entree, Date_sortie, Type Contrat, Libelle_emploi, Horaire_Mensuel. SOMA déduit la qualification de l\'emploi, le statut roulant ou non, les heures hebdomadaires, et le type de contrat (CDI, CDD, apprenti, intérim) : c\'est lui qui déclenche la provision de 10% de prime de précarité sur les CDD.'],
@@ -9262,7 +9269,7 @@ const FAQ = {
     ['Comment saisir mes références CA journalières ?', 'Sur l\'écran Références CA, indiquez pour chaque mois le chiffre d\'affaires moyen d\'une journée selon son type : jour de semaine normal, jour de semaine pendant les vacances scolaires, samedi, dimanche, jour férié. Il y a un tableau par activité : sanitaire, et saisonnier ou transport de personnes si vous les avez cochés sur l\'écran Objectif. Partez de votre réalisé 2026 et de ce que vous savez de 2027. Le calendrier applique ensuite ces montants à chaque jour de 2027 (vacances de votre zone, jours fériés) : c\'est ce qui donne votre CA budgété, mois par mois. Votre objectif de CA se saisit à part, sur l\'écran Objectif ; la synthèse compare les deux.'],
     ['Mon équipe est-elle déjà saisie ?', 'Oui. Le contrôle de gestion a chargé votre équipe à partir du registre du personnel : roulants (DEA, AA, taxi, TPMR), régulateurs, REX et facturières, avec leur contrat (CDI ou CDD), leurs heures hebdomadaires et leurs dates d\'entrée ou de sortie prévues en 2027. Les autres emplois (administratifs, apprentis, stagiaires) n\'y figurent pas. Vérifiez chaque ligne : « + Salarié » ajoute une personne, la croix en bout de ligne la retire, et « + Poste prévisionnel » ajoute un recrutement prévu (par défaut un CDD ambulancier de juin à septembre, à ajuster). « Importer depuis Excel » permet aussi de charger votre propre fichier : il remplace alors toute la liste, après confirmation.'],
     ['Que signifient les qualifications (DEA, AA, TAXI, TPMR) ?', 'Ce sont les qualifications du personnel roulant : DEA (diplôme d\'ambulancier), AA (auxiliaire ambulancier), TAXI et TPMR (transport de personnes à mobilité réduite). SOMA les considère comme du personnel roulant, c\'est-à-dire qui produit du chiffre d\'affaires sur la route. Les autres qualifications sont comptées comme personnel improductif.'],
-    ['Qu\'est-ce que le pourcentage roulant d\'un salarié ?', 'Certains salariés ne roulent pas à 100% de leur temps : ils partagent leur activité entre la route et la régulation, ou des tâches administratives. Le pourcentage roulant indique la part réellement passée à produire du chiffre d\'affaires. Par exemple, 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif.'],
+    ['Qu\'est-ce que le pourcentage roulant d\'un salarié ?', 'Certains salariés ne roulent pas à 100% de leur temps : ils partagent leur activité entre la route et la régulation, ou des tâches administratives. Le pourcentage roulant indique la part réellement passée à produire du chiffre d\'affaires. Par exemple, 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif. Vaut aussi pour un régulateur ou un REX qui roule une partie de son temps (0 % = ne roule pas) : sa part roulante compte dans les heures et les ETP roulants.'],
     ['Comment fonctionne la répartition automatique des congés ?', 'SOMA répartit vos congés sur l\'année selon deux principes. D\'abord les périodes légales : 60% des congés sur juin-octobre, 20% sur novembre-janvier, 20% sur février-mai. Ensuite le lissage : à l\'intérieur de chaque période, SOMA place les congés de façon à garder un recours aux heures supplémentaires le plus régulier possible, en évitant les semaines déjà tendues.'],
     ['Pourquoi SOMA ne cherche pas à supprimer toutes les heures supplémentaires ?', 'Parce qu\'un budget sans aucune heure supplémentaire est un budget rigide. L\'activité réelle ne sera jamais exactement celle prévue. Une réserve d\'environ 10% d\'heures supplémentaires permet d\'absorber une hausse d\'activité sans basculer dans les heures les plus chères, et une baisse sans dégrader la productivité. Zéro heure supplémentaire n\'est pas un objectif : c\'est une fragilité.'],
     ['Pourquoi distingue-t-on les heures à 25% et à 50% ?', 'Les huit premières heures supplémentaires par semaine et par salarié sont majorées à 25%, au-delà à 50%. Deux agences avec le même volume d\'heures supplémentaires peuvent donc avoir des coûts très différents selon la façon dont ces heures se répartissent. Indiquer la part de vos heures à 50% permet à SOMA de calculer le vrai coût de vos heures supplémentaires.'],
@@ -9484,7 +9491,7 @@ async function renderGraphiques(){
     let ca2026=+d.histCA||0;
     let caB2027=d.cal&&d.cal.length?d.cal.reduce(function(s,day){return s+(day.total||0);},0):0;
     let txr=+d.histTXR2026||+d.targetTXR||0;
-    let baseHebdo=d.employees?d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);}).reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e);},0):0;
+    let baseHebdo=d.employees?d.employees.filter(estRoulantPart).reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e);},0):0;
     let caMax=indicateursMoteur(ag.nom, d, txr).caMax;
     let txCharge=caMax>0?Math.round(caB2027/caMax*100):0;
     return {nom:ag.nom,ca2025:ca2025,ca2026:ca2026,caB2027:caB2027,txr:txr,txCharge:txCharge,hasData:(ca2025||ca2026||caB2027)};
@@ -9621,14 +9628,14 @@ async function renderComparative(){
     // ETP roulant
     let etp=0;
     if(d.employees&&d.employees.length){
-      etp=d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+      etp=d.employees.filter(estRoulantPart)
         .reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e)/35;},0);
       etp=Math.round(etp*100)/100;
     }
     // Taux HS/CA
     let tauxHS=null;
     if(d.cal&&d.cal.length&&d.targetTXR){
-      let baseHs=d.employees?d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+      let baseHs=d.employees?d.employees.filter(estRoulantPart)
         .reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e);},0):0;
       let caB=d.cal.reduce(function(s,day){return s+(day.total||0);},0);
       let caMax=indicateursMoteur(ag.nom, d, +d.targetTXR||+d.histTXR2026||0).caMax;
@@ -9775,7 +9782,7 @@ async function exportConsolidation(){
     // Indicateurs RH
     let baseHebdo = 0, etp = 0, nbRoulants = 0;
     if(d.employees && d.employees.length){
-      d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+      d.employees.filter(estRoulantPart)
         .forEach(function(e){
           let h = (+e.hours||0)*partRoulant(e);
           baseHebdo += h;
@@ -9846,7 +9853,7 @@ async function exportConsolidation(){
     let d = b ? budgetData(b.data) : {};
     let baseHebdo = 0;
     if(d.employees){
-      d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+      d.employees.filter(estRoulantPart)
         .forEach(function(e){baseHebdo+=(+e.hours||0)*partRoulant(e);});
     }
     let etp = Math.round(baseHebdo/35*100)/100;
@@ -10046,7 +10053,7 @@ function renderConsolidation(){
         // Capacité max
         let baseH=0;
         if(d.employees&&d.employees.length){
-          baseH=d.employees.filter(function(e){return ['DEA','AA','TAXI','TPMR'].includes(e.qual);})
+          baseH=d.employees.filter(estRoulantPart)
             .reduce(function(s,e){return s+(+e.hours||0)*partRoulant(e);},0);
         }
         let txr=+d.targetTXR||0;
