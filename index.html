@@ -1486,19 +1486,32 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <div class="chargeCurveLegend" id="chargeCurveLegend"></div>
       <div class="chargeCurveNote" id="chargeCurveNote"></div>
     </div>
+    <!-- Étape 1 : l'absentéisme d'abord, les congés acquis en dépendent -->
+    <details class="objCollapse" id="collapseSick" open style="margin-top:var(--sp-3)">
+      <summary>1. Absentéisme maladie &amp; AT, mois par mois</summary>
+      <div class="objCollapseBody">
+        <p class="hint" style="margin:0 0 8px">À saisir en premier : les congés payés acquis par l'équipe en dépendent (pas d'acquisition pendant les absences maladie). Si vous le modifiez après avoir réparti les congés, le nombre de jours acquis change et le compteur ci-dessous affiche un écart.</p>
+        <div class="tablewrap"><table id="sickTable"></table></div>
+        <div id="sickAlert" style="margin-top:8px"></div>
+      </div>
+    </details>
+    <!-- Étape 2 : congés payés -->
+    <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">2. Congés payés</div>
     <!-- Compteur CP + action SOMA -->
     <div id="cpCounter" style="padding:10px 14px;border:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--bg3);border-radius:var(--radius-sm);margin-top:var(--sp-3)">
-      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">CP générés </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)" title="Jours de congés que l'équipe roulante acquiert sur 2027 : 25 jours par an au prorata du temps de travail et de la part roulante, moins les périodes de maladie">Acquis sur l'année </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <span style="color:var(--ink30)">→</span>
-      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Planifiés </span><span id="cpPlanifies" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Posés </span><span id="cpPlanifies" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <span style="color:var(--ink30)">→</span>
-      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Restant </span><span id="cpRestant" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Reste à poser </span><span id="cpRestant" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <div id="cpEquilibre" style="margin-left:auto;font-size:13px;font-weight:700">—</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:var(--sp-3);flex-wrap:wrap">
       <button onclick="repartirCPAuto()" style="font-size:12px;padding:8px 14px;background:var(--violet);color:#fff;border:none">↗ Répartir les congés automatiquement</button>
       <button onclick="resetCP()" class="secondary" style="font-size:12px;padding:8px 14px">Réinitialiser</button>
     </div>
+    <p class="hint" style="margin:8px 0 0;font-size:12px">La répartition automatique pose exactement les jours acquis, en lissant la charge et en respectant les enveloppes légales (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Vous pouvez ensuite déplacer des congés semaine par semaine : le compteur suit vos choix. Si l'absentéisme change, relancez la répartition ou ajustez à la main. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'conges')" title="Pourquoi cette règle ?">?</span></p>
+    <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">3. Mois par mois</div>
   </div>
 
   <!-- LE PILOTAGE : cartes mensuelles + détail semaines (position centrale) -->
@@ -1516,14 +1529,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 
   <div id="rhAlertsSummary" style="margin-bottom:12px"></div>
 
-  <!-- SAISIES OCCASIONNELLES : repliables, fermées par défaut -->
-  <details class="objCollapse" id="collapseSick" open>
-    <summary>Taux de maladie &amp; AT par mois</summary>
-    <div class="objCollapseBody">
-      <div class="tablewrap"><table id="sickTable"></table></div>
-      <div id="sickAlert" style="margin-top:8px"></div>
-    </div>
-  </details>
+  <!-- SAISIES OCCASIONNELLES : repliables -->
 
   <details class="objCollapse" id="collapseHS50" open>
     <summary>Répartition des heures supplémentaires (25% / 50%) <span class="pourquoiPicto" onclick="event.stopPropagation();ouvrirPourquoi(event,'hs50')" title="Pourquoi cette règle ?">?</span></summary>
@@ -5818,8 +5824,8 @@ function renderRH(){
     let seuils3=refAgenceSeuils(a);
     let tol=seuils3.toleranceCP;
     if(Math.abs(rest)<=tol)q('cpEquilibre').innerHTML='<span style="color:var(--green)">✓ Équilibré</span>';
-    else if(rest>tol)q('cpEquilibre').innerHTML='<span style="color:var(--orange)">⚠ '+rest.toFixed(1)+' J à placer</span>';
-    else q('cpEquilibre').innerHTML='<span style="color:var(--orange)">⚠ '+Math.abs(rest).toFixed(1)+' J en excès</span>';
+    else if(rest>tol)q('cpEquilibre').innerHTML='<span style="color:var(--orange)" title="Plus de jours acquis que de jours posés : relancez la répartition ou posez-les à la main">⚠ '+rest.toFixed(1)+' J encore à poser</span>';
+    else q('cpEquilibre').innerHTML='<span style="color:var(--orange)" title="Plus de jours posés que de jours acquis, souvent parce que l\'absentéisme a augmenté après la répartition : relancez la répartition ou retirez des congés">⚠ '+Math.abs(rest).toFixed(1)+' J posés en trop</span>';
   }
 
   // ── Tableau maladie mensuel ──
@@ -5901,7 +5907,7 @@ function renderRH(){
       return s;
     },0);
     let cpLibres = Math.round((cpGen - cpVerrouilles)*10)/10;
-    progressHTML += '<div style="font-size:12px;color:var(--ink65)">CP restants à répartir : <b style="color:'+(Math.abs(cpLibres)<1?'var(--green)':'var(--accent-blue)')+'">'+cpLibres.toFixed(1)+' J</b></div>'
+    progressHTML += '<div style="font-size:12px;color:var(--ink65)" title="Jours acquis moins les jours déjà posés sur les mois validés : c\'est ce que la répartition place sur les mois encore ouverts">Congés à poser sur les mois non validés : <b style="color:'+(Math.abs(cpLibres)<1?'var(--green)':'var(--accent-blue)')+'">'+cpLibres.toFixed(1)+' J</b></div>'
       + '</div>';
 
     let aideHTML = '<div class="rhHelp" style="flex-direction:column;align-items:stretch;gap:6px">'
@@ -9531,7 +9537,9 @@ const FAQ = {
     ['Qu\'est-ce que le coût du choix que je vois en synthèse ?', 'SOMA calcule la répartition des congés qui minimise le coût des heures supplémentaires. Vous pouvez choisir de vous en écarter, par exemple pour accorder des congés à un moment qui compte pour votre équipe. Ce choix a parfois un surcoût. SOMA le chiffre non pour vous en dissuader, mais pour que vous puissiez l\'assumer et le justifier lors de la validation.'],
     ['Comment lire la courbe de charge et les couleurs des semaines ?', 'La courbe montre les heures supplémentaires par personne présente, semaine par semaine. Une courbe plate signifie une charge équitable. Les trois zones colorées correspondent aux périodes légales de congés. Dans le détail des semaines, chaque semaine porte un verdict en langage clair : aucune tension, charge légère, charge soutenue ou surcharge. Une semaine en surcharge mérite votre attention.'],
     ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste.'],
-    ['Comment sont calculés les congés générés ?', 'Un salarié roulant à temps plein génère 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant en génère au prorata ; les régulateurs et responsables ne sont pas comptés, car leurs congés ne retirent pas de capacité de production. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce stock que la répartition automatique distribue ensuite sur vos semaines.'],
+    ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, relancez la répartition.'],
+    ['Comment sont calculés les congés acquis sur l\'année ?', 'Un salarié roulant à temps plein acquiert 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Les mois d\'absence maladie n\'en génèrent pas : plus l\'absentéisme saisi est élevé, moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
+    ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou l\'absentéisme a changé, ce qui change les jours acquis. Par exemple, si vous augmentez la maladie de juillet après la répartition, l\'équipe acquiert moins de jours et le compteur affiche des jours « posés en trop ». Relancez alors la répartition (les mois validés ne bougent pas) ou retirez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
     ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Le compteur de mois validés suit votre avancement. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
     ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
     ['Comment sont pris en compte les régulateurs et responsables ?', 'Ce sont du personnel improductif : ils ne produisent pas de chiffre d\'affaires sur la route, mais ils ont un coût. SOMA les intègre dans la masse salariale sans les compter dans la capacité roulante. Leur coût est saisi en une seule ligne globale par le contrôleur de gestion : vous n\'avez pas de salaire à renseigner. Leur absentéisme suit le même taux que les roulants. Sur l\'écran Présence, vous pouvez seulement déclarer leurs heures supplémentaires. Chaque agence en a, c\'est normal.'],
