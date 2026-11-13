@@ -1292,7 +1292,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-weight:700;font-size:14px">Versions du budget :</span>
       <div id="versionTabs" style="display:flex;gap:6px"></div>
-      <button onclick="dupliquerVersion()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--bg3);color:var(--ink);border:1px solid var(--border)">⎘ Dupliquer la version active</button>
+      <button id="btnDupVersion" onclick="dupliquerVersion()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--bg3);color:var(--ink);border:1px solid var(--border)">⎘ Dupliquer la version active</button>
       <button onclick="showVersionCompare()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--blue);color:#fff;border:none">⇄ Comparer les versions</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -2561,6 +2561,7 @@ function show(id) {
   else if (PROFILE && PROFILE.role !== 'admin' && typeof buildNav === 'function') buildNav();
   document.querySelectorAll('.navbtn').forEach(n => n.classList.toggle('active', n.dataset.p === id));
   renderStepNav(id);
+  if (typeof appliquerVerrouValidation === 'function') setTimeout(appliquerVerrouValidation, 0);
   window.scrollTo({top:0,behavior:'smooth'});
   if (id === 'validation') renderValidationCollegial();
   if (id === 'rh') renderRH();
@@ -2617,6 +2618,8 @@ async function loadBudgetFromSupabase(agence) {
       BUDGET_META = d.meta || { activeVersion:'v1', submittedVersion:null, descriptions:{v1:'',v2:'',v3:''} };
       if (!BUDGET_META.descriptions) BUDGET_META.descriptions = {v1:'',v2:'',v3:''};
       ACTIVE_VERSION = BUDGET_META.activeVersion || 'v1';
+      // Budget en validation : on ouvre la version officielle, celle que voient les valideurs
+      if (STATUTS_MODIFIABLES.indexOf(data.statut) < 0 && BUDGET_META.submittedVersion && d.versions[BUDGET_META.submittedVersion] && Object.keys(d.versions[BUDGET_META.submittedVersion]).length) ACTIVE_VERSION = BUDGET_META.submittedVersion;
       versionData = d.versions[ACTIVE_VERSION] || d.versions.v1 || {};
       versionVide = !Object.keys(versionData).length;
       // Références CG laissées au premier niveau par d'anciennes sauvegardes « Données agences »
@@ -2679,6 +2682,8 @@ async function ecrire(req){
 async function saveBudgetToSupabase() {
   const a = A();
   if (!a || a.name === 'Nouvelle agence') return;
+  // En validation, le budget n'est plus modifiable : aucune écriture (évite les refus répétés du serveur)
+  if (BUDGET_ID && !budgetModifiable()) return null;
   markSaving();
   try {
     // Relire la version en base et n'y écrire que ce que cette session a modifié (fusion par rubrique)
@@ -2698,6 +2703,8 @@ async function saveBudgetToSupabase() {
     let fv = fusionnerVersion(avant, aClean, distant);
     let fm = META_BASE ? fusionnerVersion(META_BASE, BUDGET_META, metaBase) : { fusion: BUDGET_META };
     versions[ACTIVE_VERSION] = fv.fusion;
+    // Saisie du CG (références, charges) reportée dans les autres versions
+    if (PROFILE && ['cg','admin'].indexOf(PROFILE.role) >= 0) reporterSaisieCG(versions, ACTIVE_VERSION, avant, aClean);
     const fullData = { versions: versions, meta: fm.fusion };
     if (validation) fullData.validation = validation;
     // Le statut n'est jamais réécrit par une sauvegarde : seules la soumission, les décisions et l'admin le changent
@@ -2776,6 +2783,7 @@ async function soumettreBudget() {
   BUDGET_STATUT = 'soumis_dr';
   updateStatutBar();
   renderVersionBar();
+  appliquerVerrouValidation();
   showToast('Version '+vLabel+' soumise au circuit de validation (Directeur Régional)', 'success');
 }
 
@@ -3819,8 +3827,9 @@ async function switchVersion(v){
     // Version vide : repartir d'une base vierge pré-remplie des données de référence CG
     S.agencies[S.active] = {...agency(a.name), name: a.name};
     // Conserver les données historiques de référence (communes à toutes les versions)
-    let ref = data && data.data && data.data.versions && data.data.versions.v1 ? data.data.versions.v1 : {};
+    let ref = premiereVersionRemplie(data && data.data ? data.data.versions : null);
     let na = S.agencies[S.active];
+    Object.assign(na, socleVersion(ref));
     if(ref.histCA2025) na.histCA2025 = ref.histCA2025;
     if(ref.histCA) na.histCA = ref.histCA;
     if(ref.histTXR2026){ na.histTXR2026 = ref.histTXR2026; na.histTXR = ref.histTXR2026; na.targetTXR = ref.histTXR2026; }
@@ -3828,11 +3837,12 @@ async function switchVersion(v){
     BUDGET_BASE = null;
     renderVersionBar();
     render();
-    showToast('Version '+VERSION_LABELS[v]+' vide — repartez de zéro ou dupliquez une autre version', 'warn');
+    showToast('Version '+VERSION_LABELS[v]+' vide : paramétrage du CG, charges et équipe repris, le reste est à construire — ou dupliquez une autre version', 'warn');
   }
 }
 
 async function dupliquerVersion(){
+  if(!budgetModifiable()){ showToast('Budget en validation : les versions ne peuvent plus être modifiées', 'warn'); return; }
   // Trouver la prochaine version libre
   const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
@@ -3850,7 +3860,8 @@ async function dupliquerVersion(){
   let copie = JSON.parse(JSON.stringify(a));
   delete copie.versions; delete copie.meta;
   versions[cible] = copie;
-  BUDGET_META.descriptions[cible] = (BUDGET_META.descriptions[ACTIVE_VERSION]||'') + ' (copie)';
+  let source = ACTIVE_VERSION;
+  BUDGET_META.descriptions[cible] = descriptionCopie(BUDGET_META.descriptions[source], VERSION_LABELS[source]);
   BUDGET_META.activeVersion = cible;
   ACTIVE_VERSION = cible;
   const fullData = { versions: versions, meta: BUDGET_META };
@@ -3861,15 +3872,17 @@ async function dupliquerVersion(){
   META_BASE = JSON.parse(JSON.stringify(BUDGET_META));
   renderVersionBar();
   render();
-  showToast('Version '+VERSION_LABELS[cible]+' créée à partir de '+VERSION_LABELS[ACTIVE_VERSION], 'success');
+  showToast('Version '+VERSION_LABELS[cible]+' créée à partir de '+VERSION_LABELS[source], 'success');
 }
 
 function setVersionDesc(v){
+  if(!budgetModifiable()) return;
   if(!BUDGET_META.descriptions) BUDGET_META.descriptions = {v1:'',v2:'',v3:''};
   BUDGET_META.descriptions[ACTIVE_VERSION] = v;
 }
 
 async function choisirVersionSoumission(){
+  if(!budgetModifiable()){ showToast('Budget en validation : la version officielle ne peut plus changer', 'warn'); return; }
   BUDGET_META.submittedVersion = ACTIVE_VERSION;
   await saveBudgetToSupabase();
   renderVersionBar();
@@ -5003,9 +5016,14 @@ async function renderVersionBar(){
 
   // Indicateur visuel dans le header
   updateVersionIndicator();
+  let modif = budgetModifiable();
+  if(q('btnDupVersion')) q('btnDupVersion').disabled = !modif;
+  if(q('versionDesc')) q('versionDesc').disabled = !modif;
   // Info soumission
   if(q('versionSubmitInfo')){
-    if(meta.submittedVersion === ACTIVE_VERSION){
+    if(!modif){
+      q('versionSubmitInfo').innerHTML = '<span style="color:var(--blue2);font-weight:600">🔒 Budget en validation : lecture seule. Version officielle : '+(VERSION_LABELS[meta.submittedVersion]||'V1')+' ★'+(meta.submittedVersion && meta.submittedVersion !== ACTIVE_VERSION ? ' — vous consultez '+VERSION_LABELS[ACTIVE_VERSION] : '')+'</span>';
+    } else if(meta.submittedVersion === ACTIVE_VERSION){
       q('versionSubmitInfo').innerHTML = '<span style="color:var(--green);font-weight:600">★ Cette version est celle choisie pour la soumission.</span>';
     } else if(meta.submittedVersion){
       q('versionSubmitInfo').innerHTML = '<span style="color:var(--ink65)">La version '+VERSION_LABELS[meta.submittedVersion]+' est actuellement choisie pour la soumission. </span><button onclick="choisirVersionSoumission()" style="width:auto;margin:0;font-size:11px;padding:5px 10px;background:var(--green);color:#fff;border:none">Choisir '+VERSION_LABELS[ACTIVE_VERSION]+' à la place</button>';
@@ -5290,8 +5308,35 @@ function render(){
   setTimeout(animateCounters, 100);
   // Formatage milliers sur tous les tableaux
   ['refSan','refSai','refTP','empTable','sickTable','presenceTable','hsTable','cgTable','rexTable','rhTable','prevTable','adminBudgetsTable'].forEach(fmtTableNums);
+  appliquerVerrouValidation();
 }
 
+
+// Budget en validation : lecture seule pour le REX, le CG et l'admin (parité avec la version React).
+// Les saisies et les boutons qui modifient le budget sont désactivés ; consulter, comparer, exporter reste possible.
+const PANNEAUX_BUDGET = ['objectif','refs','cal','team','rh','rex','previsionnel','finance'];
+const BOUTONS_CONSULTATION = /show|voir|travailler|ouvrir|compar|export|telecharg|imprim|fermer|close|switchVersion|aide|toggleDetail|details/i;
+function appliquerVerrouValidation(){
+  let verrou = !!(PROFILE && ['rex','cg','admin'].indexOf(PROFILE.role) >= 0 && BUDGET_ID && !budgetModifiable() && !CONSULT_MODE);
+  let zones = PANNEAUX_BUDGET.map(function(id){ return q(id); }).filter(Boolean);
+  if(q('cgAgenceCard')) zones.push(q('cgAgenceCard'));
+  zones.forEach(function(z){
+    z.querySelectorAll('input, select, textarea, button').forEach(function(el){
+      if(el.closest('#budgetVersionBar, #budgetStatutBar, nav, .stepNav')) return;
+      let carte = el.closest('.card');
+      if(carte && carte.querySelector('#agencySel')) return;
+      if(el.tagName === 'BUTTON' && BOUTONS_CONSULTATION.test(el.getAttribute('onclick') || '')) return;
+      if(verrou){
+        if(el.dataset.verrouValidation) return;
+        el.dataset.verrouValidation = el.disabled ? 'deja' : '1';
+        el.disabled = true;
+      } else if(el.dataset.verrouValidation){
+        if(el.dataset.verrouValidation === '1') el.disabled = false;
+        delete el.dataset.verrouValidation;
+      }
+    });
+  });
+}
 function renderCal(){
   if(!q('monthSel'))return;
   let a=A(),m=S.month;
@@ -7249,6 +7294,39 @@ const CG_REF_KEYS = ['histCA2025','histCA','histTXR2026','targetAbsRate','tauxHo
   'tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','ratioMaintien','cgLocked',
   'variablesDec2026','variablesDec2026Detail'];
 const CG_KEYS_SANS_VERROU = ['ratioMaintien','cgLocked','variablesDec2026','variablesDec2026Detail'];
+
+// ── Versions V1/V2/V3 (revue nov. 2026) ──
+// Socle commun à toutes les versions : références et charges posées par le CG, équipe chargée depuis le
+// registre, périodes de paie. Une version vide part de ce socle au lieu d'un budget sans paramétrage.
+function socleVersion(src){
+  let o = pickRefCG(src || {});
+  ['rex','employees','periodesPaie'].forEach(function(k){ if(src && src[k] !== undefined && src[k] !== null) o[k] = JSON.parse(JSON.stringify(src[k])); });
+  return o;
+}
+function premiereVersionRemplie(versions){
+  let vs = versions || {};
+  return ['v1','v2','v3'].map(function(v){ return vs[v]; }).find(function(x){ return x && Object.keys(x).length; }) || {};
+}
+// Le CG modifie ses références ou ses charges sur la version ouverte : la modification est reportée dans
+// les autres versions remplies, pour que les variantes du REX restent comparables. Renvoie le nombre de versions mises à jour.
+function reporterSaisieCG(versions, active, avant, apres){
+  let J = function(v){ return JSON.stringify(v === undefined ? null : v); };
+  let cles = CG_REF_KEYS.filter(function(k){ return J(avant ? avant[k] : undefined) !== J(apres[k]); });
+  let lignes = Object.keys(apres.rex || {}).filter(function(l){ return J(avant && avant.rex ? avant.rex[l] : undefined) !== J(apres.rex[l]); });
+  if(!cles.length && !lignes.length) return 0;
+  let n = 0;
+  Object.keys(versions || {}).forEach(function(v){
+    let x = versions[v];
+    if(v === active || !x || !Object.keys(x).length) return;
+    cles.forEach(function(k){ x[k] = JSON.parse(J(apres[k])); });
+    if(lignes.length){ x.rex = x.rex || {}; lignes.forEach(function(l){ x.rex[l] = JSON.parse(JSON.stringify(apres.rex[l])); }); }
+    n++;
+  });
+  return n;
+}
+function descriptionCopie(descSource, labelSource){ return descSource ? descSource + ' (copie)' : 'Copie de ' + labelSource; }
+const STATUTS_MODIFIABLES=['brouillon','refuse_dr','complement_dr','refuse_df','complement_df','refuse_dg'];
+function budgetModifiable(){ return STATUTS_MODIFIABLES.indexOf(BUDGET_STATUT) >= 0; }
 function pickRefCG(obj){
   let o = {};
   CG_REF_KEYS.forEach(function(k){ if(obj && obj[k]!==undefined) o[k]=obj[k]; });
@@ -9328,7 +9406,7 @@ const FAQ = {
     ['Comment sauvegarder mon travail ?', 'SOMA sauvegarde automatiquement au fil de votre saisie, en silence. Vous n\'avez pas de bouton à presser. Une petite mention vous confirme l\'enregistrement. Vos données sont conservées sur le serveur et vous les retrouvez à votre prochaine connexion.'],
     ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, cliquez sur « Soumettre au DR ». Le bouton se trouve dans le bandeau « Statut du budget » de l\'écran Objectif ; il vous est aussi proposé à la fin du parcours, avec « Terminer et sauvegarder » sur la Synthèse. SOMA vous demande confirmation et vous prévient si votre absentéisme s\'écarte de la référence ou si aucun directeur régional n\'est encore affecté à votre agence. La version active devient le budget officiel : il part dans le circuit de validation (directeur régional, puis contrôle de gestion et direction financière, puis Direction) et n\'est plus modifiable tant qu\'il est en validation. Relisez votre synthèse avant de soumettre.'],
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
-    ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent.'],
+    ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026.'],
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
