@@ -1099,6 +1099,13 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   background:rgba(196,83,0,.1); border:1px solid var(--orange);
   border-radius:var(--radius-sm); color:var(--orange);
 }
+
+/* Saisie du DR à la place du REX : valeurs saisies par le DR (nov. 2026) */
+[data-saisie-dr="1"]{color:#B4430B!important;background:#FFF1E6!important;border-color:#F08A3C!important;font-weight:700;box-shadow:inset 3px 0 0 #F08A3C}
+.legendeDR{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-left:10px}
+.legendeDR i{display:inline-block;width:14px;height:14px;border-radius:3px;background:#FFF1E6;border:2px solid #F08A3C}
+.bandeauDR{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 14px;background:#B4430B;color:#fff;font-size:13px;font-weight:600;flex-wrap:wrap;border-radius:10px;margin-bottom:14px}
+.bandeauDR button{width:auto;margin:0;padding:4px 12px;font-size:12px;background:#fff;color:#B4430B;border:none;font-weight:700}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -1219,6 +1226,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <span class="somCrumbYear" id="crumbYear" style="display:none">2027</span>
     <span class="somCrumbSep" id="crumbSep2" style="display:none">·</span>
     <span class="somCrumbVersion" id="crumbVersion" style="display:none"></span>
+    <span class="legendeDR" id="legendeDR" style="display:none" title="Valeurs saisies par le directeur régional, tant que le REX ne les a pas modifiées"><i></i> saisie du DR</span>
   </div>
 
   <!-- Centre d'attention : "Est-ce que tout va bien ?" (comportement 2, rempli Sprint 3) -->
@@ -1914,6 +1922,11 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 </section>
 
 <!-- PANEL VALIDATION (DR / DF / DG) -->
+<section id="saisie" class="panel">
+  <h2>Saisir pour un REX</h2>
+  <p class="hint" style="max-width:760px">Ouvrez le budget d'une agence de votre région pour le saisir à la place du REX, par exemple pendant un accompagnement. Tout ce que vous saisissez s'affiche <span class="legendeDR" style="margin-left:0"><i></i> en orange</span> : le REX voit ce que vous avez modifié. Dès qu'il modifie une de ces valeurs, elle reprend la couleur normale. Un budget déjà soumis ne se saisit plus : il se valide dans « Budgets à valider ».</p>
+  <div id="saisieDRListe"><p class="hint">Chargement…</p></div>
+</section>
 <section id="validation" class="panel">
   <div class="card">
     <div style="margin-bottom:var(--sp-4)">
@@ -2411,7 +2424,7 @@ function buildNavValidateur() {
   let role = PROFILE.role;
   let labels = { dr:'Directeur Régional', dg:'Direction (DG, directeurs opérationnels)', pdg:'Direction (DG, directeurs opérationnels)' };
   let panels = (role === 'dr')
-    ? [['validation','Budgets à valider'],['consolidation','Consolidation région'],['aide','Aide']]
+    ? [['validation','Budgets à valider'],['saisie','Saisir pour un REX'],['consolidation','Consolidation région'],['aide','Aide']]
     : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['aide','Aide']];
   let h = '<div class="navgroup navGlobalLabel">' + (labels[role]||'Validation') + '</div>';
   let activeId = document.querySelector('.panel.active')?.id || 'validation';
@@ -2433,7 +2446,7 @@ function buildNav() {
   // Le DF partage l'interface complète du CG (préparation, supervision, validation)
   const isCG = PROFILE.role === 'cg' || PROFILE.role === 'df';
   const panels = isCG ? panelsCG : panelsREX;
-  const groupLabel = PROFILE.role === 'df' ? 'Direction financière' : (isCG ? 'Contrôleur de gestion' : 'REX exploitation');
+  const groupLabel = SAISIE_DR ? 'Saisie pour le REX' : (PROFILE.role === 'df' ? 'Direction financière' : (isCG ? 'Contrôleur de gestion' : 'REX exploitation'));
   const comp = completion();
   const hasAgence = A() && A().name !== 'Nouvelle agence';
 
@@ -2557,8 +2570,10 @@ function show(id) {
   if (q(id)) q(id).classList.add('active');
   // Régénérer la sidebar-assistant pour que l'indicateur d'étape courante (●) suive
   // (les valideurs DR, DG et PDG gardent leur propre navigation)
-  if (PROFILE && ['dr','dg','pdg'].includes(PROFILE.role)) buildNavValidateur();
+  if (PROFILE && ['dr','dg','pdg'].includes(PROFILE.role) && !SAISIE_DR) buildNavValidateur();
   else if (PROFILE && PROFILE.role !== 'admin' && typeof buildNav === 'function') buildNav();
+  majBandeauDR();
+  if (id === 'saisie') renderSaisieDR();
   document.querySelectorAll('.navbtn').forEach(n => n.classList.toggle('active', n.dataset.p === id));
   renderStepNav(id);
   if (typeof appliquerVerrouValidation === 'function') setTimeout(appliquerVerrouValidation, 0);
@@ -2697,6 +2712,7 @@ async function saveBudgetToSupabase() {
       if (existing && existing.data && existing.data.validation) validation = existing.data.validation;
       if (existing && existing.data && existing.data.meta) metaBase = existing.data.meta;
     }
+    let marquesChangees = BUDGET_BASE ? marquerSaisiesDR(BUDGET_BASE, a, SAISIE_DR) : false;
     let aClean = JSON.parse(JSON.stringify(a));
     delete aClean.versions; delete aClean.meta;
     let avant = BUDGET_BASE;
@@ -2719,6 +2735,7 @@ async function saveBudgetToSupabase() {
     }
     BUDGET_BASE = JSON.parse(JSON.stringify(fv.fusion));
     META_BASE = JSON.parse(JSON.stringify(fm.fusion));
+    if (marquesChangees) setTimeout(function(){ render(); }, 0);
     // Rubriques enregistrées entre-temps par quelqu'un d'autre : reportées à l'écran
     if (avant && fv.distantes.length) {
       let cur = A(), J = function(v){ return JSON.stringify(v); }, maj = false;
@@ -3738,7 +3755,7 @@ function refTable(id,act){
     let cells=types.map(function(t){
       let v=a.refs[act][i][t];
       let display=(v!==null&&v!==undefined)?v:'';
-      return '<td><input type="number" value="'+display+'" onchange="setRef(\'' +act+ '\','+i+',\''+t+'\',this.value)"></td>';
+      return '<td><input type="number"'+drA('refs.'+act+'.'+i+'.'+t)+' value="'+display+'" onchange="setRef(\'' +act+ '\','+i+',\''+t+'\',this.value)"></td>';
     }).join('');
     return '<tr><td><b>'+mo+'</b></td>'+cells+'</tr>';
   }).join('');
@@ -4164,6 +4181,40 @@ function cgDashItemAgence(level, nom, text){
     + '<span class="attentionItemText"><b>'+nom+'</b> — '+text+'</span>'
     + '<span class="attentionItemArrow">voir →</span>'
     + '</button>';
+}
+// ── Le DR saisit le budget d'une agence de sa région à la place du REX (nov. 2026) ──
+async function renderSaisieDR(){
+  let box = q('saisieDRListe'); if(!box) return;
+  let [{data: ags}, {data: bs}] = await Promise.all([
+    sb.from('agences').select('nom').eq('region_id', PROFILE.region_id),
+    sb.from('budgets').select('agence,statut').eq('annee', 2027)
+  ]);
+  let noms = (ags || []).map(function(x){ return x.nom; }).sort();
+  if(!noms.length){ box.innerHTML = '<p class="hint">Aucune agence n\'est rattachée à votre région. Le contrôleur de gestion fait l\'affectation.</p>'; return; }
+  let st = {}; (bs || []).forEach(function(b){ st[b.agence] = b.statut; });
+  let h = '<table data-testid="saisie-dr-agences"><tr><th>Agence</th><th>Statut</th><th></th></tr>';
+  noms.forEach(function(nom){
+    let s = st[nom], ok = s && STATUTS_MODIFIABLES.indexOf(s) >= 0;
+    h += '<tr><td><b>'+nom+'</b></td><td>'+(s ? '<span class="statut '+s+'">'+statutLabel(s)+'</span>' : '<span class="hint">Budget pas encore créé</span>')+'</td>'
+      + '<td><button '+(ok ? '' : 'disabled ')+'onclick="saisirPourREX(\''+nom.replace(/'/g, "\\'")+'\')" style="width:auto;margin:0">✎ Saisir le budget</button></td></tr>';
+  });
+  box.innerHTML = h + '</table>';
+}
+async function saisirPourREX(nom){
+  SAISIE_DR = true;
+  await cgOpenAgence(nom);
+}
+function terminerSaisieDR(){
+  if(BUDGET_ID && budgetModifiable()) save();
+  SAISIE_DR = false;
+  show('saisie');
+}
+function majBandeauDR(){
+  let main = document.querySelector('main'); if(!main) return;
+  let b = q('bandeauDR');
+  if(!b){ b = document.createElement('div'); b.id = 'bandeauDR'; b.className = 'bandeauDR'; b.setAttribute('data-testid','bandeau-dr'); main.insertBefore(b, main.firstChild); }
+  b.style.display = SAISIE_DR ? 'flex' : 'none';
+  if(SAISIE_DR) b.innerHTML = '<span>✎ Vous saisissez le budget de '+(A() ? A().name : '')+' à la place du REX : vos saisies apparaissent en orange</span><button onclick="terminerSaisieDR()">↩ Terminer la saisie</button>';
 }
 async function cgOpenAgence(nom){
   // Réutilise la logique d'openAgency : charge l'agence par son nom
@@ -5309,6 +5360,7 @@ function render(){
   // Formatage milliers sur tous les tableaux
   ['refSan','refSai','refTP','empTable','sickTable','presenceTable','hsTable','cgTable','rexTable','rhTable','prevTable','adminBudgetsTable'].forEach(fmtTableNums);
   appliquerVerrouValidation();
+  appliquerMarquesDR();
 }
 
 
@@ -5316,6 +5368,14 @@ function render(){
 // Les saisies et les boutons qui modifient le budget sont désactivés ; consulter, comparer, exporter reste possible.
 const PANNEAUX_BUDGET = ['objectif','refs','cal','team','rh','rex','previsionnel','finance'];
 const BOUTONS_CONSULTATION = /show|voir|travailler|ouvrir|compar|export|telecharg|imprim|fermer|close|switchVersion|aide|toggleDetail|details/i;
+// Couleur des valeurs saisies par le DR sur les champs fixes de l'écran Objectif, légende dans l'en-tête
+const CHAMPS_OBJECTIF_DR = ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone'];
+function appliquerMarquesDR(){
+  let a = A();
+  CHAMPS_OBJECTIF_DR.forEach(function(id){ let el = q(id); if(!el) return; if(estSaisieDR(a, id)) el.setAttribute('data-saisie-dr','1'); else el.removeAttribute('data-saisie-dr'); });
+  let leg = q('legendeDR');
+  if(leg) leg.style.display = aDesSaisiesDR(a) ? 'inline-flex' : 'none';
+}
 function appliquerVerrouValidation(){
   let verrou = !!(PROFILE && ['rex','cg','admin'].indexOf(PROFILE.role) >= 0 && BUDGET_ID && !budgetModifiable() && !CONSULT_MODE);
   let zones = PANNEAUX_BUDGET.map(function(id){ return q(id); }).filter(Boolean);
@@ -5468,14 +5528,14 @@ function renderTeam(){
     // Badge CDD saisonnier
     let badge = (contrat==='CDD' && (e.dateEntree||e.dateSortie))
       ? ' <span style="font-size:9px;background:var(--orange);color:#fff;padding:1px 4px">CDD</span>' : '';
-    return '<tr><td><input type="text" value="'+nom+'" onchange="setEmp('+i+',\'name\',this.value)" style="width:160px">'+badge+'</td>'
-      +'<td><select onchange="setEmp('+i+',\'qual\',this.value)" style="width:90px">'+qualOpts+'</select></td>'
-      +'<td><select onchange="setEmp('+i+',\'contract\',this.value)" style="width:70px">'+contractOpts+'</select></td>'
-      +'<td><input type="number" value="'+(e.hours||0)+'" style="width:60px" onchange="setEmp('+i+',\'hours\',this.value)"></td>'
-      +'<td><input type="number" value="'+Math.round(partRoulant(e)*100)+'" style="width:55px" onchange="setEmp('+i+',\'pctRoulant\',this.value)" min="0" max="100">%</td>'
-      +'<td><input type="number" value="'+(e.joursSem||5)+'" style="width:50px" onchange="setEmp('+i+',\'joursSem\',this.value)" min="1" max="7"></td>'
-      +'<td><input type="date" value="'+(e.dateEntree||'')+'" min="2027-01-01" max="2027-12-31" onchange="setEmp('+i+',\'dateEntree\',this.value)" style="width:140px;font-size:11px"></td>'
-      +'<td><input type="date" value="'+(e.dateSortie||'')+'" min="2027-01-01" max="2027-12-31" onchange="setEmp('+i+',\'dateSortie\',this.value)" style="width:140px;font-size:11px"></td>'
+    return '<tr><td><input'+drE(e,'name')+' type="text" value="'+nom+'" onchange="setEmp('+i+',\'name\',this.value)" style="width:160px">'+badge+'</td>'
+      +'<td><select'+drE(e,'qual')+' onchange="setEmp('+i+',\'qual\',this.value)" style="width:90px">'+qualOpts+'</select></td>'
+      +'<td><select'+drE(e,'contract')+' onchange="setEmp('+i+',\'contract\',this.value)" style="width:70px">'+contractOpts+'</select></td>'
+      +'<td><input'+drE(e,'hours')+' type="number" value="'+(e.hours||0)+'" style="width:60px" onchange="setEmp('+i+',\'hours\',this.value)"></td>'
+      +'<td><input'+drE(e,'pctRoulant')+' type="number" value="'+Math.round(partRoulant(e)*100)+'" style="width:55px" onchange="setEmp('+i+',\'pctRoulant\',this.value)" min="0" max="100">%</td>'
+      +'<td><input'+drE(e,'joursSem')+' type="number" value="'+(e.joursSem||5)+'" style="width:50px" onchange="setEmp('+i+',\'joursSem\',this.value)" min="1" max="7"></td>'
+      +'<td><input'+drE(e,'dateEntree')+' type="date" value="'+(e.dateEntree||'')+'" min="2027-01-01" max="2027-12-31" onchange="setEmp('+i+',\'dateEntree\',this.value)" style="width:140px;font-size:11px"></td>'
+      +'<td><input'+drE(e,'dateSortie')+' type="date" value="'+(e.dateSortie||'')+'" min="2027-01-01" max="2027-12-31" onchange="setEmp('+i+',\'dateSortie\',this.value)" style="width:140px;font-size:11px"></td>'
       +'<td class="num">'+etp+'</td>'
       +'<td><button class="danger" style="padding:4px 8px;font-size:11px" onclick="delEmp('+i+')">X</button></td>'
       +'</tr>';
@@ -5772,7 +5832,7 @@ function renderRH(){
       +'<tr><td><b>Maladie &amp; AT %</b></td>'
       +a.sick.map(function(v,i){
         let display=v!==null&&v!==undefined?v:'';
-        return '<td><input type="number" value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
+        return '<td><input type="number"'+drA('sick.'+i)+' value="'+display+'" placeholder="—" onchange="setSick('+i+',this.value)" style="width:52px"></td>';
       }).join('')
       +'<td class="num"><span class="'+cls+'">'+pct(avg)+'</span></td>'
       +'<td>'+pct(a.targetAbsRate)+'</td></tr>';
@@ -5805,7 +5865,7 @@ function renderRH(){
       + '<tr><td><b>% HS à +50%</b></td>'
       + a.hs50.map(function(v,i){
           let display = v!==null&&v!==undefined?v:'';
-          return '<td><input type="number" value="'+display+'" placeholder="0" min="0" max="100" onchange="setHS50('+i+',this.value)" style="width:52px"></td>';
+          return '<td><input type="number"'+drA('hs50.'+i)+' value="'+display+'" placeholder="0" min="0" max="100" onchange="setHS50('+i+',this.value)" style="width:52px"></td>';
         }).join('')
       + '<td class="num"><b>'+pct(moy50)+'</b></td></tr>';
     if(q('hs50Info')){
@@ -6019,11 +6079,11 @@ function showWeekDetail(m){
     return '<tr>'
       +'<td>S'+hr.week+'</td>'
       +'<td class="num">'+p.base.toFixed(1)+'</td>'
-      +'<td><input type="number" value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'cp\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number"'+drA('presence.'+hr.week+'.cp')+' value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'cp\',this.value)" style="width:55px"></td>'
       +'<td class="num">'+pct(p.rate)+'</td>'
       +'<td class="num">'+p.mal.toFixed(1)+'</td>'
-      +'<td><input type="number" value="'+(p.otherPaid||'')+'" placeholder="0" title="Absences payées (jours)" onchange="setPresence('+hr.week+',\'otherPaid\',this.value)" style="width:55px"></td>'
-      +'<td><input type="number" value="'+(p.other||'')+'" placeholder="0" title="Absences non payées (jours)" onchange="setPresence('+hr.week+',\'other\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number"'+drA('presence.'+hr.week+'.otherPaid')+' value="'+(p.otherPaid||'')+'" placeholder="0" title="Absences payées (jours)" onchange="setPresence('+hr.week+',\'otherPaid\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number"'+drA('presence.'+hr.week+'.other')+' value="'+(p.other||'')+'" placeholder="0" title="Absences non payées (jours)" onchange="setPresence('+hr.week+',\'other\',this.value)" style="width:55px"></td>'
       +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
       +'<td class="num">'+hr.hours.toFixed(1)+'</td>'
       +'<td class="num"><span class="'+ecartCls+'">'+hr.gap.toFixed(1)+'</span></td>'
@@ -6695,10 +6755,10 @@ function renderIndemnites(){
     return '<tr'+sep+'>'
       + '<td>S'+w+'</td>'
       + '<td style="color:var(--ink65);font-size:12px">'+moisNom+'</td>'
-      + '<td><input type="number" value="'+rR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setRepas(+this.dataset.w,\'roulant\',this.value)"></td>'
-      + '<td><input type="number" value="'+rNR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setRepas(+this.dataset.w,\'nonroulant\',this.value)"></td>'
-      + '<td><input type="number" value="'+iR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setIDJF(+this.dataset.w,\'roulant\',this.value)"></td>'
-      + '<td><input type="number" value="'+iNR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setIDJF(+this.dataset.w,\'nonroulant\',this.value)"></td>'
+      + '<td><input type="number"'+drA('repasRoulant.'+w)+' value="'+rR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setRepas(+this.dataset.w,\'roulant\',this.value)"></td>'
+      + '<td><input type="number"'+drA('repasNonRoulant.'+w)+' value="'+rNR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setRepas(+this.dataset.w,\'nonroulant\',this.value)"></td>'
+      + '<td><input type="number"'+drA('idjfRoulant.'+w)+' value="'+iR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setIDJF(+this.dataset.w,\'roulant\',this.value)"></td>'
+      + '<td><input type="number"'+drA('idjfNonRoulant.'+w)+' value="'+iNR+'" placeholder="0" min="0" style="width:85px" data-w="'+w+'" onchange="setIDJF(+this.dataset.w,\'nonroulant\',this.value)"></td>'
       + '<td class="num" style="font-weight:600">'+(totSem?euro(totSem):'—')+'</td>'
       + '</tr>';
   }).join('');
@@ -6757,7 +6817,7 @@ function renderHSImproductif(){
     html += '<tr>'
       + '<td>S'+w+'</td>'
       + '<td style="color:var(--ink65);font-size:12px">'+moisNom+'</td>'
-      + '<td><input type="number" value="'+hs+'" placeholder="0" min="0" style="width:90px" data-w="'+w+'" onchange="setHSImproductif(+this.dataset.w, this.value)"></td>'
+      + '<td><input type="number"'+drA('hsImproductif.'+w)+' value="'+hs+'" placeholder="0" min="0" style="width:90px" data-w="'+w+'" onchange="setHSImproductif(+this.dataset.w, this.value)"></td>'
       + '<td class="num" style="color:var(--orange)">'+cout+'</td>'
       + '</tr>';
   });
@@ -7324,6 +7384,80 @@ function reporterSaisieCG(versions, active, avant, apres){
   });
   return n;
 }
+let SAISIE_DR = false; // le DR saisit à la place du REX
+// ── Saisie du DR à la place du REX (nov. 2026) ──
+// Un DR peut ouvrir le budget d'une agence de sa région et le saisir à la place du REX. Chaque valeur qu'il
+// modifie est marquée : elle s'affiche dans une autre couleur, jusqu'à ce que le REX la modifie à son tour.
+// Marques : a.saisiesDR = { "chemin.du.champ": 1 } ; pour l'équipe, e._dr = ["hours", …] sur le salarié.
+var CHAMPS_HORS_SUIVI_DR = /^(saisiesDR|moisActif|cal|calScolaire|updatedAt|cgLocked)(\.|$)|(^|\.)_dr(\.|$)/;
+function cheminsModifies(avant, apres, prefixe, out){
+  out = out || []; prefixe = prefixe || '';
+  var estObj = function(v){ return v !== null && typeof v === 'object'; };
+  if(!estObj(avant) || !estObj(apres)){
+    var vide = function(v){ return v === undefined || v === null || v === '' || v === 0; };
+    if(vide(avant) && vide(apres)) return out;
+    var x = JSON.stringify(avant === undefined ? null : avant), y = JSON.stringify(apres === undefined ? null : apres);
+    if(x !== y) out.push(prefixe.replace(/\.$/, ''));
+    return out;
+  }
+  var cles = {};
+  Object.keys(avant).forEach(function(k){ cles[k] = 1; });
+  Object.keys(apres).forEach(function(k){ cles[k] = 1; });
+  Object.keys(cles).forEach(function(k){ cheminsModifies(avant[k], apres[k], prefixe + k + '.', out); });
+  return out;
+}
+// Met à jour les marques de « apres » d'après ce qui a changé depuis « avant ». parDR : la saisie vient du DR.
+// Renvoie true si les marques ont changé.
+function marquerSaisiesDR(avant, apres, parDR){
+  if(!apres) return false;
+  var avantMarques = JSON.stringify([apres.saisiesDR || {}, (apres.employees || []).map(function(e){ return e && e._dr; })]);
+  var nAv = ((avant && avant.employees) || []).length, nAp = (apres.employees || []).length;
+  var marques = Object.assign({}, apres.saisiesDR || {});
+  var emps = null;
+  cheminsModifies(avant || {}, apres).forEach(function(c){
+    if(!c || CHAMPS_HORS_SUIVI_DR.test(c)) return;
+    var mn = c.match(/^employees\.(\d+)$/);
+    if(mn){
+      // Salarié ajouté : toute la ligne prend la marque de son auteur
+      var j = +mn[1];
+      if(!(nAp > nAv && j >= nAv)) return;
+      emps = emps || (apres.employees || []).slice();
+      var ne = emps[j]; if(!ne || typeof ne !== 'object') return;
+      ne = Object.assign({}, ne);
+      if(parDR) ne._dr = Object.keys(ne).filter(function(k){ return k !== '_dr'; }); else delete ne._dr;
+      emps[j] = ne;
+      return;
+    }
+    var m = c.match(/^employees\.(\d+)\.([^.]+)/);
+    if(m){
+      var i = +m[1];
+      // Équipe : des lignes supprimées décalent les suivantes, on ne marque alors rien ; des lignes ajoutées sont marquées
+      if(nAp < nAv || (nAp > nAv && i < nAv)) return;
+      emps = emps || (apres.employees || []).slice();
+      var e = emps[i]; if(!e) return;
+      var l = (e._dr || []).filter(function(f){ return f !== m[2]; });
+      if(parDR) l.push(m[2]);
+      e = Object.assign({}, e);
+      if(l.length) e._dr = l; else delete e._dr;
+      emps[i] = e;
+      return;
+    }
+    if(m === null && /^employees(\.|$)/.test(c)) return;
+    if(parDR) marques[c] = 1; else delete marques[c];
+  });
+  if(emps) apres.employees = emps;
+  apres.saisiesDR = marques;
+  return JSON.stringify([apres.saisiesDR, (apres.employees || []).map(function(e){ return e && e._dr; })]) !== avantMarques;
+}
+function estSaisieDR(a, chemin){ return !!(a && a.saisiesDR && a.saisiesDR[chemin]); }
+function champSaisiDR(e, champ){ return !!(e && e._dr && e._dr.indexOf(champ) >= 0); }
+function aDesSaisiesDR(a){
+  if(!a) return false;
+  if(a.saisiesDR && Object.keys(a.saisiesDR).length) return true;
+  return (a.employees || []).some(function(e){ return e && e._dr && e._dr.length; });
+}
+function drA(chemin){ return estSaisieDR(A(), chemin) ? ' data-saisie-dr="1"' : ''; }
+function drE(e, champ){ return champSaisiDR(e, champ) ? ' data-saisie-dr="1"' : ''; }
 function descriptionCopie(descSource, labelSource){ return descSource ? descSource + ' (copie)' : 'Copie de ' + labelSource; }
 const STATUTS_MODIFIABLES=['brouillon','refuse_dr','complement_dr','refuse_df','complement_df','refuse_dg'];
 function budgetModifiable(){ return STATUTS_MODIFIABLES.indexOf(BUDGET_STATUT) >= 0; }
@@ -9407,6 +9541,7 @@ const FAQ = {
     ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, cliquez sur « Soumettre au DR ». Le bouton se trouve dans le bandeau « Statut du budget » de l\'écran Objectif ; il vous est aussi proposé à la fin du parcours, avec « Terminer et sauvegarder » sur la Synthèse. SOMA vous demande confirmation et vous prévient si votre absentéisme s\'écarte de la référence ou si aucun directeur régional n\'est encore affecté à votre agence. La version active devient le budget officiel : il part dans le circuit de validation (directeur régional, puis contrôle de gestion et direction financière, puis Direction) et n\'est plus modifiable tant qu\'il est en validation. Relisez votre synthèse avant de soumettre.'],
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
     ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
+    ['Pourquoi certaines valeurs sont-elles en orange ?', 'Ce sont des valeurs saisies par votre directeur régional à votre place, par exemple pendant un accompagnement (la légende « saisie du DR » apparaît alors en haut de l\'écran). Elles comptent comme les vôtres. Dès que vous en modifiez une, elle reprend la couleur normale.'],
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026.'],
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
@@ -9429,6 +9564,7 @@ const FAQ = {
     ['Comment comparer les agences entre elles ?', 'Au-delà des budgets à valider, la consolidation et la vue réseau vous permettent de situer chaque agence par rapport aux autres. Une décision de budget se juge toujours mieux avec le contexte du réseau en tête.'],
     ['Que contient ma consolidation ?', 'Pour un directeur régional, la consolidation ne montre que les agences de sa région : statut, CA budgété, capacité, alertes, et le compte de résultat consolidé de la région. Pour la direction financière et la Direction, elle couvre tout le réseau, avec les quatre structures (Formation, Exceptionnel, Réseau adhérent, Siège) ; le résultat net consolidé intègre l\'impôt sur les sociétés et la participation portés par le Siège. « Export Excel » télécharge le même périmètre.'],
     ['Comment savoir où en sont les budgets en préparation ?', 'L\'écran Consolidation affiche, pour chaque agence, une colonne « Avancement » : la construction du budget par le REX, sur cinq jalons à parts égales (objectif fixé, références CA, équipe, absentéisme mensuel, mois validés). Survolez la barre pour le détail ; le nombre de mois validés et la part des charges saisies par le contrôle de gestion sont rappelés dessous. Un brouillon sans modification depuis une semaine ou plus est signalé en orange, et le commentaire en haut de l\'écran donne l\'avancement moyen des brouillons et la liste des agences à relancer. Un directeur régional voit ses agences ; la direction, tout le réseau. L\'export Excel reprend ces colonnes.'],
+    ['Comment saisir le budget à la place d\'un REX ?', 'Menu « Saisir pour un REX » : choisissez une agence de votre région puis « Saisir le budget ». Vous voyez les écrans du REX et pouvez tout saisir, par exemple pendant un accompagnement. Chaque valeur que vous saisissez s\'affiche en orange, chez vous comme chez le REX, jusqu\'à ce que le REX la modifie à son tour. « Terminer la saisie » vous ramène à votre menu. Un budget déjà soumis ne se saisit plus : il se valide dans « Budgets à valider ».'],
     ['Je ne vois aucune de mes agences', 'Vos agences vous sont rattachées par le contrôleur de gestion, dans l\'écran « Affectation DR ». Tant que ce n\'est pas fait, votre consolidation est vide et aucun budget ne vous parvient : contactez-le.'],
     ['Le responsable d\'exploitation voit-il le résultat net ?', 'Non. Les responsables d\'exploitation voient leur budget jusqu\'au résultat d\'exploitation, ce qu\'ils pilotent. Les lignes suivantes (charges financières, exceptionnel, impôt sur les sociétés, participation) sont visibles à partir du directeur régional.'],
     ['Directeur financier : quels écrans ?', 'Le directeur financier dispose des écrans de suivi du contrôle de gestion : tableau de bord, vue comparative, consolidation, graphiques, et la consultation de chaque agence (Ouvrir une agence, Prévisionnel, Synthèse, Contrôles). La préparation des données reste au contrôleur de gestion. Il valide à la deuxième étape du circuit, avec le contrôleur de gestion.'],
