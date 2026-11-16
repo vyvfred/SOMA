@@ -1434,6 +1434,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
     <div class="hint" style="margin-bottom:16px">✨ <b>Rien à saisir ici.</b> Ce calendrier est construit automatiquement à partir de vos références CA (étape 2) et du calendrier officiel 2027 (jours fériés, vacances scolaires de votre zone). Il répartit votre chiffre d'affaires jour par jour et semaine par semaine. Vérifiez qu'il correspond à votre réalité, puis passez à l'étape suivante.</div>
     <label>Mois</label>
     <select id="monthSel" style="max-width:220px"></select>
+    <div id="calTotaux" data-testid="cal-totaux-mensuels" style="margin-top:12px"></div>
     <div id="calLegend"></div>
     <div class="calendar" id="calGrid"></div>
     <div id="calSummary"></div>
@@ -5408,11 +5409,52 @@ function appliquerVerrouValidation(){
     });
   });
 }
+function totauxCalendrier(cal){
+  let mois=Array.from({length:12},(_,m)=>({month:m,ouvres:0,vacances:0,samedis:0,dimanches:0,feries:0,jours:0,san:0,sai:0,tp:0,ca:0}));
+  (cal||[]).forEach(function(d){
+    let t=mois[d.month];if(!t)return;
+    t.jours++;
+    if(d.type==='ferie')t.feries++;else if(d.type==='dimanche')t.dimanches++;else if(d.type==='samedi')t.samedis++;else if(d.type==='vacances')t.vacances++;else t.ouvres++;
+    let c=d.ca||{};t.san+=+c.san||0;t.sai+=+c.sai||0;t.tp+=+c.tp||0;t.ca+=+d.total||0;
+  });
+  let total={month:-1,ouvres:0,vacances:0,samedis:0,dimanches:0,feries:0,jours:0,san:0,sai:0,tp:0,ca:0};
+  mois.forEach(function(t){Object.keys(total).forEach(function(k){if(k!=='month')total[k]+=t[k]})});
+  mois.forEach(function(t){t.part=total.ca?t.ca/total.ca:0;t.moyJour=t.jours?t.ca/t.jours:0});
+  total.part=total.ca?1:0;total.moyJour=total.jours?total.ca/total.jours:0;
+  return {mois:mois,total:total};
+}
+const M3CAL=["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+const MOIS_LONG=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+function pctCal(x){return (x*100).toFixed(1).replace('.',',')+' %'}
+function renderCalTotaux(a,month){
+  let el=q('calTotaux');if(!el)return;
+  let r=totauxCalendrier(a.cal),mois=r.mois,total=r.total,t=mois[month];
+  let kpis=[['CA du mois',euro(t.ca),true],["Part de l'année",pctCal(t.part)],['CA moyen / jour',euro(t.moyJour)],['Jours ouvrés',t.ouvres],['Vacances',t.vacances],['Samedis',t.samedis],['Dimanches',t.dimanches],['Fériés',t.feries]];
+  let lignes=[['Jours ouvrés','ouvres'],['Vacances','vacances'],['Samedis','samedis'],['Dimanches','dimanches'],['Fériés','feries'],['Total jours','jours'],['CA Sanitaire','san',true]];
+  if(a.actSai)lignes.push(['CA Saisonnier','sai',true]);
+  if(a.actTP)lignes.push(['CA Transport de personnes','tp',true]);
+  lignes.push(['CA total','ca',true,true],["Part de l'année",'part','pct']);
+  let fmt=(v,k)=>k==='pct'?pctCal(v):k?euro(v):v;
+  let cell='padding:4px 8px;text-align:right;white-space:nowrap;',sel='background:rgba(139,127,255,.14);';
+  el.innerHTML='<div style="margin-bottom:16px;border:1px solid var(--border);background:var(--bg3);padding:12px">'
+    +'<div style="font-size:13px;font-weight:700;margin-bottom:8px">Récapitulatif — '+MOIS_LONG[month]+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+    +kpis.map(k=>'<div style="min-width:92px;padding:6px 10px;border:1px solid var(--border);background:var(--card)"><div style="font-size:10px;color:var(--ink65);text-transform:uppercase;letter-spacing:.04em">'+k[0]+'</div><div style="font-size:'+(k[2]?16:14)+'px;font-weight:700;font-family:DM Mono,monospace'+(k[2]?';color:var(--violet2)':'')+'">'+k[1]+'</div></div>').join('')
+    +'</div><div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%"><thead><tr style="color:var(--ink65)"><th style="'+cell+'text-align:left">Totaux mensuels</th>'
+    +mois.map(m=>'<th data-mois="'+m.month+'" title="Afficher '+MOIS_LONG[m.month]+'" style="'+cell+'cursor:pointer;'+(m.month===month?sel:'text-decoration:underline dotted;')+'">'+M3CAL[m.month]+'</th>').join('')
+    +'<th style="'+cell+'">Année</th></tr></thead><tbody>'
+    +lignes.map(l=>'<tr style="border-top:1px solid var(--border)'+(l[3]?';font-weight:700':'')+'"><td style="'+cell+'text-align:left">'+l[0]+'</td>'
+      +mois.map(m=>'<td class="num" style="'+cell+(m.month===month?sel:'')+'">'+fmt(m[l[1]],l[2])+'</td>').join('')
+      +'<td class="num" style="'+cell+'font-weight:700">'+fmt(total[l[1]],l[2])+'</td></tr>').join('')
+    +'</tbody></table></div></div>';
+  el.querySelectorAll('th[data-mois]').forEach(th=>th.onclick=function(){S.month=+th.dataset.mois;render()});
+}
 function renderCal(){
   if(!q('monthSel'))return;
   let a=A(),m=S.month;
   q('monthSel').innerHTML=M.map((x,i)=>'<option value="'+i+'" '+(i===m?'selected':'')+'>'+x+'</option>').join('');
   q('monthSel').onchange=function(e){S.month=+e.target.value;render()};
+  renderCalTotaux(a,m);
 
   // Légende
   if(q('calLegend')){
