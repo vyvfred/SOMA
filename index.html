@@ -222,6 +222,14 @@ tr.subtotal td{background:rgba(71,38,131,.15)!important;font-weight:700;color:va
 .sw{width:12px;height:12px;background:var(--violet);}
 .sw.g{background:#3a3d55;}.sw.o{background:var(--blue);}.sw.v{background:var(--green);}
 .lineMini{height:210px;display:flex;align-items:end;gap:4px;border-left:1px solid var(--border);border-bottom:1px solid var(--border);padding:10px 6px 0;}
+.caMois{display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid var(--border);padding-top:6px;}
+.caMoisCol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:220px;}
+.caMoisVal{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;margin-bottom:3px;white-space:nowrap;}
+.caMoisBar{width:100%;background:linear-gradient(to top,var(--violet),var(--violet2));min-height:2px;transition:height .6s ease;}
+.caMoisPied{display:flex;gap:4px;margin-top:5px;}
+.caMoisPied>div{flex:1;min-width:0;text-align:center;font-size:10px;line-height:1.4;color:var(--ink65);}
+.caMoisPied b{display:block;color:var(--ink);font-size:11px;}
+.caMoisLeg{font-size:11px;color:var(--ink65);margin-top:8px;}
 .lineBar{flex:1;background:linear-gradient(to top,var(--violet),var(--violet2));min-height:2px;transition:height .6s ease;}
 .gauge{height:14px;background:var(--bg3);border:1px solid var(--border);overflow:hidden;}
 .gaugeFill{height:100%;background:linear-gradient(90deg,var(--violet),var(--violet2));transition:width .8s ease;}
@@ -1903,8 +1911,8 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
         <div class="chartGrid">
           <div class="chartBox"><div class="chartTitle">CA : 2026 vs Objectif vs Budget</div><div class="barChart" id="chartCA"></div><div class="legend"><span><div class="sw g"></div>2026</span><span><div class="sw o"></div>Objectif</span><span><div class="sw v"></div>Budget</span></div></div>
           <div class="chartBox"><div class="chartTitle">Résultats</div><div class="barChart" id="chartResult"></div></div>
-          <div class="chartBox"><div class="chartTitle">CA mensuel budgété</div><div class="lineMini" id="chartMonthlyCA"></div></div>
           <div class="chartBox"><div class="chartTitle">Ratios clés</div><div id="chartRatios"></div></div>
+          <div class="chartBox" style="grid-column:1/-1" data-testid="ca-mensuel"><div class="chartTitle">CA mensuel budgété, jours ouvrés et jours de vacances scolaires</div><div id="chartMonthlyCA"></div></div>
         </div>
       </div>
 
@@ -6398,7 +6406,15 @@ function renderCoherence(){
     +'Si vos références CA dépassent significativement ce montant, des tensions HS apparaîtront.</div>':'');
 }
 
-function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['Résultat d\'exploitation 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=vueExploitation(a)?makeTripleBars([{value:rex,cls:'budget'}],['Rés. expl.']):makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['Rés. expl.','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=monthly.map((v,i)=>`<div class="lineBar" style="height:${Math.max(2,v/max*180)}px" title="${M[i]} : ${euro(v)}"></div>`).join('');let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*coefHSMoyen(a),hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('Résultat d\'exploitation / CA',rexRate)+(vueExploitation(a)?'':gaugeRow('Résultat net / CA',netRate))+gaugeRow('Coût HS / CA',hsRate)}
+// CA mensuel budgété avec, sous chaque mois, les jours ouvrés et les jours de vacances scolaires (VS)
+function kEuro(v){v=+v||0;return Math.abs(v)>=1e6?(v/1e6).toFixed(2).replace('.',',')+' M€':Math.round(v/1000)+' k€'}
+function caMoisHTML(a,monthly){
+  let t=totauxCalendrier(a.cal).mois,max=Math.max(1,...monthly);
+  return '<div class="caMois">'+monthly.map((v,i)=>'<div class="caMoisCol" title="'+M[i]+' : '+euro(v)+'"><div class="caMoisVal">'+kEuro(v)+'</div><div class="caMoisBar" style="height:'+Math.max(2,v/max*170)+'px"></div></div>').join('')+'</div>'
+    +'<div class="caMoisPied">'+t.map((x,i)=>'<div><b>'+M[i]+'</b>'+x.ouvres+' ouv.<br>'+x.vacances+' VS</div>').join('')+'</div>'
+    +'<div class="caMoisLeg">ouv. = jours ouvrés hors vacances scolaires · VS = jours de semaine en vacances scolaires (zone '+(a.schoolZone||'?')+')</div>';
+}
+function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['Résultat d\'exploitation 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=vueExploitation(a)?makeTripleBars([{value:rex,cls:'budget'}],['Rés. expl.']):makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['Rés. expl.','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=caMoisHTML(a,monthly);let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*coefHSMoyen(a),hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('Résultat d\'exploitation / CA',rexRate)+(vueExploitation(a)?'':gaugeRow('Résultat net / CA',netRate))+gaugeRow('Coût HS / CA',hsRate)}
 
 function cgBadgeType(x){return x.chargeType==='fixe'?'<span class="badgeFixe">fixe</span>':'<span class="badgeVar">variable</span>'}
 function cgCellType(x,safe){return '<td>'+cgBadgeType(x)+`<select onchange="setRexType('${safe}',this.value)" style="margin-top:5px"><option value="fixe" ${x.chargeType==='fixe'?'selected':''}>charge fixe</option><option value="variable" ${x.chargeType==='variable'?'selected':''}>charge variable</option></select></td>`}
