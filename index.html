@@ -1566,10 +1566,18 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   <details class="objCollapse" id="collapseImproductif" open>
     <summary>Personnel improductif (régulateurs, responsables)</summary>
     <div class="objCollapseBody">
-      <p class="hint" style="margin-bottom:12px">La masse salariale des improductifs est saisie en une ligne globale par le contrôleur de gestion. Leur absentéisme suit le même taux que les roulants, mois par mois. Renseignez ici, si besoin, leurs heures supplémentaires par semaine (majorées selon le barème 25/50 du mois). Leurs congés n'ont pas d'impact sur la production.</p>
+      <p class="hint" style="margin-bottom:12px">La masse salariale des improductifs est saisie en une ligne globale par le contrôleur de gestion. Leur absentéisme suit le même taux que les roulants, mois par mois. Renseignez ici, si besoin, leurs heures supplémentaires par semaine (majorées selon le barème 25/50 du mois). Leurs congés n'ont pas d'impact sur la production ; leur remplacement se chiffre dans « Congés des non-roulants et remplacement », plus bas.</p>
       <div id="tauxAbsImpInfo" style="font-size:12px;color:var(--ink65);margin-bottom:14px"></div>
       <h4 style="margin:10px 0 8px;font-size:13px;color:var(--ink65)">Heures supplémentaires improductives par semaine</h4>
       <div class="tablewrap"><table id="hsImpTable"></table></div>
+    </div>
+  </details>
+
+  <details class="objCollapse" id="collapseCPNR" data-testid="repli-cp-nr">
+    <summary>Congés des non-roulants et remplacement</summary>
+    <div class="objCollapseBody">
+      <p class="hint" style="margin-bottom:12px">Le salaire des non-roulants est déjà compté dans la ligne globale du contrôleur de gestion : un congé est payé, il ne change pas ce montant. Ce qui coûte, c'est le <b>remplacement</b> pendant l'absence (un régulateur remplacé par un collègue en heures supplémentaires, ou par un intérimaire). Indiquez le nombre de jours de congés de l'équipe non roulante pour chaque mois, puis comment ils sont remplacés : le coût s'ajoute aux charges de personnel du mois. La part roulante d'un non-roulant (par exemple un régulateur à 20 % roulant) reste comptée avec les congés des roulants.</p>
+      <div id="cpNRBloc"></div>
     </div>
   </details>
 
@@ -3464,7 +3472,7 @@ async function saveAffectation(agenceNom, drUserId) {
 // MOTEUR DE CALCUL (identique V47)
 // ═══════════════════════════════════════════════
 function refs(){return Array.from({length:12},()=>({semaine:null,vacances:null,samedi:null,dimanche:null,ferie:null}))}
-function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,cgLocked:false,tauxAbsImproductif:null,tauxHoraireBrutJuin:null,msNRBrutMensuel:null,msNRTauxCharges:null,ratioMaintien:null,hsImproductif:{},repasRoulant:{},repasNonRoulant:{},idjfRoulant:{},idjfNonRoulant:{},
+function agency(name){let a={name,histCA:null,histCA2025:null,histTXR2026:null,targetAbsRate:null,perspectives:'',targetCA:null,targetTXR:null,schoolZone:'B',actSan:true,actSai:false,actTP:false,moisVerrouilles:[],moisActif:null,cgLocked:false,tauxAbsImproductif:null,tauxHoraireBrutJuin:null,msNRBrutMensuel:null,msNRTauxCharges:null,ratioMaintien:null,hsImproductif:{},cpNR:cpNRVide(),repasRoulant:{},repasNonRoulant:{},idjfRoulant:{},idjfNonRoulant:{},
   // Calendrier des périodes de paie 2027
   // Format : [{mois:'Janvier', debut:'2026-12-07', fin:'2027-01-10', semaines:5}...]
   periodesPaie:null,variablesDec2026:null,refs:{san:refs(),sai:refs(),tp:refs()},cal:[],employees:[],presence:{},sick:Array(12).fill(null),hs50:Array(12).fill(null),tauxHoraireBrut:null,tauxChargePatronal:null,costHour:null,hsCostRate:1.25,drCostAnnual:0,drPct:0,rex:{}};T.forEach(r=>{if(r.type!=='subtotal')a.rex[r.label]={values:Array(12).fill(null),mode:r.label==='Carburant'||LIGNES_QUOTE_PART.indexOf(r.label)>=0?'annual':'month',chargeType:LIGNES_QUOTE_PART.indexOf(r.label)>=0?'fixe':r.type==='charge'?'variable':'fixe',allocationKey:r.label==='Carburant'?'ca':'monthly12',pct:r.label==='Carburant'?5.2:0,annual:0}});return a}
@@ -3574,11 +3582,12 @@ function payrollMonth(a,m){
   // Structure : charges de personnel saisies par le CG
   if(estStructure(a)) return manual(a,'Charges de personnel',m);
   // Si les périodes de paie sont configurées, utiliser le calcul comptable
+  // + remplacement des congés des non-roulants (HS ou intérim), hors lissage des variables
   if(a.periodesPaie && a.periodesPaie.length && a.costHour && a.cal && a.cal.length){
-    return payrollPayMonth(a, m);
+    return payrollPayMonth(a, m) + coutRemplacementCPNRMois(a, m);
   }
   // Sinon fallback sur le calcul mois civil
-  return payrollMonthCivil(a,m);
+  return payrollMonthCivil(a,m) + coutRemplacementCPNRMois(a, m);
 }
 // Masse salariale d'un mois civil (fallback hors périodes de paie configurées)
 function payrollMonthCivil(a,m){
@@ -6078,6 +6087,7 @@ function renderRH(){
   }
 
   renderHSImproductif();
+  renderCPNR();
   renderIndemnites();
 }
 
@@ -6860,6 +6870,39 @@ function renderIndemnites(){
   }
 }
 
+// ── Congés des non-roulants : jours par mois et coût de remplacement (HS d'un collègue ou intérim) ──
+function cpNRMuter(fn){let a=A();if(!a.cpNR)a.cpNR=cpNRVide();if(!a.cpNR.jours)a.cpNR.jours=Array(12).fill(null);fn(a.cpNR);render();}
+function numCPNR(v){return v===''?null:+String(v).replace(',','.');}
+function setCPNRJour(m,v){cpNRMuter(function(c){c.jours[m]=numCPNR(v);});}
+function setCPNRChamp(k,v){cpNRMuter(function(c){c[k]=k==='mode'?v:numCPNR(v);});}
+function repartirCPNR(){repartirCPNRAuto(A());render();}
+function renderCPNR(){
+  let el=q('cpNRBloc');if(!el)return;
+  let a=A(),c=a.cpNR||cpNRVide(),nb=salariesNR(a).length,acquis=cpNRAcquis(a),saisis=cpNRSaisis(a),reste=Math.round((acquis-saisis)*10)/10;
+  let mode=c.mode||'hs',total=coutRemplacementCPNR(a),coutJour=coutJourRemplacementCPNR(a,6),pctR=pctRemplaceCPNR(a);
+  let cel='padding:4px 6px';
+  let h='<div data-testid="cp-nr-compteur" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);font-size:13px;margin-bottom:10px">'
+    +'<span title="25 jours par an au prorata du temps de travail et de la part non roulante, moins l\'absentéisme du mois">Acquis par '+nb+' non-roulant'+(nb>1?'s':'')+' : <b>'+acquis.toFixed(1)+' J</b></span>'
+    +'<span>Saisis : <b>'+saisis.toFixed(1)+' J</b></span>'
+    +'<span>Reste : <b style="color:'+(Math.abs(reste)<1?'var(--green)':'var(--orange)')+'">'+reste.toFixed(1)+' J</b></span>'
+    +'<button type="button" data-testid="cp-nr-repartir" onclick="repartirCPNR()" style="margin-left:auto;font-size:12px">↗ Répartir les jours acquis (60/20/20)</button></div>';
+  h+='<div class="tablewrap"><table style="border-collapse:collapse;font-size:12px"><thead><tr><th style="'+cel+';text-align:left">Mois</th>'+M.map(m=>'<th style="'+cel+'">'+m+'</th>').join('')+'<th style="'+cel+'">Total</th></tr></thead><tbody>'
+    +'<tr><td style="'+cel+'"><b>Jours de CP</b></td>'+M.map((_,i)=>{let v=c.jours&&c.jours[i]!==null&&c.jours[i]!==undefined?c.jours[i]:'';return '<td style="padding:2px 3px"><input type="number" data-testid="cpnr-'+i+'"'+drA('cpNR.jours.'+i)+' min="0" step="0.5" value="'+v+'" placeholder="0" onchange="setCPNRJour('+i+',this.value)" style="width:100%;min-width:58px;padding:6px 4px;text-align:center"></td>';}).join('')+'<td class="num" style="'+cel+'"><b>'+saisis.toFixed(1)+'</b></td></tr>'
+    +'<tr style="color:var(--ink65)"><td style="'+cel+'">Coût de remplacement</td>'+M.map((_,i)=>{let v=coutRemplacementCPNRMois(a,i);return '<td class="num" style="'+cel+';text-align:right">'+(v?euro(v):'—')+'</td>';}).join('')+'<td class="num" style="'+cel+';text-align:right"><b>'+euro(total)+'</b></td></tr>'
+    +'</tbody></table></div>';
+  h+='<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:12px;font-size:13px">'
+    +'<label style="display:flex;gap:6px;align-items:center;margin:0">Remplacement <select data-testid="cp-nr-mode" onchange="setCPNRChamp(\'mode\',this.value)" style="max-width:280px">'
+    +[['hs','Heures supplémentaires d\'un collègue'],['interim','Intérim'],['aucun','Pas de remplacement']].map(o=>'<option value="'+o[0]+'"'+(o[0]===mode?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></label>'
+    +(mode!=='aucun'?'<label style="display:flex;gap:6px;align-items:center;margin:0">Part des jours remplacés <input type="number" data-testid="cp-nr-pct" min="0" max="100" value="'+(c.pctRemplace===null||c.pctRemplace===undefined?'':c.pctRemplace)+'" placeholder="100" onchange="setCPNRChamp(\'pctRemplace\',this.value)" style="width:60px"> %</label>':'')
+    +(mode==='interim'?'<label style="display:flex;gap:6px;align-items:center;margin:0">Coût d\'un jour d\'intérim <input type="number" data-testid="cp-nr-interim" min="0" value="'+(c.coutJourInterim===null||c.coutJourInterim===undefined?'':c.coutJourInterim)+'" placeholder="0" onchange="setCPNRChamp(\'coutJourInterim\',this.value)" style="width:80px"> €</label>':'')
+    +'</div>';
+  h+='<div style="font-size:12px;color:var(--ink65);margin-top:8px">'
+    +(mode==='hs'?'Un jour remplacé = 7 h au coût horaire des non-roulants, majorées selon votre répartition 25 % / 50 % : environ <b>'+euro(coutJour)+'</b> par jour. ':'')
+    +(mode==='interim'&&!(+c.coutJourInterim>0)?'Renseignez le coût d\'un jour d\'intérim pour chiffrer le remplacement. ':'')
+    +(mode==='aucun'?'Les congés ne sont pas remplacés : aucun coût ajouté. ':'')
+    +'Coût annuel ajouté aux charges de personnel : <b>'+euro(total)+'</b>'+(mode!=='aucun'&&pctR<100?' ('+pctR+' % des jours remplacés)':'')+'.</div>';
+  el.innerHTML=h;
+}
 function renderHSImproductif(){
   let a = A();
   if(!q('hsImpTable')) return;
@@ -7873,6 +7916,28 @@ function cpGeneres(a) {
     });
   });
   return Math.round(totalJ * 10) / 10;
+}
+// Congés des non-roulants (nov. 2026) : jours de CP saisis par mois pour l'équipe non roulante (total).
+// Leur salaire est déjà dans la ligne non-roulants du CG (un congé est payé) : seul le REMPLACEMENT coûte,
+// soit en heures supplémentaires d'un collègue (7 h × coût horaire improductif × majoration HS du mois),
+// soit en intérim (coût par jour saisi), au prorata de la part des jours réellement remplacés.
+function salariesNR(a){return (a.employees||[]).filter(function(e){return !isRoulant(e.qual)&&(1-partRoulant(e))>0;});}
+function cpNRAcquisMois(a,m){let ref='2027-'+String(m+1).padStart(2,'0')+'-15',mal=tauxAbsMois(a,m);return salariesNR(a).reduce(function(s,e){if(!empPresent(e,ref))return s;return s+CP_JOURS_MOIS*(1-mal)*((+e.hours||0)/35)*(1-partRoulant(e));},0);}
+function cpNRAcquis(a){return Math.round(M.reduce(function(s,_,m){return s+cpNRAcquisMois(a,m);},0)*10)/10;}
+function cpNRSaisis(a){let j=a.cpNR&&a.cpNR.jours;return j?Math.round(j.reduce(function(s,v){return s+(+v||0);},0)*10)/10:0;}
+function pctRemplaceCPNR(a){let v=a.cpNR?a.cpNR.pctRemplace:null;return (v===null||v===undefined||v==='')?100:Math.max(0,Math.min(100,+v||0));}
+function coutJourRemplacementCPNR(a,m){let c=a.cpNR||{},mode=c.mode||'hs';if(mode==='interim')return +c.coutJourInterim||0;if(mode==='hs')return 7*coutHoraireImproductif(a)*coefHSMois(a,m);return 0;}
+function coutRemplacementCPNRMois(a,m){let c=a.cpNR;if(!c||!c.jours)return 0;let j=+c.jours[m]||0;if(!j)return 0;return j*pctRemplaceCPNR(a)/100*coutJourRemplacementCPNR(a,m);}
+function coutRemplacementCPNR(a){return M.reduce(function(s,_,m){return s+coutRemplacementCPNRMois(a,m);},0);}
+function cpNRVide(){return {jours:Array(12).fill(null),mode:'hs',pctRemplace:100,coutJourInterim:null};}
+// Répartition automatique des jours acquis selon les enveloppes légales (60 % juin-octobre, 20 % novembre-janvier, 20 % février-mai)
+function repartirCPNRAuto(a){
+  let tot=cpNRAcquis(a),j=Array(12).fill(0);
+  [[[5,6,7,8,9],0.6],[[10,11,0],0.2],[[1,2,3,4],0.2]].forEach(function(e){let parMois=tot*e[1]/e[0].length;e[0].forEach(function(m){j[m]=Math.round(parMois*2)/2;});});
+  // Reliquat d'arrondi (demi-journées) reporté sur août, pour poser exactement les jours acquis
+  let ecart=Math.round(tot*2)/2-j.reduce(function(s,v){return s+v;},0);j[7]=Math.max(0,Math.round((j[7]+ecart)*10)/10);
+  if(!a.cpNR)a.cpNR=cpNRVide();
+  a.cpNR.jours=j;return a;
 }
 // Heures roulantes disponibles sur l'année hors heures supplémentaires : base contractuelle moins
 // la maladie (taux moyen saisi, sinon cible) et les congés générés. Ne dépend pas du placement des CP.
