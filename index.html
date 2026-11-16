@@ -1566,18 +1566,15 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   <details class="objCollapse" id="collapseImproductif" open>
     <summary>Personnel improductif (régulateurs, responsables)</summary>
     <div class="objCollapseBody">
-      <p class="hint" style="margin-bottom:12px">La masse salariale des improductifs est saisie en une ligne globale par le contrôleur de gestion. Leur absentéisme suit le même taux que les roulants, mois par mois. Renseignez ici, si besoin, leurs heures supplémentaires par semaine (majorées selon le barème 25/50 du mois). Leurs congés n'ont pas d'impact sur la production ; leurs jours de congés se planifient dans « Congés des non-roulants », plus bas.</p>
+      <p class="hint" style="margin-bottom:12px">La masse salariale des improductifs est saisie en une ligne globale par le contrôleur de gestion. Leur absentéisme suit le même taux que les roulants, mois par mois. Renseignez ici, si besoin, leurs heures supplémentaires par semaine (majorées selon le barème 25/50 du mois). Indiquez aussi le nombre de jours de congés payés qu'ils posent chaque mois.</p>
       <div id="tauxAbsImpInfo" style="font-size:12px;color:var(--ink65);margin-bottom:14px"></div>
+      <div data-testid="repli-cp-nr" style="margin-bottom:18px">
+        <h4 style="margin:10px 0 6px;font-size:13px;color:var(--ink65)">Congés payés : nombre de jours par mois</h4>
+        <p class="hint" style="margin-bottom:10px;font-size:12px">Nombre de jours de congés de l'équipe non roulante pour chaque mois, pour planifier toute l'équipe et vérifier que les jours acquis sont bien posés. Ces congés n'ont <b>aucun coût</b> dans le budget : leur salaire est déjà dans la ligne globale du contrôleur de gestion et ils ne sont pas remplacés. La part roulante d'un non-roulant (par exemple un régulateur à 20 % roulant) reste comptée avec les congés des roulants.</p>
+        <div id="cpNRBloc"></div>
+      </div>
       <h4 style="margin:10px 0 8px;font-size:13px;color:var(--ink65)">Heures supplémentaires improductives par semaine</h4>
       <div class="tablewrap"><table id="hsImpTable"></table></div>
-    </div>
-  </details>
-
-  <details class="objCollapse" id="collapseCPNR" data-testid="repli-cp-nr">
-    <summary>Congés des non-roulants</summary>
-    <div class="objCollapseBody">
-      <p class="hint" style="margin-bottom:12px">Indiquez le nombre de jours de congés de l'équipe non roulante (régulateurs, responsables…) pour chaque mois, pour planifier toute l'équipe et vérifier que les jours acquis sont bien posés. Ces congés n'ont <b>aucun coût</b> dans le budget : le salaire des non-roulants est déjà compté dans la ligne globale du contrôleur de gestion (un congé est payé) et ils ne sont pas remplacés. La part roulante d'un non-roulant (par exemple un régulateur à 20 % roulant) reste comptée avec les congés des roulants.</p>
-      <div id="cpNRBloc"></div>
     </div>
   </details>
 
@@ -1930,7 +1927,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
           <div class="chartBox"><div class="chartTitle">CA : 2026 vs Objectif vs Budget</div><div class="barChart" id="chartCA"></div><div class="legend"><span><div class="sw g"></div>2026</span><span><div class="sw o"></div>Objectif</span><span><div class="sw v"></div>Budget</span></div></div>
           <div class="chartBox"><div class="chartTitle">Résultats</div><div class="barChart" id="chartResult"></div></div>
           <div class="chartBox"><div class="chartTitle">Ratios clés</div><div id="chartRatios"></div></div>
-          <div class="chartBox" style="grid-column:1/-1" data-testid="ca-mensuel"><div class="chartTitle">CA mensuel budgété, jours ouvrés et jours de vacances scolaires</div><div id="chartMonthlyCA"></div></div>
+          <div class="chartBox" style="grid-column:1/-1" data-testid="ca-mensuel"><div class="chartTitle">CA mensuel budgété, jours de semaine hors vacances et jours de vacances scolaires</div><div id="chartMonthlyCA"></div></div>
         </div>
       </div>
 
@@ -5514,8 +5511,8 @@ function pctCal(x){return (x*100).toFixed(1).replace('.',',')+' %'}
 function renderCalTotaux(a,month){
   let el=q('calTotaux');if(!el)return;
   let r=totauxCalendrier(a.cal),mois=r.mois,total=r.total,t=mois[month];
-  let kpis=[['CA du mois',euro(t.ca),true],["Part de l'année",pctCal(t.part)],['CA moyen / jour',euro(t.moyJour)],['Jours ouvrés',t.ouvres],['Vacances',t.vacances],['Samedis',t.samedis],['Dimanches',t.dimanches],['Fériés',t.feries]];
-  let lignes=[['Jours ouvrés','ouvres'],['Vacances','vacances'],['Samedis','samedis'],['Dimanches','dimanches'],['Fériés','feries'],['Total jours','jours'],['CA Sanitaire','san',true]];
+  let kpis=[['CA du mois',euro(t.ca),true],["Part de l'année",pctCal(t.part)],['CA moyen / jour',euro(t.moyJour)],['Jours de semaine hors vacances scolaires',t.ouvres],['Vacances',t.vacances],['Samedis',t.samedis],['Dimanches',t.dimanches],['Fériés',t.feries]];
+  let lignes=[['Jours de semaine hors vacances scolaires','ouvres'],['Vacances','vacances'],['Samedis','samedis'],['Dimanches','dimanches'],['Fériés','feries'],['Total jours','jours'],['CA Sanitaire','san',true]];
   if(a.actSai)lignes.push(['CA Saisonnier','sai',true]);
   if(a.actTP)lignes.push(['CA Transport de personnes','tp',true]);
   lignes.push(['CA total','ca',true,true],["Part de l'année",'part','pct']);
@@ -6489,8 +6486,8 @@ function kEuro(v){v=+v||0;return Math.abs(v)>=1e6?(v/1e6).toFixed(2).replace('.'
 function caMoisHTML(a,monthly){
   let t=totauxCalendrier(a.cal).mois,max=Math.max(1,...monthly);
   return '<div class="caMois">'+monthly.map((v,i)=>'<div class="caMoisCol" title="'+M[i]+' : '+euro(v)+'"><div class="caMoisVal">'+kEuro(v)+'</div><div class="caMoisBar" style="height:'+Math.max(2,v/max*170)+'px"></div></div>').join('')+'</div>'
-    +'<div class="caMoisPied">'+t.map((x,i)=>'<div><b>'+M[i]+'</b>'+x.ouvres+' ouv.<br>'+x.vacances+' VS</div>').join('')+'</div>'
-    +'<div class="caMoisLeg">ouv. = jours ouvrés hors vacances scolaires · VS = jours de semaine en vacances scolaires (zone '+(a.schoolZone||'?')+')</div>';
+    +'<div class="caMoisPied">'+t.map((x,i)=>'<div><b>'+M[i]+'</b>'+x.ouvres+' sem.<br>'+x.vacances+' VS</div>').join('')+'</div>'
+    +'<div class="caMoisLeg">sem. = jours de semaine hors vacances scolaires · VS = jours de semaine en vacances scolaires (zone '+(a.schoolZone||'?')+')</div>';
 }
 function renderDashboard(){if(!q('dashKpis'))return;let a=A(),ca2026=+a.histCA||0,caObj=+a.targetCA||0,caBudget=ann(a,"Chiffre d'affaires"),ms=ann(a,"Charges de personnel"),rex=ann(a,"RESULTAT D'EXPLOITATION"),net=ann(a,"RESULTAT NET"),hs=hsTot(a).hs;kpis('dashKpis',[['CA 2026',euro(ca2026),'réalisé / estimé'],['Objectif CA 2027',euro(caObj),'saisi REX'],['Budget CA 2027',euro(caBudget),'calendrier'],['Écart objectif',euro(caBudget-caObj),'budget - objectif'],['Résultat d\'exploitation 2027',euro(rex),pct(caBudget?rex/caBudget*100:0)],['HS estimées',hs.toFixed(0)+' h','moteur RH']]);if(q('chartCA'))q('chartCA').innerHTML=makeTripleBars([{value:ca2026,cls:'b2026'},{value:caObj,cls:'obj'},{value:caBudget,cls:'budget'}],['2026','Obj 27','Bud 27']);if(q('chartResult'))q('chartResult').innerHTML=vueExploitation(a)?makeTripleBars([{value:rex,cls:'budget'}],['Rés. expl.']):makeTripleBars([{value:rex,cls:'budget'},{value:net,cls:'budget'}],['Rés. expl.','Net']);let monthly=M.map((_,m)=>monthCA(a,m)),max=Math.max(1,...monthly);if(q('chartMonthlyCA'))q('chartMonthlyCA').innerHTML=caMoisHTML(a,monthly);let msRate=caBudget?ms/caBudget*100:0,rexRate=caBudget?rex/caBudget*100:0,netRate=caBudget?net/caBudget*100:0,hsCost=hs*a.costHour*coefHSMoyen(a),hsRate=caBudget?hsCost/caBudget*100:0;if(q('chartRatios'))q('chartRatios').innerHTML=gaugeRow('Masse salariale / CA',msRate)+gaugeRow('Résultat d\'exploitation / CA',rexRate)+(vueExploitation(a)?'':gaugeRow('Résultat net / CA',netRate))+gaugeRow('Coût HS / CA',hsRate)}
 
