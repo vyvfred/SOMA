@@ -1584,6 +1584,16 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
   <div class="stepnav" id="stepnav_rh"></div>
 </section>
 
+<!-- PANEL CHARGES DU REX (6 postes : 4 en % du CA mensuel, 2 en montant mensuel) -->
+<section id="charges" class="panel">
+  <div class="card" data-testid="charges-rex">
+    <h2>Charges d'exploitation</h2>
+    <p class="hint" style="margin-bottom:14px">Vous construisez six postes de charges. Les quatre premiers se saisissent en <b>% du chiffre d'affaires de chaque mois</b> (le taux peut changer d'un mois à l'autre) ; la sous-traitance et l'entretien des véhicules et du bâtiment en <b>montant fixe par mois</b>. Les cases sont pré-remplies avec les valeurs du contrôle de gestion quand il y en a : ajustez-les. Le bouton ⇉ recopie la valeur de janvier sur les 12 mois. Les autres charges restent saisies par le contrôle de gestion.</p>
+    <div id="chargesREXBloc"></div>
+  </div>
+  <div class="stepnav" id="stepnav_charges"></div>
+</section>
+
 <!-- PANEL REFERENCES AGENCES (CG) -->
 <section id="cgdash" class="panel">
   <div class="card">
@@ -2142,7 +2152,7 @@ function vueExploitation(a){return !!PROFILE&&PROFILE.role==='rex'&&!estStructur
 function resultatAffiche(a){return vueExploitation(a)?{lib:"Résultat d'exploitation",libMin:"résultat d'exploitation",val:ann(a,"RESULTAT D'EXPLOITATION")}:{lib:'Résultat net',libMin:'résultat',val:ann(a,"RESULTAT NET")}}
 function lignesSIG(a,consolide){let l=T.filter(function(r){return (consolide||estSiege(a)||LIGNES_SIEGE.indexOf(r.label)<0)&&(consolide||!estStructure(a)||LIGNES_QUOTE_PART.indexOf(r.label)<0);});if(!consolide&&vueExploitation(a)){let i=l.findIndex(function(r){return r.label==="RESULTAT D'EXPLOITATION";});l=l.slice(0,i+1);}return l}
 function caStructure(a,m){let x=a.rex&&a.rex["Chiffre d'affaires"];if(!x)return 0;if(x.mode==='annual')return (+x.annual||0)/12;if(x.mode==='month')return x.values&&x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0;return 0}
-const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['previsionnel','Prévisionnel'],['finance','Synthèse'],['aide','Aide']];
+const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['charges','Charges'],['previsionnel','Prévisionnel'],['finance','Synthèse'],['aide','Aide']];
 const panelsCG=[['cgdash','Tableau de bord'],['refagences','Données agences'],['periodes','Périodes de paie'],['variablesdec','Variables déc. 2026'],['affectation','Affectation DR'],['comparative','Vue comparative'],['graphiques','Graphiques'],['consolidation','Consolidation'],['objectif','Ouvrir une agence'],['cg','Charges CG'],['rex','Prévisionnel'],['finance','Synthèse'],['controle','Contrôles'],['validation','Budgets à valider'],['aide','Aide']];
 // Regroupement des onglets CG en sections thématiques (le travail du CG n'est pas séquentiel)
 const CG_GROUPS = [
@@ -3737,6 +3747,36 @@ function msNRMois(a, m){
 }
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
 function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='pctMois')return monthCA(a,m)*(+(x.pcts&&x.pcts[m])||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
+// Postes de charges saisis par le REX (nov. 2026) : 4 en % du CA différent chaque mois, 2 en montant fixe par mois.
+// Au premier passage, les valeurs déjà posées par le contrôleur de gestion sont reprises, converties dans ce mode
+// (même montant mois par mois). Une ligne saisie par le REX porte saisieREX : l'import du classeur CG ne l'écrase plus.
+const LIGNES_CHARGES_REX=[['Matériels ambulances','pctMois'],['Carburant','pctMois'],['Entretiens petits équipements','pctMois'],['Fourniture bureau - vêtements','pctMois'],['Sous traitance','month'],['Entretiens véhicules - batîment','month']];
+function modeChargeREX(l){let r=LIGNES_CHARGES_REX.find(function(x){return x[0]===l;});return r?r[1]:null;}
+// Valeurs à afficher au REX pour un poste (sans rien modifier) : 12 % du CA ou 12 montants
+function valeursChargeREX(a,l){
+  let mode=modeChargeREX(l),x=a.rex&&a.rex[l];
+  if(!x)return Array(12).fill(null);
+  if(x.mode===mode)return (mode==='pctMois'?(x.pcts||[]):(x.values||[])).slice(0,12).concat(Array(12).fill(null)).slice(0,12);
+  let montants=M.map(function(_,m){return manual(a,l,m);});
+  if(mode==='month')return montants.map(function(v){return v?Math.round(v):null;});
+  let caAn=M.reduce(function(s,_,m){return s+monthCA(a,m);},0);
+  if(caAn>0)return montants.map(function(v,m){let ca=monthCA(a,m);return ca>0&&v?Math.round(v/ca*10000)/100:null;});
+  // CA pas encore construit : taux unique déduit du mode CG (taux fixe, ou montant annuel rapporté à l'objectif de CA)
+  let t=x.mode==='pct'&&+x.pct?+x.pct:(+a.targetCA>0?Math.round(montants.reduce(function(s,v){return s+v;},0)/+a.targetCA*10000)/100:0);
+  return Array(12).fill(t?t:null);
+}
+// Passe le poste dans le mode REX (reprise des valeurs CG) avant une saisie
+function versSaisieREX(a,l){
+  let mode=modeChargeREX(l);if(!mode)return null;
+  if(!a.rex)a.rex={};
+  let x=a.rex[l]||{values:Array(12).fill(null),mode:'month',chargeType:'variable',allocationKey:'monthly12',pct:0,annual:0};
+  if(x.mode!==mode){let v=valeursChargeREX(a,l);x=Object.assign({},x,{mode:mode});if(mode==='pctMois')x.pcts=v;else x.values=v;}
+  else x=Object.assign({},x,mode==='pctMois'?{pcts:(x.pcts||Array(12).fill(null)).slice()}:{values:(x.values||Array(12).fill(null)).slice()});
+  x.saisieREX=true;a.rex=Object.assign({},a.rex);a.rex[l]=x;return x;
+}
+function setChargeREX(a,l,m,v){let x=versSaisieREX(a,l);if(!x)return a;let n=v===''||v===null||v===undefined?null:+String(v).replace(',','.');if(modeChargeREX(l)==='pctMois')x.pcts[m]=n;else x.values[m]=n;return a;}
+// Postes travaillés par le REX (saisieREX) avec au moins une valeur : sert à l'avancement, sans recalcul du CA
+function chargesREXRemplies(a){return LIGNES_CHARGES_REX.filter(function(r){let x=a.rex&&a.rex[r[0]];if(!x||!x.saisieREX)return false;return (r[1]==='pctMois'?(x.pcts||[]):(x.values||[])).some(function(v){return v!==null&&v!==undefined&&v!==''&&+v!==0;});}).length;}
 function sig(a,m){let v=l=>manual(a,l,m),ca=monthCA(a,m),marge=ca-v("Achats Matières premières et sous traitance")-v("Variations stock marchandises et autres approvisionnements"),aa=["Electricité - eau - chauffage","Matériels ambulances","Carburant","Entretiens petits équipements","Fourniture bureau - vêtements","Sous traitance","Crédit bail et location véhicules","Location téléphonie - informatique - mobilité","Location immobilières et charges locatives","Entretiens véhicules - batîment","Maintenance informatique","Assurance","Formation - documentation","Honoraires et prestations de services","Publicité - cadeaux","Frais de déplacement - missions réceptions","Péages","Affranchissement","Téléphonie - internet","Frais bancaires et cotisations"].reduce((s,l)=>s+v(l),0),va=marge-aa,pay=payrollMonth(a,m),qp=estStructure(a)?0:v("Quote-part MS siège")+v("Quote-part régulation mutualisée"),ebe=va+v("Subventions d'exploitation")-v("Impôts, taxes et versements assimilés")-pay-qp,rex=ebe+v("Reprises s/ charges et transferts")+v("Autres produits")-v("Dotations amortissements et provisions")-v("Autres charges"),rf=v("Produits financiers")-v("Charges financières"),rcai=rex+rf,re=v("Produits exceptionnels")-v("Charges exceptionnelles"),rn=rcai+re-v("Impôt sur les sociétés")-v("Participation aux bénéfices");return {"Chiffre d'affaires":ca,"Charges de personnel":pay+qp,"MARGE BRUTE GLOBALE":marge,"Autres Achats et charges externes":aa,"VALEUR AJOUTEE":va,"EXCEDENT BRUT D'EXPLOITATION":ebe,"RESULTAT D'EXPLOITATION":rex,"RESULTAT FINANCIER":rf,"RESULTAT COURANT AVANT IMPOT":rcai,"RESULTAT EXCEPTIONNEL":re,"RESULTAT NET":rn}}
 function amount(a,l,m){let row=T.find(r=>r.label===l);if(l==="Chiffre d'affaires"||l==="Charges de personnel"||row?.type==='subtotal')return sig(a,m)[l]||0;return manual(a,l,m)}
 function ann(a,l){return M.reduce((s,_,m)=>s+amount(a,l,m),0)}
@@ -5297,6 +5337,35 @@ function showToast(msg, type){
   }, 3200);
 }
 
+// ── Étape « Charges » du REX : 4 postes en % du CA du mois, 2 en montant fixe par mois ──
+const NOMS_CHARGES_REX={'Fourniture bureau - vêtements':'Fournitures de bureau - vêtements','Sous traitance':'Sous-traitance','Entretiens véhicules - batîment':'Entretiens véhicules - bâtiment'};
+function setChargeREXUI(l,m,v){setChargeREX(A(),l,m,v);render();}
+function recopierChargeREX(l){let a=A(),x=versSaisieREX(a,l),src=(x.mode==='pctMois'?x.pcts:x.values)[0];for(let m=1;m<12;m++)setChargeREX(a,l,m,src===null||src===undefined?'':src);render();}
+function renderChargesREX(){
+  let el=q('chargesREXBloc');if(!el)return;
+  let a=A();if(!a||!a.rex){el.innerHTML='';return;}
+  if(estStructure(a)){el.innerHTML='<p class="hint">Les charges des structures sont saisies par le contrôle de gestion.</p>';return;}
+  let ca=M.map((_,m)=>monthCA(a,m)),caAn=ca.reduce((s,v)=>s+v,0);
+  let annuel=l=>M.reduce((s,_,m)=>s+manual(a,l,m),0);
+  let pctF=v=>(Math.round(v*100)/100).toFixed(2).replace('.',',')+' %';
+  let cel='padding:4px 3px;text-align:center';
+  let ligne=function(r){
+    let l=r[0],mode=r[1],vals=valeursChargeREX(a,l),an=annuel(l),js=JSON.stringify(l).replace(/"/g,'&quot;');
+    return '<tr style="border-top:1px solid var(--border)"><td style="padding:4px 8px;white-space:nowrap"><b>'+(NOMS_CHARGES_REX[l]||l)+'</b>'
+      +'<button type="button" title="Recopier la valeur de janvier sur les 12 mois" onclick="recopierChargeREX('+js+')" aria-label="Recopier janvier sur les 12 mois" style="margin-left:4px;padding:1px 5px;font-size:12px;width:auto">⇉</button></td>'
+      +M.map((_,m)=>{let v=vals[m];return '<td style="padding:2px 2px"><input type="number" data-testid="chrex-'+l+'-'+m+'"'+drA('rex.'+l+(mode==='pctMois'?'.pcts.':'.values.')+m)+' step="0.01" min="0" value="'+(v===null||v===undefined?'':v)+'" placeholder="0" onchange="setChargeREXUI('+js+','+m+',this.value)" style="width:100%;min-width:48px;padding:5px 2px;font-size:12px;text-align:center"></td>';}).join('')
+      +'<td class="num" style="padding:4px 8px;text-align:right;white-space:nowrap"><b>'+euro(an)+'</b>'+(mode==='pctMois'&&caAn?'<div style="font-size:10px;color:var(--ink65)">'+pctF(an/caAn*100)+' du CA</div>':'')+'</td></tr>';
+  };
+  let entete='<thead><tr style="color:var(--ink65)"><th style="padding:4px 8px;text-align:left">Poste</th>'+M.map(m=>'<th style="'+cel+'">'+m+'</th>').join('')+'<th style="padding:4px 8px;text-align:right">Année</th></tr></thead>';
+  let total=LIGNES_CHARGES_REX.reduce((s,r)=>s+annuel(r[0]),0);
+  el.innerHTML='<h3 style="margin:6px 0 8px">En % du chiffre d\'affaires du mois</h3><div class="tablewrap"><table style="border-collapse:collapse;font-size:12px;width:100%">'+entete+'<tbody>'
+    +'<tr style="color:var(--ink65)" data-testid="charges-rex-ca"><td style="padding:4px 8px">CA du mois</td>'+ca.map(v=>'<td class="num" style="'+cel+'">'+Math.round(v/1000)+' k€</td>').join('')+'<td class="num" style="padding:4px 8px;text-align:right">'+euro(caAn)+'</td></tr>'
+    +LIGNES_CHARGES_REX.filter(r=>r[1]==='pctMois').map(ligne).join('')+'</tbody></table></div>'
+    +(!caAn?'<p class="hint" style="font-size:12px;margin-top:6px">Le chiffre d\'affaires n\'est pas encore construit (étape Références CA) : les montants s\'afficheront dès qu\'il le sera.</p>':'')
+    +'<h3 style="margin:18px 0 8px">Montant fixe par mois (€)</h3><div class="tablewrap"><table style="border-collapse:collapse;font-size:12px;width:100%">'+entete+'<tbody>'
+    +LIGNES_CHARGES_REX.filter(r=>r[1]==='month').map(ligne).join('')+'</tbody></table></div>'
+    +'<div data-testid="charges-rex-total" style="margin-top:14px;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);font-size:13px">Total de ces six postes : <b>'+euro(total)+'</b>'+(caAn?' soit <b>'+pctF(total/caAn*100)+'</b> du chiffre d\'affaires':'')+'.</div>';
+}
 function renderStepNav(id){
   // Séquence REX uniquement
   if(!PROFILE || (PROFILE.role!=='rex' && PROFILE.role!=='cg' && PROFILE.role!=='admin')) return;
@@ -5382,7 +5451,7 @@ function render(){
   else{if(q('refSaiSection'))q('refSaiSection').style.display='none';}
   if(a.actTP){refTable('refTP','tp');if(q('refTPSection'))q('refTPSection').style.display='';}
   else{if(q('refTPSection'))q('refTPSection').style.display='none';}
-  renderCal();renderTeam();renderRH();renderPrevisionnel();renderCoherence();renderObjectifInsight();renderRefusREX();renderDashboard();renderSynthese();updateAttentionCenter();renderCG();renderControl();renderREX();renderFinance();
+  renderCal();renderTeam();renderRH();renderChargesREX();renderPrevisionnel();renderCoherence();renderObjectifInsight();renderRefusREX();renderDashboard();renderSynthese();updateAttentionCenter();renderCG();renderControl();renderREX();renderFinance();
   updateStatutBar();
   setTimeout(animateCounters, 100);
   // Formatage milliers sur tous les tableaux
@@ -5394,7 +5463,7 @@ function render(){
 
 // Budget en validation : lecture seule pour le REX, le CG et l'admin (parité avec la version React).
 // Les saisies et les boutons qui modifient le budget sont désactivés ; consulter, comparer, exporter reste possible.
-const PANNEAUX_BUDGET = ['objectif','refs','cal','team','rh','rex','previsionnel','finance'];
+const PANNEAUX_BUDGET = ['objectif','refs','cal','team','rh','charges','rex','previsionnel','finance'];
 const BOUTONS_CONSULTATION = /show|voir|travailler|ouvrir|compar|export|telecharg|imprim|fermer|close|switchVersion|aide|toggleDetail|details/i;
 // Couleur des valeurs saisies par le DR sur les champs fixes de l'écran Objectif, légende dans l'en-tête
 const CHAMPS_OBJECTIF_DR = ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone'];
@@ -7741,7 +7810,7 @@ function isFilled(v) { return v !== null && v !== undefined && v !== ''; }
 
 // Avancement de la construction d'un budget d'agence (vu par la chaîne de validation).
 // Cinq jalons du REX, pondérés à parts égales : objectif fixé, références CA, équipe,
-// absentéisme mensuel, mois validés. Les charges CG sont suivies à part (elles relèvent du CG).
+// absentéisme mensuel, mois validés, postes de charges du REX (6e jalon). Les charges CG sont suivies à part.
 function avancementBudget(d, updatedAt){
   d = d || {};
   let refs = d.refs || {}, acts = ['san'];
@@ -7757,9 +7826,10 @@ function avancementBudget(d, updatedAt){
   let cgLignes = T.filter(function(r){ return r.type!=='subtotal' && r.label!=="Chiffre d'affaires" && r.label!=="Charges de personnel" && LIGNES_SIEGE.indexOf(r.label)<0 && r.label!=='Quote-part régulation mutualisée'; });
   let cgOk = cgLignes.filter(function(r){ let x = d.rex && d.rex[r.label]; if(!x) return false;
     return x.mode==='annual' ? isFilled(x.annual) && +x.annual!==0 : x.mode==='pct' ? isFilled(x.pct) && +x.pct!==0 : x.mode==='pctMois' ? (x.pcts||[]).some(function(v){ return isFilled(v) && +v!==0; }) : (x.values||[]).some(function(v){ return isFilled(v) && +v!==0; }); }).length;
-  let pct = Math.round(((objectif?1:0) + refsPct/100 + (nbSalaries?1:0) + absSaisis/12 + moisValides/12) / 5 * 100);
+  let chargesREX = d.rex ? chargesREXRemplies(d) : 0;
+  let pct = Math.round(((objectif?1:0) + refsPct/100 + (nbSalaries?1:0) + absSaisis/12 + moisValides/12 + chargesREX/LIGNES_CHARGES_REX.length) / 6 * 100);
   let jours = updatedAt ? Math.floor((Date.now() - new Date(updatedAt).getTime()) / 86400000) : null;
-  return { pct:pct, objectif:objectif, refsPct:refsPct, nbSalaries:nbSalaries, absSaisis:absSaisis, moisValides:moisValides,
+  return { pct:pct, objectif:objectif, refsPct:refsPct, nbSalaries:nbSalaries, absSaisis:absSaisis, moisValides:moisValides, chargesREX:chargesREX,
     chargesPct: cgLignes.length ? Math.round(cgOk/cgLignes.length*100) : 0, joursSansModif:jours };
 }
 function avancementHtml(av, statut){
@@ -7767,7 +7837,7 @@ function avancementHtml(av, statut){
   let p = fini ? 100 : av.pct;
   let col = p>=90 ? 'var(--green)' : p>=50 ? '#FF8F00' : 'var(--orange)';
   let detail = 'Objectif : '+(av.objectif?'fixé':'à fixer')+'\nRéférences CA : '+av.refsPct+' %\nÉquipe : '+av.nbSalaries+' salarié'+(av.nbSalaries>1?'s':'')
-    +'\nAbsentéisme saisi : '+av.absSaisis+'/12 mois\nMois validés : '+av.moisValides+'/12\nCharges CG : '+av.chargesPct+' %';
+    +'\nAbsentéisme saisi : '+av.absSaisis+'/12 mois\nMois validés : '+av.moisValides+'/12\nCharges REX : '+(av.chargesREX||0)+'/6 postes\nCharges CG : '+av.chargesPct+' %';
   let relance = !fini && av.joursSansModif!==null && av.joursSansModif>=7 ? '<div style="font-size:10px;color:var(--orange)">sans modification depuis '+av.joursSansModif+' j</div>' : '';
   return '<div title="'+detail+'" style="min-width:160px"><div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden"><div style="width:'+p+'%;height:100%;background:'+col+'"></div></div><b style="font-size:11px;color:'+col+'">'+(fini?'soumis':p+' %')+'</b></div>'
     +'<div style="font-size:10px;color:var(--ink65)">'+av.moisValides+'/12 mois validés · charges '+av.chargesPct+' %</div>'+relance+'</div>';
@@ -7837,6 +7907,10 @@ function completion() {
   }
   let cgScore = cgTotal > 0 ? Math.round(cgFilled / cgTotal * 100) : 0;
 
+  // Charges du REX : les 6 postes ont une valeur (saisie par le REX ou reprise du CG)
+  let chREX = LIGNES_CHARGES_REX.filter(r => valeursChargeREX(a, r[0]).some(v => isFilled(v) && +v !== 0)).length;
+  let chargesScore = Math.round(chREX / LIGNES_CHARGES_REX.length * 100);
+
   // Guide + Synthèse + Prévisionnel : cascade
   let upstreamREX = Math.round((objScore + refScore + empScore + presScore) / 4);
   let guideScore = upstreamREX;
@@ -7855,6 +7929,7 @@ function completion() {
     team: empScore,
     presence: presScore,
     rh: Math.round((empScore+presScore+hsScore)/3),
+    charges: chargesScore,
 
 
     cg: cgScore,
@@ -9288,6 +9363,7 @@ function appliquerLignesRex(rex, lignesEntite){
   var n = 0;
   Object.keys(lignesEntite).forEach(function(poste){
     var nv = lignesEntite[poste], x = rex[poste] || { values: Array(12).fill(null), chargeType: 'variable', allocationKey: 'monthly12', pct: 0, annual: 0, mode: 'month' };
+    if(x.saisieREX) return; // poste saisi par le REX : l'import du classeur ne l'écrase pas
     var avant = JSON.stringify([x.mode, x.annual, x.allocationKey, x.pct, x.values, x.mode === 'pctMois' ? x.pcts : null]);
     var y = Object.assign({}, x, nv);
     if(nv.mode === 'month') y.values = nv.values.slice();
@@ -9679,7 +9755,7 @@ const FAQ = {
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026.'],
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
-    ['Qui saisit les charges hors personnel ?', 'Le contrôleur de gestion. Carburant, loyers, assurances, crédit-bail et autres charges sont saisis par lui ; ils apparaissent dans votre prévisionnel au fur et à mesure. Vous construisez le chiffre d\'affaires et la masse salariale. Si un montant vous semble faux, signalez-le au contrôle de gestion.'],
+    ['Qui saisit les charges hors personnel ?', 'Vous saisissez six postes à l\'étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du chiffre d\'affaires de chaque mois (le taux peut changer d\'un mois à l\'autre), sous-traitance et entretiens véhicules - bâtiment en montant fixe par mois. Les cases partent des valeurs du contrôle de gestion quand il y en a. Les autres charges (loyers, assurances, crédit-bail…) sont saisies par le contrôleur de gestion et apparaissent dans votre prévisionnel au fur et à mesure. Si un de ces montants vous semble faux, signalez-le au contrôle de gestion.'],
     ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'La paie suit des périodes de 4 ou 5 semaines, pas les mois civils : janvier, avril, juillet et octobre en comptent 5. Les heures supplémentaires de la 5e semaine sont lissées sur le trimestre, et la paie de janvier comprend la fin de décembre 2026 (salaire de base des roulants et variables de décembre). Un bandeau le rappelle sur l\'écran Prévisionnel.'],
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
