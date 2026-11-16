@@ -1114,6 +1114,9 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 .legendeDR i{display:inline-block;width:14px;height:14px;border-radius:3px;background:#FFF1E6;border:2px solid #F08A3C}
 .bandeauDR{display:flex;align-items:center;justify-content:center;gap:12px;padding:8px 14px;background:#B4430B;color:#fff;font-size:13px;font-weight:600;flex-wrap:wrap;border-radius:10px;margin-bottom:14px}
 .bandeauDR button{width:auto;margin:0;padding:4px 12px;font-size:12px;background:#fff;color:#B4430B;border:none;font-weight:700}
+/* Champs numériques : pas de flèches +/- (gênent la saisie et la lecture) */
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -10598,4 +10601,7 @@ function kpiHtml(label,val,note){
 
 
 
+
+// Molette de la souris sur un champ numérique : ne modifie pas la valeur saisie
+document.addEventListener('wheel', function (e) { var t = document.activeElement; if (t && t.type === 'number' && t === e.target) t.blur(); }, { passive: true });
 </script></body></html>
