@@ -6943,6 +6943,8 @@ function migrateState(){S.agencies.forEach(a=>{
   if(!Array.isArray(a.cal))a.cal=[];
   // Calendrier scolaire officiel 2027 corrigé (nov. 2026) : un calendrier construit avant est régénéré
   if(a.cal.length && a.calScolaire!==2) genCal(a);
+  // TXR de référence saisi par le CG après la création du budget : repris dans les champs vides du REX
+  if(a.histTXR2026){ if(a.histTXR===null||a.histTXR===undefined||a.histTXR==='') a.histTXR=a.histTXR2026; if(a.targetTXR===null||a.targetTXR===undefined||a.targetTXR==='') a.targetTXR=a.histTXR2026; }
   a.calScolaire=2;
   if(!Array.isArray(a.hs50))a.hs50=Array(12).fill(null);
   if(a.drCostAnnual===undefined)a.drCostAnnual=0;
@@ -7479,6 +7481,13 @@ function pickRefCG(obj){
 }
 // Applique des données de référence CG à un budget (ou une version) et recalcule le coût horaire
 function appliquerRefCG(cible, data){
+  // TXR de référence 2026 du CG → « TXR moyen réalisé 2026 » et TXR cible du REX, tant que le REX ne les a pas changés
+  let ancienTXR = cible.histTXR2026;
+  if (data.histTXR2026 !== undefined && data.histTXR2026 !== null && data.histTXR2026 !== '') {
+    ['histTXR','targetTXR'].forEach(function(k){
+      if (cible[k] === null || cible[k] === undefined || cible[k] === '' || +cible[k] === +ancienTXR) cible[k] = data.histTXR2026;
+    });
+  }
   Object.assign(cible, data);
   let refsReelles = Object.keys(data).some(function(k){
     return CG_KEYS_SANS_VERROU.indexOf(k) < 0 && data[k] !== null && data[k] !== undefined && data[k] !== '';
