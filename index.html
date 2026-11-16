@@ -2053,6 +2053,11 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
 // ═══════════════════════════════════════════════
 const SUPA_URL = 'https://rtgbqltinxguuinhicrs.supabase.co';
 const SUPA_KEY = 'sb_publishable_yYD1zRGVsDRU0yjdpaalaA_maENPmTh';
+// Lien « mot de passe oublié » : à lire AVANT de créer le client Supabase, qui consomme le jeton de l'adresse
+// et l'efface aussitôt (sinon l'application s'ouvrait sans demander le nouveau mot de passe).
+const HASH_INITIAL = window.location.hash || '';
+const LIEN_RECUPERATION = /(^|[#&])type=recovery(&|$)/.test(HASH_INITIAL);
+const LIEN_EXPIRE = /error_code=otp_expired|error=access_denied/.test(HASH_INITIAL);
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
 // ═══════════════════════════════════════════════
@@ -8258,15 +8263,19 @@ async function init() {
   S.agencies=[agency('Nouvelle agence')];
   migrateState();
 
-  // Détecter un token de récupération dans l'URL (lien "mot de passe oublié")
-  const hash = window.location.hash;
-  if (hash && hash.includes('type=recovery') && hash.includes('access_token=')) {
-    // Extraire le token et établir la session
-    const params = new URLSearchParams(hash.replace('#',''));
+  // Lien expiré ou déjà utilisé (souvent ouvert d'avance par l'antivirus de la messagerie)
+  if (LIEN_EXPIRE && !LIEN_RECUPERATION) {
+    history.replaceState(null, '', window.location.pathname);
+    if (q('authErr')) q('authErr').textContent = 'Ce lien a expiré ou a déjà été utilisé. Saisissez votre e-mail ci-dessous et demandez un nouveau lien, puis ouvrez-le aussitôt.';
+    if (q('forgotZone')) q('forgotZone').style.display = '';
+  }
+  // Lien « mot de passe oublié » : la session vient du jeton (lu avant la création du client)
+  if (LIEN_RECUPERATION) {
+    const params = new URLSearchParams(HASH_INITIAL.replace('#',''));
     const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    if (accessToken) {
-      await sb.auth.setSession({access_token: accessToken, refresh_token: refreshToken || ''});
+    if (accessToken) await sb.auth.setSession({access_token: accessToken, refresh_token: params.get('refresh_token') || ''});
+    const {data: {session: sessRecup}} = await sb.auth.getSession();
+    if (sessRecup) {
       // Nettoyer l'URL sans recharger
       history.replaceState(null, '', window.location.pathname);
       // Afficher directement la modale de changement de mot de passe
