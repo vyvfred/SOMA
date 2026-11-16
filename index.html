@@ -3795,6 +3795,8 @@ function versSaisieREX(a,l){
 function setChargeREX(a,l,m,v){let x=versSaisieREX(a,l);if(!x)return a;let n=v===''||v===null||v===undefined?null:+String(v).replace(',','.');if(modeChargeREX(l)==='pctMois')x.pcts[m]=n;else x.values[m]=n;return a;}
 // Postes travaillés par le REX (saisieREX) avec au moins une valeur : sert à l'avancement, sans recalcul du CA
 function chargesREXRemplies(a){return LIGNES_CHARGES_REX.filter(function(r){let x=a.rex&&a.rex[r[0]];if(!x||!x.saisieREX)return false;return (r[1]==='pctMois'?(x.pcts||[]):(x.values||[])).some(function(v){return v!==null&&v!==undefined&&v!==''&&+v!==0;});}).length;}
+// Seuil unique du ratio masse salariale / CA (direction des opérations, nov. 2026) : au-dessus, à signaler.
+const SEUIL_MS_CA=62;
 function sig(a,m){let v=l=>manual(a,l,m),ca=monthCA(a,m),marge=ca-v("Achats Matières premières et sous traitance")-v("Variations stock marchandises et autres approvisionnements"),aa=["Electricité - eau - chauffage","Matériels ambulances","Carburant","Entretiens petits équipements","Fourniture bureau - vêtements","Sous traitance","Crédit bail et location véhicules","Location téléphonie - informatique - mobilité","Location immobilières et charges locatives","Entretiens véhicules - batîment","Maintenance informatique","Assurance","Formation - documentation","Honoraires et prestations de services","Publicité - cadeaux","Frais de déplacement - missions réceptions","Péages","Affranchissement","Téléphonie - internet","Frais bancaires et cotisations"].reduce((s,l)=>s+v(l),0),va=marge-aa,pay=payrollMonth(a,m),qp=estStructure(a)?0:v("Quote-part MS siège")+v("Quote-part régulation mutualisée"),ebe=va+v("Subventions d'exploitation")-v("Impôts, taxes et versements assimilés")-pay-qp,rex=ebe+v("Reprises s/ charges et transferts")+v("Autres produits")-v("Dotations amortissements et provisions")-v("Autres charges"),rf=v("Produits financiers")-v("Charges financières"),rcai=rex+rf,re=v("Produits exceptionnels")-v("Charges exceptionnelles"),rn=rcai+re-v("Impôt sur les sociétés")-v("Participation aux bénéfices");return {"Chiffre d'affaires":ca,"Charges de personnel":pay+qp,"MARGE BRUTE GLOBALE":marge,"Autres Achats et charges externes":aa,"VALEUR AJOUTEE":va,"EXCEDENT BRUT D'EXPLOITATION":ebe,"RESULTAT D'EXPLOITATION":rex,"RESULTAT FINANCIER":rf,"RESULTAT COURANT AVANT IMPOT":rcai,"RESULTAT EXCEPTIONNEL":re,"RESULTAT NET":rn}}
 function amount(a,l,m){let row=T.find(r=>r.label===l);if(l==="Chiffre d'affaires"||l==="Charges de personnel"||row?.type==='subtotal')return sig(a,m)[l]||0;return manual(a,l,m)}
 function ann(a,l){return M.reduce((s,_,m)=>s+amount(a,l,m),0)}
@@ -4997,8 +4999,8 @@ function collectAnomalies(){
     if(net < 0){
       anomalies.push({panel:'previsionnel', level:'warn', text:(vueExploitation(a)?'Résultat d\'exploitation déficitaire (':'Budget déficitaire (')+euro(net)+')'});
     }
-    if(tauxMS > 85){
-      anomalies.push({panel:'previsionnel', level:'warn', text:'Masse salariale elevee ('+pct(tauxMS)+' du CA)'});
+    if(tauxMS > SEUIL_MS_CA){
+      anomalies.push({panel:'previsionnel', level:'warn', text:'Masse salariale au-dessus du seuil de '+SEUIL_MS_CA+' % ('+pct(tauxMS)+' du CA)'});
     }
   }
   return anomalies;
@@ -6300,7 +6302,7 @@ function showWeekDetail(m){
   let msMois = (typeof payrollMonth==='function') ? payrollMonth(a,m) : 0;
   let tauxMS = caMois>0 ? (msMois/caMois*100) : 0;
   // Couleur du taux MS : vert si sain, ambre si élevé, orange si critique
-  let colMS = tauxMS>85 ? 'var(--orange)' : tauxMS>75 ? '#FF8F00' : 'var(--green)';
+  let colMS = tauxMS>SEUIL_MS_CA ? 'var(--orange)' : 'var(--green)';
   let bandeauImpact = '<div id="rhImpactBandeau" style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:12px">'
     + '<span style="font-weight:700;color:var(--ink65);text-transform:uppercase;letter-spacing:.06em;font-size:10px">Impact de ce mois</span>'
     + '<span>CA du mois : <b style="color:var(--ink)">'+euro(caMois)+'</b></span>'
@@ -6625,12 +6627,10 @@ function renderPrevInsight(a, ca, net, tauxMS){
     phrase = 'Votre budget est à l\'équilibre. ';
   }
   // Jugement de la masse salariale (mêmes seuils que le reste de l'app)
-  if(tauxMS > 85){
-    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, un niveau élevé qui pèse sur la rentabilité. Vérifiez vos charges de personnel ou votre objectif de CA.';
-  } else if(tauxMS > 75){
-    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, à surveiller mais dans une fourchette acceptable.';
+  if(tauxMS > SEUIL_MS_CA){
+    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, au-dessus du seuil de ' + SEUIL_MS_CA + ' % : elle pèse sur la rentabilité. Vérifiez vos charges de personnel ou votre objectif de CA.';
   } else if(tauxMS > 0){
-    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, un niveau maîtrisé. ';
+    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, sous le seuil de ' + SEUIL_MS_CA + ' %. ';
     if(net > 0) phrase += 'Ce budget est équilibré et peut être présenté à votre Directeur Régional.';
   }
   txt.innerHTML = phrase;
@@ -6650,7 +6650,7 @@ function renderPrevisionnel(){
   if(q('prevKpis'))q('prevKpis').innerHTML=[
     ['CA budgété',euro(ca),''],
     [res.lib,euro(net),ca?pct(net/ca*100):''],
-    ['Masse salariale / CA',ca?pct(tauxMS):'—',!ca?'CA non calculé':tauxMS>85?'⚠ élevé':tauxMS>75?'à surveiller':'maîtrisé'],
+    ['Masse salariale / CA',ca?pct(tauxMS):'—',!ca?'CA non calculé':tauxMS>SEUIL_MS_CA?'⚠ au-dessus du seuil de '+SEUIL_MS_CA+' %':'sous le seuil de '+SEUIL_MS_CA+' %'],
     ['EBE',euro(ebe),ca?pct(ebe/ca*100):'']
   ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
   // Interprétation : SOMA juge la santé du budget
@@ -6768,7 +6768,7 @@ function renderEnveloppesCP(a){
 }
 
 // Masse salariale / CA mois par mois (charges de personnel, quotes-parts comprises, comme l'indicateur annuel)
-function couleurMS(t){return t>85?'var(--orange)':t>75?'#b8860b':'var(--green)';}
+function couleurMS(t){return t>SEUIL_MS_CA?'var(--orange)':'var(--green)';}
 function renderRatioMSMensuel(){
   let el=q('ratioMSMensuel');if(!el)return;let a=A();if(!a){el.innerHTML='';return;}
   let s=M.map((_,m)=>sig(a,m)),ca=s.map(x=>x["Chiffre d'affaires"]||0),ms=s.map(x=>x['Charges de personnel']||0);
@@ -6780,7 +6780,7 @@ function renderRatioMSMensuel(){
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">CA</td>'+ca.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(caAn)+'</td></tr>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">Masse salariale</td>'+ms.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(msAn)+'</td></tr>'
     +'<tr style="border-top:1px solid var(--border);font-weight:700"><td style="'+cel+';text-align:left">MS / CA</td>'+M.map((_,m)=>td(ratio(ca[m],ms[m])).replace('<td ','<td data-testid="ratio-ms-'+m+'" ')).join('')+td(ratio(caAn,msAn))+'</tr>'
-    +'</tbody></table></div><div style="font-size:.85em;color:var(--ink65);margin-top:6px">Vert jusqu\'à 75 %, jaune de 75 à 85 %, orange au-delà. Masse salariale = charges de personnel du mois (quotes-parts comprises).</div>';
+    +'</tbody></table></div><div style="font-size:.85em;color:var(--ink65);margin-top:6px">Vert jusqu\'au seuil de '+SEUIL_MS_CA+' %, orange au-delà. Masse salariale = charges de personnel du mois (quotes-parts comprises).</div>';
 }
 function renderSynthese(){
   let a = A();
@@ -6803,7 +6803,7 @@ function renderSynthese(){
     q('synthKpis').innerHTML = [
       ['CA budgété', euro(ca), ''],
       [res.lib, euro(net), ca?pct(net/ca*100):''],
-      ['Masse salariale / CA', ca?pct(tauxMS):'—', !ca?'CA non calculé':tauxMS>85?'⚠ élevé':tauxMS>75?'à surveiller':'maîtrisé'],
+      ['Masse salariale / CA', ca?pct(tauxMS):'—', !ca?'CA non calculé':tauxMS>SEUIL_MS_CA?'⚠ au-dessus du seuil de '+SEUIL_MS_CA+' %':'sous le seuil de '+SEUIL_MS_CA+' %'],
       ['Écart à l\'objectif', (ecart>=0?'+':'')+euro(ecart), caObj?(ecart>=0?'objectif atteint':'sous l\'objectif'):'']
     ].map(function(x){return '<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>';}).join('');
   }
@@ -6815,7 +6815,7 @@ function renderSynthese(){
   // Évaluer la santé : équilibré si résultat >= 0 et MS/CA raisonnable
   let problemes = [];
   if(net < 0) problemes.push(res.libMin + ' déficitaire');
-  if(tauxMS > 85) problemes.push('masse salariale élevée');
+  if(tauxMS > SEUIL_MS_CA) problemes.push('masse salariale au-dessus de '+SEUIL_MS_CA+' % du CA');
   if(caObj && ecart < -caObj*0.03) problemes.push('objectif de CA non atteint');
 
   if(verdict){
@@ -6851,8 +6851,8 @@ function renderSynthese(){
     if(net > 0) p += 'Il dégage un ' + res.libMin + ' positif de <b>' + euro(net) + '</b>. ';
     else if(net < 0) p += 'Il présente un ' + res.libMin + ' déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
     // MS
-    if(tauxMS > 85) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) est élevée. ';
-    else if(tauxMS > 0) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) est dans la norme. ';
+    if(tauxMS > SEUIL_MS_CA) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) dépasse le seuil de ' + SEUIL_MS_CA + ' %. ';
+    else if(tauxMS > 0) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) reste sous le seuil de ' + SEUIL_MS_CA + ' %. ';
     // Tensions
     if(nbCritiques > 0) p += nbCritiques + ' semaine' + (nbCritiques>1?'s':'') + ' de tension à surveiller.';
     else p += 'Aucune semaine en tension critique.';
