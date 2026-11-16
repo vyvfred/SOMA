@@ -1511,7 +1511,7 @@ header{box-shadow:0 2px 12px rgba(0,0,0,.3);position:relative;z-index:10;}
       <button onclick="repartirCPAuto()" style="font-size:12px;padding:8px 14px;background:var(--violet);color:#fff;border:none">↗ Répartir les congés automatiquement</button>
       <button onclick="resetCP()" class="secondary" style="font-size:12px;padding:8px 14px">Réinitialiser</button>
     </div>
-    <p class="hint" style="margin:8px 0 0;font-size:12px">La répartition automatique pose exactement les jours acquis, en lissant la charge et en respectant les enveloppes légales (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Vous pouvez ensuite déplacer des congés semaine par semaine : le compteur suit vos choix. Si l'absentéisme change, relancez la répartition ou ajustez à la main. <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'conges')" title="Pourquoi cette règle ?">?</span></p>
+    <p class="hint" style="margin:8px 0 0;font-size:12px">La répartition automatique pose exactement les jours acquis, en lissant la charge et en respectant les enveloppes légales (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Vous pouvez ensuite déplacer des congés semaine par semaine : le compteur suit vos choix. Si vous modifiez l'absentéisme, SOMA refait automatiquement la répartition sur les mois non validés (les congés déplacés à la main sur ces mois sont recalculés). <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'conges')" title="Pourquoi cette règle ?">?</span></p>
     <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">3. Mois par mois</div>
   </div>
 
@@ -5872,7 +5872,7 @@ function renderRH(){
     let tol=seuils3.toleranceCP;
     if(Math.abs(rest)<=tol)q('cpEquilibre').innerHTML='<span style="color:var(--green)">✓ Équilibré</span>';
     else if(rest>tol)q('cpEquilibre').innerHTML='<span style="color:var(--orange)" title="Plus de jours acquis que de jours posés : relancez la répartition ou posez-les à la main">⚠ '+rest.toFixed(1)+' J encore à poser</span>';
-    else q('cpEquilibre').innerHTML='<span style="color:var(--orange)" title="Plus de jours posés que de jours acquis, souvent parce que l\'absentéisme a augmenté après la répartition : relancez la répartition ou retirez des congés">⚠ '+Math.abs(rest).toFixed(1)+' J posés en trop</span>';
+    else q('cpEquilibre').innerHTML='<span style="color:var(--orange)" title="Plus de jours posés que de jours acquis, congés ajoutés à la main ou mois déjà validés : relancez la répartition ou retirez des congés">⚠ '+Math.abs(rest).toFixed(1)+' J posés en trop</span>';
   }
 
   // ── Tableau maladie mensuel ──
@@ -6899,14 +6899,17 @@ function setPresence(w,f,v){
     },10);
   }
 }
-function setSick(m,v){A().sick[m]=v===''?null:+v;render()}
+// Absentéisme modifié : les CP acquis changent, la répartition des mois non validés est refaite automatiquement
+// (seulement si des congés étaient déjà posés ; les mois validés ne bougent pas).
+function majCPApresAbsenteisme(){ if(cpPlanifies(A())>0) repartirCPAuto(); else render(); }
+function setSick(m,v){A().sick[m]=v===''?null:+v;majCPApresAbsenteisme()}
 function setHS50(m,v){
   let val = v===''?null:Math.max(0,Math.min(100,+v));
   if(!A().hs50) A().hs50 = Array(12).fill(null);
   A().hs50[m]=val;
   render();
 }
-function applyAvg(){let v=A().targetAbsRate!==null?+A().targetAbsRate:0;A().sick=Array(12).fill(v);render()}
+function applyAvg(){let v=A().targetAbsRate!==null?+A().targetAbsRate:0;A().sick=Array(12).fill(v);majCPApresAbsenteisme()}
 
 // Rééquilibrage intelligent : garde la FORME de répartition voulue par le REX,
 // mais ajuste pour que la moyenne annuelle revienne à la cible du CG.
@@ -6916,7 +6919,7 @@ function reequilibrerSick(){
   // Mois renseignés (les vides restent vides)
   let idxRemplis = [];
   a.sick.forEach(function(v,i){ if(v!==null&&v!==undefined) idxRemplis.push(i); });
-  if(!idxRemplis.length){ a.sick = Array(12).fill(cible); render(); return; }
+  if(!idxRemplis.length){ a.sick = Array(12).fill(cible); majCPApresAbsenteisme(); return; }
 
   let moyActuelle = idxRemplis.reduce(function(s,i){return s+(+a.sick[i]||0);},0)/idxRemplis.length;
   let ecart = moyActuelle - cible; // >0 : on est trop haut, il faut baisser
@@ -6942,7 +6945,7 @@ function reequilibrerSick(){
   }
   idxRemplis.forEach(function(i){ ajust[i] = Math.round(ajust[i]*100)/100; });
   a.sick = ajust;
-  render();
+  majCPApresAbsenteisme();
   showToast('Répartition ajustée pour respecter la moyenne du contrôle de gestion.', 'success');
 }
 function setRexMode(l,v){let x=A().rex[l];if(v==='pctMois'&&!Array.isArray(x.pcts))x.pcts=Array(12).fill(x.mode==='pct'&&+x.pct?+x.pct:null);x.mode=v;render()}
@@ -9602,7 +9605,7 @@ const FAQ = {
     ['Qu\'est-ce que le coût du choix que je vois en synthèse ?', 'SOMA calcule la répartition des congés qui minimise le coût des heures supplémentaires. Vous pouvez choisir de vous en écarter, par exemple pour accorder des congés à un moment qui compte pour votre équipe. Ce choix a parfois un surcoût. SOMA le chiffre non pour vous en dissuader, mais pour que vous puissiez l\'assumer et le justifier lors de la validation.'],
     ['Comment lire la courbe de charge et les couleurs des semaines ?', 'La courbe montre les heures supplémentaires par personne présente, semaine par semaine. Une courbe plate signifie une charge équitable. Les trois zones colorées correspondent aux périodes légales de congés. Dans le détail des semaines, chaque semaine porte un verdict en langage clair : aucune tension, charge légère, charge soutenue ou surcharge. Une semaine en surcharge mérite votre attention.'],
     ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste.'],
-    ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, relancez la répartition.'],
+    ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, la répartition des mois non validés est refaite automatiquement.'],
     ['Comment sont calculés les congés acquis sur l\'année ?', 'Un salarié roulant à temps plein acquiert 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Les mois d\'absence maladie n\'en génèrent pas : plus l\'absentéisme saisi est élevé, moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
     ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou l\'absentéisme a changé, ce qui change les jours acquis. Par exemple, si vous augmentez la maladie de juillet après la répartition, l\'équipe acquiert moins de jours et le compteur affiche des jours « posés en trop ». Relancez alors la répartition (les mois validés ne bougent pas) ou retirez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
     ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Le compteur de mois validés suit votre avancement. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
