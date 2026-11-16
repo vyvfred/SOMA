@@ -1260,6 +1260,10 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <span class="somSaveText" id="somSaveText">Enregistré</span>
     </div>
 
+    <!-- Annuler / rétablir (comme dans Excel) — aussi Ctrl+Z et Ctrl+Y -->
+    <button id="btnAnnuler" data-testid="btn-annuler" class="somMenuBtn" style="display:none" onclick="annulerMono()" title="Rien à annuler">↶</button>
+    <button id="btnRetablir" data-testid="btn-retablir" class="somMenuBtn" style="display:none" onclick="retablirMono()" title="Rien à rétablir">↷</button>
+
     <div class="userBadge">
       <span id="userNom"></span>
       <span class="rolePill" id="userRolePill"></span>
@@ -2779,14 +2783,14 @@ async function saveBudgetToSupabase() {
     }
     BUDGET_BASE = JSON.parse(JSON.stringify(fv.fusion));
     META_BASE = JSON.parse(JSON.stringify(fm.fusion));
-    if (marquesChangees) setTimeout(function(){ render(); }, 0);
+    if (marquesChangees) setTimeout(function(){ rebaserHistoriqueMono(); render(); }, 0);
     // Rubriques enregistrées entre-temps par quelqu'un d'autre : reportées à l'écran
     if (avant && fv.distantes.length) {
       let cur = A(), J = function(v){ return JSON.stringify(v); }, maj = false;
       fv.distantes.forEach(function(k){
         if (cur && J(cur[k]) === J(avant[k])) { cur[k] = fv.fusion[k] === undefined ? cur[k] : JSON.parse(JSON.stringify(fv.fusion[k])); maj = true; }
       });
-      if (maj) { showToast('Budget mis à jour avec les modifications enregistrées par un autre utilisateur', 'info'); render(); }
+      if (maj) { viderHistoriqueMono(); showToast('Budget mis à jour avec les modifications enregistrées par un autre utilisateur', 'info'); render(); }
     }
     _lastSaveError = null;
     markSaved();
@@ -5455,6 +5459,52 @@ function adaptObjectifIntro(){
   }
 }
 
+// Historique des modifications (annuler / rétablir, comme dans Excel). Les états sont des copies
+// complètes du budget, jamais modifiées après coup. Les modifications rapprochées (moins d'une seconde,
+// ex. frappe dans une même case) forment une seule action. 50 actions au plus.
+const HISTO_MAX=50,HISTO_DELAI=1000;
+function creerHistorique(){return {passe:[],futur:[],dernier:0};}
+function viderHistorique(h){h.passe=[];h.futur=[];h.dernier=0;return h;}
+// À appeler AVANT d'appliquer une modification, avec une copie de l'état d'avant
+function noterAvant(h,etatAvant,maintenant){
+  if(!h.passe.length||maintenant-h.dernier>HISTO_DELAI){h.passe.push(etatAvant);if(h.passe.length>HISTO_MAX)h.passe.shift();}
+  h.futur=[];h.dernier=maintenant;return h;
+}
+function annulerHisto(h,etatCourant){if(!h.passe.length)return null;let x=h.passe.pop();h.futur.push(etatCourant);h.dernier=0;return x;}
+function retablirHisto(h,etatCourant){if(!h.futur.length)return null;let x=h.futur.pop();h.passe.push(etatCourant);h.dernier=0;return x;}
+// Version de base : le budget est modifié sur place puis render() ; on compare son texte à chaque affichage.
+// Changement d'objet (chargement, autre agence, autre version) : historique vidé.
+let HISTO_MONO=creerHistorique(),HISTO_TEXTE=null,HISTO_OBJ=null;
+function texteHistoMono(a){return JSON.stringify(a,function(k,v){return k==='moisActif'?undefined:v;});}
+function viderHistoriqueMono(){viderHistorique(HISTO_MONO);HISTO_OBJ=null;}
+function rebaserHistoriqueMono(){let a=A();if(a&&HISTO_OBJ===a)HISTO_TEXTE=texteHistoMono(a);}
+function suivreHistoriqueMono(){
+  let a=A();if(!a)return;
+  if(a!==HISTO_OBJ){HISTO_OBJ=a;viderHistorique(HISTO_MONO);HISTO_TEXTE=texteHistoMono(a);}
+  else{let t=texteHistoMono(a);if(t!==HISTO_TEXTE){noterAvant(HISTO_MONO,JSON.parse(HISTO_TEXTE),Date.now());HISTO_TEXTE=t;}}
+  majBoutonsHistoMono();
+}
+function majBoutonsHistoMono(){
+  let ok=budgetModifiable(),u=q('btnAnnuler'),r=q('btnRetablir'),n=HISTO_MONO.passe.length,m=HISTO_MONO.futur.length;
+  if(u){u.style.display=ok?'':'none';u.disabled=!n;u.style.opacity=n?1:.4;u.title=n?'Annuler la dernière modification (Ctrl+Z) — '+n+' possible'+(n>1?'s':''):'Rien à annuler';}
+  if(r){r.style.display=ok?'':'none';r.disabled=!m;r.style.opacity=m?1:.4;r.title=m?'Rétablir (Ctrl+Y) — '+m+' possible'+(m>1?'s':''):'Rien à rétablir';}
+}
+function appliquerHistoMono(x){
+  let a=A();x.moisActif=a?a.moisActif:x.moisActif;
+  S.agencies[S.active]=x;HISTO_OBJ=x;HISTO_TEXTE=texteHistoMono(x);
+  render();scheduleAutosave();
+}
+function annulerMono(){if(!budgetModifiable()||!A())return false;let x=annulerHisto(HISTO_MONO,JSON.parse(HISTO_TEXTE));if(!x)return false;appliquerHistoMono(x);showToast('Modification annulée','info');return true;}
+function retablirMono(){if(!budgetModifiable()||!A())return false;let x=retablirHisto(HISTO_MONO,JSON.parse(HISTO_TEXTE));if(!x)return false;appliquerHistoMono(x);showToast('Modification rétablie','info');return true;}
+document.addEventListener('keydown',function(e){
+  if(!(e.ctrlKey||e.metaKey)||e.altKey)return;
+  let k=(e.key||'').toLowerCase();if(k!=='z'&&k!=='y')return;
+  if(!PROFILE||!A()||!budgetModifiable())return;
+  e.preventDefault();
+  if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+  let redo=k==='y'||(k==='z'&&e.shiftKey);
+  if(!(redo?retablirMono():annulerMono()))showToast(redo?'Rien à rétablir':'Rien à annuler','info');
+});
 function render(){
   if(!PROFILE)return;
   bind();
@@ -5471,7 +5521,7 @@ function render(){
   else{if(q('refSaiSection'))q('refSaiSection').style.display='none';}
   if(a.actTP){refTable('refTP','tp');if(q('refTPSection'))q('refTPSection').style.display='';}
   else{if(q('refTPSection'))q('refTPSection').style.display='none';}
-  renderCal();renderTeam();renderRH();renderChargesREX();renderPrevisionnel();renderCoherence();renderObjectifInsight();renderRefusREX();renderDashboard();renderSynthese();renderRatioMSMensuel();updateAttentionCenter();renderCG();renderControl();renderREX();renderFinance();
+  renderCal();renderTeam();renderRH();renderChargesREX();renderPrevisionnel();renderCoherence();renderObjectifInsight();renderRefusREX();renderDashboard();renderSynthese();renderRatioMSMensuel();updateAttentionCenter();renderCG();renderControl();renderREX();renderFinance();suivreHistoriqueMono();
   updateStatutBar();
   setTimeout(animateCounters, 100);
   // Formatage milliers sur tous les tableaux
@@ -9819,6 +9869,7 @@ const FAQ = {
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026.'],
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
+    ['Comment annuler une modification ?', 'Comme dans Excel : la flèche ↶ en haut de l\'écran (ou Ctrl+Z, Cmd+Z sur Mac) annule la dernière modification, et vous pouvez remonter jusqu\'à 50 actions. La flèche ↷ (ou Ctrl+Y) rétablit ce que vous venez d\'annuler. Une saisie dans une même case compte pour une seule action. L\'annulation est enregistrée comme une modification normale. L\'historique repart à zéro quand vous changez d\'agence ou de version.'],
     ['Qui saisit les charges hors personnel ?', 'Vous saisissez six postes à l\'étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du chiffre d\'affaires de chaque mois (le taux peut changer d\'un mois à l\'autre), sous-traitance et entretiens véhicules - bâtiment en montant fixe par mois. Les cases partent des valeurs du contrôle de gestion quand il y en a. Les autres charges (loyers, assurances, crédit-bail…) sont saisies par le contrôleur de gestion et apparaissent dans votre prévisionnel au fur et à mesure. Si un de ces montants vous semble faux, signalez-le au contrôle de gestion.'],
     ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'La paie suit des périodes de 4 ou 5 semaines, pas les mois civils : janvier, avril, juillet et octobre en comptent 5. Les heures supplémentaires de la 5e semaine sont lissées sur le trimestre, et la paie de janvier comprend la fin de décembre 2026 (salaire de base des roulants et variables de décembre). Un bandeau le rappelle sur l\'écran Prévisionnel.'],
   ],
