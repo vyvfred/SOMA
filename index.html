@@ -1470,6 +1470,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <input type="file" id="excelFileInput" accept=".xlsx" style="display:none" onchange="handleExcelImport(event)">
       <span id="importMsg" style="font-family:Outfit,sans-serif;font-size:14px;color:var(--green);align-self:center"></span>
     </div>
+    <div id="triEquipeBox" style="display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;color:var(--ink65)"></div>
     <div class="tablewrap"><table id="empTable"></table></div>
     <details class="objCollapse" id="teamEvolutionCollapse" style="display:none;margin-top:var(--sp-4)">
       <summary>Évolution de l'effectif dans l'année</summary>
@@ -5643,13 +5644,43 @@ function renderTeamKpis(a){
   }
 }
 
+// Tri d'affichage de la liste du personnel (l'ordre enregistré dans le budget ne change pas)
+const TRIS_EQUIPE=[['saisie','Ordre de saisie'],['nomAZ','Nom de A à Z'],['nomZA','Nom de Z à A'],['qualif','Qualification, puis nom']];
+const RANG_QUALIF_EQUIPE={DEA:0,AA:1,TAXI:2,TPMR:3,FACTURIERE:4,REGULATEUR:5,REX:6};
+function ordreEquipe(emps,tri){
+  emps=emps||[];
+  let idx=emps.map(function(_,i){return i;});
+  let nom=function(i){return String(emps[i].name||emps[i].nom||'').trim();};
+  let cmp=function(sens){return function(x,y){let a=nom(x),b=nom(y);if(!a&&b)return 1;if(a&&!b)return -1;return sens*a.localeCompare(b,'fr',{sensitivity:'base'})||x-y;};};
+  if(tri==='nomAZ')return idx.sort(cmp(1));
+  if(tri==='nomZA')return idx.sort(cmp(-1));
+  if(tri==='qualif')return idx.sort(function(x,y){let qx=RANG_QUALIF_EQUIPE[emps[x].qual],qy=RANG_QUALIF_EQUIPE[emps[y].qual];let d=(qx===undefined?9:qx)-(qy===undefined?9:qy);return d||cmp(1)(x,y);});
+  return idx;
+}
+// Ordre figé au moment du tri : les lignes ne sautent pas pendant la saisie d'un nom ; une ligne ajoutée
+// va en bas jusqu'au prochain tri ; suppression, import ou changement d'agence : on retrie.
+function majOrdreEquipe(etat,emps,tri,cle){
+  let n=(emps||[]).length;
+  if(!etat||etat.tri!==tri||etat.cle!==cle||n<etat.n||n>etat.n+1)return {tri:tri,cle:cle,n:n,ordre:ordreEquipe(emps,tri)};
+  if(n===etat.n+1)return {tri:tri,cle:cle,n:n,ordre:etat.ordre.concat([n-1])};
+  return etat;
+}
+let TRI_EQUIPE=(function(){try{return localStorage.getItem('soma.triEquipe')||'saisie';}catch(e){return 'saisie';}})(),ETAT_TRI_EQUIPE=null;
+function setTriEquipe(t){TRI_EQUIPE=t;ETAT_TRI_EQUIPE=null;try{localStorage.setItem('soma.triEquipe',t);}catch(e){}renderTeam();}
 function renderTeam(){
   if(!q('empTable'))return;
   let a=A();
   renderTeamKpis(a);
   let quals=['DEA','AA','TAXI','TPMR','REGULATEUR','REX'];
   let contracts=['CDI','CDD','APPRENTI','INTERIM'];
-  let header='<tr><th>Nom</th><th>Qualif.<span class="aide-info">i<span class="aide-tip">DEA = ambulancier diplômé, AA = auxiliaire, TAXI = chauffeur taxi, TPMR = transport PMR. Ces qualifications sont roulantes. REGULATEUR et REX sont non-roulants.</span></span></th><th>Contrat</th>'
+  ETAT_TRI_EQUIPE=majOrdreEquipe(ETAT_TRI_EQUIPE,a.employees,TRI_EQUIPE,a.name||S.active);
+  let ordre=ETAT_TRI_EQUIPE.ordre;
+  let triBox=q('triEquipeBox');
+  if(triBox)triBox.innerHTML='<label for="tri-equipe" style="margin:0">Trier par</label> <select id="tri-equipe" data-testid="tri-equipe" onchange="setTriEquipe(this.value)" style="width:auto;font-size:12px">'
+    +TRIS_EQUIPE.map(t=>'<option value="'+t[0]+'"'+(t[0]===TRI_EQUIPE?' selected':'')+'>'+t[1]+'</option>').join('')+'</select>'
+    +(TRI_EQUIPE!=='saisie'?' <span style="font-size:11px">Un salarié ajouté apparaît en bas jusqu\'au prochain tri.</span>':'');
+  let flecheNom=TRI_EQUIPE==='nomAZ'?' ▲':TRI_EQUIPE==='nomZA'?' ▼':' ⇅';
+  let header='<tr><th data-testid="th-nom" title="Trier par nom" style="cursor:pointer" onclick="setTriEquipe(TRI_EQUIPE===\'nomAZ\'?\'nomZA\':\'nomAZ\')">Nom'+flecheNom+'</th><th>Qualif.<span class="aide-info">i<span class="aide-tip">DEA = ambulancier diplômé, AA = auxiliaire, TAXI = chauffeur taxi, TPMR = transport PMR. Ces qualifications sont roulantes. REGULATEUR et REX sont non-roulants.</span></span></th><th>Contrat</th>'
     +'<th>H. base<span class="aide-info">i<span class="aide-tip">Heures travaillées par semaine. Ex : 35h pour un temps plein, 17,5h pour un mi-temps.</span></span></th>'
     +'<th>% roul.<span class="aide-info">i<span class="aide-tip">Part du temps passée en roulant (sur la route). 100% pour un ambulancier à temps plein roulant. Pour un salarié partagé, indiquez sa part roulante : par exemple 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif. Vaut aussi pour un régulateur ou un REX qui roule une partie de son temps (0 % = ne roule pas) : sa part roulante compte dans les heures et les ETP roulants.</span></span></th>'
     +'<th>Jours/sem</th>'
@@ -5657,7 +5688,8 @@ function renderTeam(){
     +'<th>Sortie 2027<span class="aide-info">i<span class="aide-tip">Date de départ en 2027 (fin de CDD, retraite...). Laissez vide si la personne reste toute l\'année.</span></span></th>'
     +'<th>ETP<span class="aide-info">i<span class="aide-tip">Équivalent temps plein : heures ÷ 35. Un temps plein = 1 ETP.</span></span></th>'
     +'<th></th></tr>';
-  let rows=a.employees.map((e,i)=>{
+  let rows=ordre.map((i)=>{
+    let e=a.employees[i];
     let nom = e.name || e.nom || '';
     let contrat = e.contract || e.contrat || 'CDI';
     let qualOpts=quals.map(q=>('<option value="'+q+'"'+(e.qual===q?' selected':'')+'>'+q+'</option>')).join('');
