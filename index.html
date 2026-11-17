@@ -1261,6 +1261,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
 
     <!-- Annuler / rétablir (comme dans Excel) — aussi Ctrl+Z et Ctrl+Y -->
+    <select id="choixAgenceREX" data-testid="choix-agence-rex" style="display:none;width:auto;font-size:12px;padding:4px 8px" title="Vos agences : choisissez celle dont vous construisez le budget" onchange="changerAgenceREX(this.value)"></select>
     <button id="btnAnnuler" data-testid="btn-annuler" class="somMenuBtn" style="display:none" onclick="annulerMono()" title="Rien à annuler">↶</button>
     <button id="btnRetablir" data-testid="btn-retablir" class="somMenuBtn" style="display:none" onclick="retablirMono()" title="Rien à rétablir">↷</button>
 
@@ -2437,10 +2438,13 @@ function setupUI() {
     buildNav();
     // Pré-sélectionner l'agence du REX
     if (PROFILE.agence) {
-      S.agencies = [agency(PROFILE.agence)];
-      let ref = agences.find(x => x.nom === PROFILE.agence);
+      // REX rattaché à plusieurs agences : dernière agence choisie (mémorisée), sinon l'agence principale
+      let nomAg = agenceREXChoisie();
+      S.agencies = [agency(nomAg)];
+      let ref = agences.find(x => x.nom === nomAg);
       if (ref) S.agencies[0].schoolZone = ref.zone;
-      loadBudgetFromSupabase(PROFILE.agence);
+      majChoixAgenceREX();
+      loadBudgetFromSupabase(nomAg);
     }
   } else if (role === 'cg' || role === 'df') {
     // CG et DF partagent la même interface complète (préparation + supervision).
@@ -3892,8 +3896,8 @@ function bind(){
   if(q('agencySel')){
     // REX : uniquement son agence (si renseignée). CG/admin : toutes les agences opérationnelles.
     if(PROFILE && PROFILE.role==='rex' && PROFILE.agence){
-      q('agencySel').innerHTML='<option>'+PROFILE.agence+'</option>';
-      q('agencySel').value=PROFILE.agence;
+      q('agencySel').innerHTML=mesAgencesREX().map(n=>'<option>'+n+'</option>').join('');
+      q('agencySel').value=agenceREXChoisie();
     } else {
       // Liste des agences opérationnelles (+ hors-agence pour CG/admin)
       let liste = (PROFILE && (PROFILE.role==='cg'||PROFILE.role==='df'||PROFILE.role==='admin'))
@@ -7180,6 +7184,24 @@ function setRexVal(l,m,v){let x=A().rex[l];if(x.mode==='pct')x.pct=v===''?null:+
 function setRexAnnual(l,v){A().rex[l].annual=+v;render()}
 function prefillCharges(){let a=A(),ca=annualCA(a),set=(l,mode,val)=>{if(a.rex[l]){a.rex[l].mode=mode==='pct'?'pct':'annual';a.rex[l].chargeType='variable';a.rex[l].allocationKey=mode==='pct'?'ca':'monthly12';if(mode==='pct')a.rex[l].pct=val;else a.rex[l].annual=Math.round(val)}};set('Carburant','pct',5.2);set('Crédit bail et location véhicules','annual',ca*.05);set('Location immobilières et charges locatives','annual',ca*.028);set('Assurance','annual',ca*.018);set('Impôts, taxes et versements assimilés','annual',ca*.048);set('Honoraires et prestations de services','annual',ca*.026);set('Péages','annual',ca*.013);set('Charges financières','annual',ca*.002);render()}
 
+// ── REX rattaché à plusieurs agences : agence principale + agences supplémentaires (profil) ──
+function mesAgencesREX(){if(!PROFILE||PROFILE.role!=='rex')return [];let l=[PROFILE.agence].concat(PROFILE.agences_supp||[]).filter(Boolean);return l.filter((n,i)=>l.indexOf(n)===i);}
+function agenceREXChoisie(){let l=mesAgencesREX(),m=null;try{m=localStorage.getItem('soma.agenceREX');}catch(e){}return l.indexOf(m)>=0?m:(PROFILE?PROFILE.agence:null);}
+function majChoixAgenceREX(){
+  let el=q('choixAgenceREX');if(!el)return;let l=mesAgencesREX();
+  if(l.length<2){el.style.display='none';return;}
+  el.innerHTML=l.map(n=>'<option'+(n===agenceREXChoisie()?' selected':'')+'>'+n+'</option>').join('');el.style.display='';
+}
+async function changerAgenceREX(nom){
+  if(mesAgencesREX().indexOf(nom)<0)return;
+  try{localStorage.setItem('soma.agenceREX',nom);}catch(e){}
+  try{if(typeof save==='function')await save();}catch(e){}
+  let ag=agency(nom),ref=agences.find(x=>x.nom===nom);if(ref)ag.schoolZone=ref.zone;
+  S.agencies=[ag];S.active=0;
+  majChoixAgenceREX();
+  await loadBudgetFromSupabase(nom);
+  showToast('Agence '+nom,'info');
+}
 async function openAgency(){
   let name=q('agencySel').value;
   if(!name)return alert('Choisis une agence');
@@ -7325,7 +7347,7 @@ async function renderAdminUsers() {
   const {data: users} = await sb.from('profiles').select('*').order('nom');
   if (q('adminUsersLoading')) q('adminUsersLoading').style.display = 'none';
   if (!users || !users.length) { q('adminUsersTable').innerHTML = ''; return; }
-  let html = '<tr><th>Nom</th><th>Email</th><th>Role</th><th>Agence</th><th>Actions</th></tr>';
+  let html = '<tr><th>Nom</th><th>Email</th><th>Role</th><th>Agence</th><th>Autres agences (REX)</th><th>Actions</th></tr>';
   for (const u of users) {
     const roles = ['rex','dr','cg','df','dg','pdg','admin'];
     const roleOpts = roles.map(r => `<option value="${r}" ${u.role===r?'selected':''}>${roleLabel(r)}</option>`).join('');
@@ -7335,6 +7357,8 @@ async function renderAdminUsers() {
       <td style="font-size:11px;color:var(--ink2)">${u.email}</td>
       <td><select onchange="adminUpdateRole('${u.id}',this.value)" style="width:auto">${roleOpts}</select></td>
       <td><select onchange="adminUpdateAgence('${u.id}',this.value)" style="width:auto">${agOpts}</select></td>
+      <td data-testid="agences-supp-${u.email}">${u.role==='rex' ? (u.agences_supp||[]).map(n => `<span style="background:var(--bg2);border:1px solid var(--border);padding:2px 6px;font-size:11px;white-space:nowrap;margin-right:4px">${n} <button type="button" title="Retirer ${n}" style="padding:0 4px;width:auto;font-size:11px" onclick='adminAgencesSupp(${JSON.stringify(u.id)},${JSON.stringify((u.agences_supp||[]).filter(x=>x!==n))})'>×</button></span>`).join('')
+        + `<select data-testid="ajout-agence-${u.email}" style="width:auto;font-size:11px" onchange='if(this.value)adminAgencesSupp(${JSON.stringify(u.id)},${JSON.stringify(u.agences_supp||[])}.concat([this.value]))'><option value="">+ agence</option>${agences.filter(a=>!a.type&&a.nom!==u.agence&&!(u.agences_supp||[]).includes(a.nom)).map(a=>`<option>${a.nom}</option>`).join('')}</select>` : '<span style="color:var(--ink65)">—</span>'}</td>
       <td>
         <button class="warn" style="font-size:11px;padding:5px 10px" onclick="adminResetPwd('${u.email}')">Reset MDP</button>
         <button class="danger" style="font-size:11px;padding:5px 10px;margin-left:4px" onclick="adminDeleteUser('${u.id}','${u.nom}')">Supprimer</button>
@@ -7481,6 +7505,15 @@ async function adminUpdateAgence(userId, agence) {
   const r = await ecrire(sb.from('profiles').update({agence: agence || null}).eq('id', userId));
   if (r.error) { showAdminMsg('Agence non modifiée : ' + r.error.message, 'bad'); return; }
   showAdminMsg('Agence mise à jour.', 'ok');
+}
+
+// Agences supplémentaires d'un REX (en plus de son agence principale)
+async function adminAgencesSupp(userId, liste) {
+  const l = (liste || []).filter(Boolean).filter((n, i, t) => t.indexOf(n) === i);
+  const r = await ecrire(sb.from('profiles').update({agences_supp: l}).eq('id', userId));
+  if (r.error) { showAdminMsg('Agences non modifiées : ' + r.error.message, 'bad'); return; }
+  showAdminMsg('Agences du REX mises à jour.', 'ok');
+  renderAdminUsers();
 }
 
 async function adminResetPwd(email) {
@@ -9872,6 +9905,7 @@ const FAQ = {
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026. En haut de l\'écran, le récapitulatif donne pour le mois choisi le CA, sa part dans l\'année, le CA moyen par jour et le nombre de jours de chaque type, puis un tableau des 12 mois : jours de semaine hors vacances scolaires, jours de vacances, samedis, dimanches, fériés et CA par activité. Un clic sur un mois l\'affiche.'],
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
+    ['Je suis responsable de deux agences : comment passer de l\'une à l\'autre ?', 'Si l\'administrateur vous a rattaché à plusieurs agences, un sélecteur apparaît en haut de l\'écran, à côté de votre nom. Choisissez l\'agence : son budget s\'ouvre, avec ses propres écrans, sa propre équipe et son propre circuit de validation. Votre dernier choix est retenu à la prochaine connexion. Chaque budget se soumet séparément.'],
     ['Comment annuler une modification ?', 'Comme dans Excel : la flèche ↶ en haut de l\'écran (ou Ctrl+Z, Cmd+Z sur Mac) annule la dernière modification, et vous pouvez remonter jusqu\'à 50 actions. La flèche ↷ (ou Ctrl+Y) rétablit ce que vous venez d\'annuler. Une saisie dans une même case compte pour une seule action. L\'annulation est enregistrée comme une modification normale. L\'historique repart à zéro quand vous changez d\'agence ou de version.'],
     ['Quel niveau de masse salariale viser ?', 'Le seuil est de 62 % du chiffre d\'affaires sur l\'année (charges de personnel, quotes-parts comprises). Au-dessus, la Synthèse, le Prévisionnel et le centre d\'attention le signalent en orange. Sur la Synthèse, le tableau « Masse salariale / CA, mois par mois » donne le ratio de chaque mois : vert jusqu\'à 62 %, orange au-delà. Un mois au-dessus du seuil n\'est pas une erreur, les mois creux le sont souvent : c\'est la moyenne annuelle qui compte.'],
     ['Que montre le graphique « CA mensuel » de la Synthèse ?', 'Dans « Graphiques détaillés », chaque barre porte le CA du mois. Dessous, « sem. » donne le nombre de jours de semaine hors vacances scolaires et « VS » le nombre de jours de semaine pendant les vacances scolaires de votre zone. Ces deux chiffres expliquent souvent les écarts de CA d\'un mois à l\'autre.'],
@@ -9900,6 +9934,7 @@ const FAQ = {
     ['Directeur financier : quels écrans ?', 'Le directeur financier dispose des écrans de suivi du contrôle de gestion : tableau de bord, vue comparative, consolidation, graphiques, et la consultation de chaque agence (Ouvrir une agence, Prévisionnel, Synthèse, Contrôles). La préparation des données reste au contrôleur de gestion. Il valide à la deuxième étape du circuit, avec le contrôleur de gestion.'],
   ],
   admin: [
+    ['Comment rattacher un REX à plusieurs agences ?', 'Dans la liste des utilisateurs, la colonne « Agence » donne l\'agence principale du REX. La colonne « Autres agences (REX) » permet d\'en ajouter (menu « + agence ») ou d\'en retirer (croix). Le REX voit alors un sélecteur d\'agence en haut de son écran et peut construire chaque budget. Chaque budget suit le circuit de validation de son agence, avec le directeur régional de sa région.'],
     ['Comment créer un compte ?', 'Depuis l\'écran d\'administration, la fonction de création de compte vous permet d\'ajouter un utilisateur, de lui attribuer un rôle (responsable, contrôleur de gestion, directeur régional, direction) et, le cas échéant, de le rattacher à une agence ou une région.'],
     ['Comment tester les différents profils ?', 'Depuis l\'écran d\'administration, vous pouvez basculer dans la vue de n\'importe quel rôle pour voir SOMA exactement comme cet utilisateur le voit. Un bandeau orange en haut de l\'écran vous rappelle que vous êtes en simulation et vous permet de revenir à tout moment à l\'administration.'],
     ['Comment fonctionne l\'affectation des DR aux agences ?', 'L\'écran d\'affectation associe chaque agence à son directeur régional. Cette affectation détermine qui valide le budget de l\'agence à la première étape du circuit. Une agence sans DR affecté ne pourra pas être validée : l\'écran vous signale celles qui restent à affecter.'],
