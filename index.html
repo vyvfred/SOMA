@@ -2051,6 +2051,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
 </section>
 
+<section id="journal" class="panel"><div id="journalContenu"><div class="card"><h2>Journal des connexions</h2><p class="hint">Chargement…</p></div></div></section>
+
 <!-- PANEL CONSOLIDATION (DF / DG / CG) -->
 <section id="consolidation" class="panel">
   <div class="card">
@@ -2266,6 +2268,9 @@ async function afterLogin(user) {
   const {data: prof} = await sb.from('profiles').select('*').eq('id', user.id).single();
   if (!prof) { q('authErr').textContent = 'Profil introuvable. Contactez l\'administrateur.'; return; }
   PROFILE = prof;
+  // Journal des connexions (nov. 2026)
+  if (!JOURNAL_MONO) JOURNAL_MONO = creerJournal(function(n, p){ return sb.rpc(n, p); });
+  JOURNAL_MONO.demarrer();
   q('authScreen').style.display = 'none';
   q('appWrapper').style.display = '';
   q('userNom').textContent = prof.nom;
@@ -2317,6 +2322,7 @@ async function doChangePwd() {
 }
 
 async function doLogout() {
+  if (JOURNAL_MONO) await JOURNAL_MONO.arreter();
   await sb.auth.signOut();
   location.reload();
 }
@@ -2612,7 +2618,7 @@ function buildNavDFDG() {
 
 function buildNavAdmin() {
   let h = '<div class="navgroup">Administration</div>';
-  [['admin','Utilisateurs & Budgets'],['consolidation','Consolidation réseau'],['affectation','Affectation DR'],['cg','Charges du réseau'],['objectif','Modifier un budget'],['aide','Aide']].forEach((x,i) => {
+  [['admin','Utilisateurs & Budgets'],['journal','Journal des connexions'],['consolidation','Consolidation réseau'],['affectation','Affectation DR'],['cg','Charges du réseau'],['objectif','Modifier un budget'],['aide','Aide']].forEach((x,i) => {
     h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`;
   });
   q('nav').innerHTML = h;
@@ -2644,6 +2650,7 @@ function show(id) {
   if (id === 'consolidation') renderConsolidation();
   if (id === 'affectation') renderAffectation();
   if (id === 'admin') renderAdmin();
+  if (id === 'journal') renderJournal();
   render();
   if (PROFILE && PROFILE.role === 'cg') renderCgGuide(id);
 }
@@ -2800,6 +2807,7 @@ async function saveBudgetToSupabase() {
     }
     _lastSaveError = null;
     markSaved();
+    if (JOURNAL_MONO) JOURNAL_MONO.noterSaisie();
     return null;
   } catch(err) {
     let s = q('somSave');
@@ -5478,6 +5486,73 @@ function adaptObjectifIntro(){
 // complètes du budget, jamais modifiées après coup. Les modifications rapprochées (moins d'une seconde,
 // ex. frappe dans une même case) forment une seule action. 50 actions au plus.
 const HISTO_MAX=50,HISTO_DELAI=1000;
+// Journal des connexions (nov. 2026) — texte identique dans le mono-fichier (index.html) et ici.
+// Une « connexion » = une ouverture de SOMA avec une session valide. Tant que l'onglet est visible,
+// un signal part toutes les 60 s (durée) avec le nombre d'enregistrements réussis depuis le dernier signal.
+// Après 30 min sans signal (onglet caché, veille), le retour ouvre une nouvelle connexion.
+// rpc(nom, params) → Promise<{data, error}> (sb.rpc) ; env = {visible(), appareil(), maintenant()} pour les tests.
+const JOURNAL_SIGNAL_MS=60000,JOURNAL_PAUSE_MS=30*60000;
+function journalEnvNavigateur(){return {
+  visible:function(){return typeof document==='undefined'||document.visibilityState!=='hidden';},
+  appareil:function(){try{return window.matchMedia&&window.matchMedia('(max-width: 760px)').matches?'téléphone':'ordinateur';}catch(e){return 'ordinateur';}},
+  maintenant:function(){return Date.now();}
+};}
+function creerJournal(rpc,env){
+  env=env||journalEnvNavigateur();
+  let j={id:null,actif:false,attente:0,dernier:0,ouverture:null,minuterie:null};
+  function ouvrir(){
+    if(j.ouverture)return j.ouverture;
+    j.ouverture=Promise.resolve().then(function(){return rpc('journal_ouvrir',{p_appareil:env.appareil()});})
+      .then(function(r){j.id=r&&!r.error&&r.data?r.data:null;j.dernier=env.maintenant();},function(){j.id=null;})
+      .then(function(){j.ouverture=null;});
+    return j.ouverture;
+  }
+  function signal(force){
+    if(!j.actif||(!force&&!env.visible()))return Promise.resolve();
+    let suite=(!j.id||env.maintenant()-j.dernier>JOURNAL_PAUSE_MS)?(j.id=null,ouvrir()):Promise.resolve();
+    return suite.then(function(){
+      if(!j.id)return;
+      let n=j.attente;j.attente=0;
+      return Promise.resolve().then(function(){return rpc('journal_signal',{p_id:j.id,p_saisies:n});})
+        .then(function(r){if(!r||r.error||r.data===false){j.attente+=n;j.id=null;}else j.dernier=env.maintenant();},function(){j.attente+=n;});
+    });
+  }
+  function surVisibilite(){signal(true);}
+  return {
+    etat:j,
+    signal:signal,
+    demarrer:function(){
+      if(j.actif)return Promise.resolve();
+      j.actif=true;j.id=null;
+      if(typeof setInterval!=='undefined')j.minuterie=setInterval(function(){signal(false);},JOURNAL_SIGNAL_MS);
+      if(typeof document!=='undefined')document.addEventListener('visibilitychange',surVisibilite);
+      return ouvrir();
+    },
+    arreter:function(){
+      if(!j.actif)return Promise.resolve();
+      let p=signal(true);
+      j.actif=false;
+      if(j.minuterie)clearInterval(j.minuterie);
+      j.minuterie=null;
+      if(typeof document!=='undefined')document.removeEventListener('visibilitychange',surVisibilite);
+      return p.then(function(){j.id=null;});
+    },
+    noterSaisie:function(){if(j.actif)j.attente++;}
+  };
+}
+function dureeLisible(min){min=Math.round(+min||0);if(min<1)return '< 1 min';if(min<60)return min+' min';let h=Math.floor(min/60),m=min%60;return h+' h'+(m?' '+String(m).padStart(2,'0'):'');}
+// Écran admin : dernière activité connue (journal, sinon dernière authentification), indicateurs et tri.
+function derniereActivite(s){let a=s.derniere?Date.parse(s.derniere):0,b=s.derniere_auth?Date.parse(s.derniere_auth):0;return Math.max(a||0,b||0)||null;}
+function syntheseJournal(stats,maintenant,tri){
+  maintenant=maintenant||Date.now();
+  let lignes=(stats||[]).map(function(s){return Object.assign({},s,{activite:derniereActivite(s),nb_connexions:+s.nb_connexions||0,nb_jours:+s.nb_jours||0,duree_minutes:+s.duree_minutes||0,saisies:+s.saisies||0});});
+  let jour=24*3600000,depuis=function(ms){return lignes.filter(function(l){return l.activite&&maintenant-l.activite<=ms;}).length;};
+  let cles={activite:function(l){return -(l.activite||0);},connexions:function(l){return -l.nb_connexions;},temps:function(l){return -l.duree_minutes;},saisies:function(l){return -l.saisies;},nom:function(l){return String(l.nom||l.email||'').toLowerCase();}};
+  let k=cles[tri]||cles.activite;
+  lignes.sort(function(x,y){let a=k(x),b=k(y);return a<b?-1:a>b?1:String(x.nom||'').localeCompare(String(y.nom||''));});
+  return {lignes:lignes,kpi:{total:lignes.length,aujourdhui:depuis(jour),semaine:depuis(7*jour),jamais:lignes.filter(function(l){return !l.activite;}).length,connexions:lignes.reduce(function(s,l){return s+l.nb_connexions;},0),saisies:lignes.reduce(function(s,l){return s+l.saisies;},0)}};
+}
+let JOURNAL_MONO=null;
 function creerHistorique(){return {passe:[],futur:[],dernier:0};}
 function viderHistorique(h){h.passe=[];h.futur=[];h.dernier=0;return h;}
 // À appeler AVANT d'appliquer une modification, avec une copie de l'état d'avant
@@ -7340,6 +7415,47 @@ function exportJSON(){let blob=new Blob([JSON.stringify(S,null,2)],{type:'applic
 // ═══════════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// JOURNAL DES CONNEXIONS (admin, nov. 2026) — même contenu que JournalScreen.jsx
+// ═══════════════════════════════════════════════
+let JOURNAL_ECRAN={data:null,maintenant:0,tri:'activite',role:'',erreur:null};
+function jEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function jDateHeure(v){if(!v)return '—';let d=new Date(v);return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function jIlYA(ms,maintenant){if(!ms)return 'jamais';let min=Math.round((maintenant-ms)/60000);if(min<2)return 'en ce moment';if(min<60)return 'il y a '+min+' min';let h=Math.round(min/60);if(h<24)return 'il y a '+h+' h';let j=Math.round(h/24);return 'il y a '+j+' jour'+(j>1?'s':'');}
+async function renderJournal(recharger){
+  let z=q('journalContenu');if(!z)return;
+  if(recharger!==false||!JOURNAL_ECRAN.data){
+    z.innerHTML='<div class="card"><h2>Journal des connexions</h2><p class="hint">Chargement…</p></div>';
+    try{
+      let r=await Promise.all([sb.rpc('journal_stats'),sb.rpc('journal_recent',{p_limite:200})]);
+      if(r[0].error)throw new Error(r[0].error.message);if(r[1].error)throw new Error(r[1].error.message);
+      JOURNAL_ECRAN.data={stats:r[0].data||[],recent:r[1].data||[]};JOURNAL_ECRAN.maintenant=Date.now();JOURNAL_ECRAN.erreur=null;
+    }catch(e){JOURNAL_ECRAN.erreur=e.message||String(e);}
+  }
+  if(JOURNAL_ECRAN.erreur){z.innerHTML='<div class="card"><h2>Journal des connexions</h2><p class="hint">Erreur : '+jEsc(JOURNAL_ECRAN.erreur)+'</p></div>';return;}
+  let E=JOURNAL_ECRAN,filtre=function(x){return !E.role||x.role===E.role;};
+  let syn=syntheseJournal(E.data.stats.filter(filtre),E.maintenant,E.tri),k=syn.kpi,recents=E.data.recent.filter(filtre);
+  let th='padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);font-size:12px;color:var(--ink65);white-space:nowrap',td='padding:6px 8px;border-bottom:1px solid var(--border);font-size:13px;white-space:nowrap',nb=td+';text-align:right',thn=th+';text-align:right';
+  let kpi=function(l,v,n){return '<div class="kpi"><div class="label">'+l+'</div><div class="value">'+v+'</div><div class="note">'+(n||'')+'</div></div>';};
+  let roles=['rex','dr','cg','df','dg','pdg','admin'],tris=[['activite','Dernière activité'],['connexions','Connexions'],['temps','Temps passé'],['saisies','Enregistrements'],['nom','Nom']];
+  let h='<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><h2 style="margin:0">Journal des connexions</h2><button onclick="renderJournal()">↺ Actualiser</button></div>'
+    +'<p class="hint" style="margin-top:8px">Une connexion = une ouverture de SOMA. Le temps passé compte les minutes où SOMA est affiché à l\'écran ; les enregistrements sont les sauvegardes automatiques réussies. Le journal démarre le 17 novembre 2026 : avant cette date, seule la dernière authentification est connue.</p>'
+    +'<div class="kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px">'
+    +kpi('Actifs aujourd\'hui',k.aujourdhui,'sur '+k.total+' utilisateurs')+kpi('Actifs sur 7 jours',k.semaine,'')+kpi('Jamais connectés',k.jamais,k.jamais?'à relancer':'✓ tous connectés')+kpi('Connexions',k.connexions,k.saisies+' enregistrements')+'</div>'
+    +'<div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;font-size:13px"><label>Rôle <select id="journalRole" onchange="JOURNAL_ECRAN.role=this.value;renderJournal(false)"><option value="">Tous</option>'
+    +roles.map(function(r){return '<option value="'+r+'"'+(E.role===r?' selected':'')+'>'+jEsc(roleLabel(r))+'</option>';}).join('')+'</select></label>'
+    +'<label>Trier par <select id="journalTri" onchange="JOURNAL_ECRAN.tri=this.value;renderJournal(false)">'+tris.map(function(t){return '<option value="'+t[0]+'"'+(E.tri===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select></label></div></div>';
+  h+='<div class="card"><h3 style="font-size:14px;margin-bottom:8px">Utilisation par utilisateur</h3><div style="overflow-x:auto"><table id="journalUtilisateurs" style="border-collapse:collapse;width:100%"><thead><tr>'
+    +'<th style="'+th+'">Utilisateur</th><th style="'+th+'">Rôle</th><th style="'+th+'">Agence</th><th style="'+thn+'">Connexions</th><th style="'+thn+'">Jours</th><th style="'+thn+'">Temps passé</th><th style="'+thn+'">Enregistrements</th><th style="'+th+'">Dernière activité</th></tr></thead><tbody>'
+    +syn.lignes.map(function(l){return '<tr'+(l.activite?'':' style="color:var(--orange)"')+'><td style="'+td+'"><b>'+jEsc(l.nom||'—')+'</b><div style="font-size:11px;color:var(--ink65)">'+jEsc(l.email)+'</div></td><td style="'+td+'">'+jEsc(roleLabel(l.role))+'</td><td style="'+td+'">'+jEsc(l.agence||'—')+'</td><td style="'+nb+'">'+l.nb_connexions+'</td><td style="'+nb+'">'+l.nb_jours+'</td><td style="'+nb+'">'+(l.nb_connexions?dureeLisible(l.duree_minutes):'—')+'</td><td style="'+nb+'">'+l.saisies+'</td><td style="'+td+'" title="'+(l.activite?jDateHeure(l.activite):'')+'">'+jIlYA(l.activite,E.maintenant)+'</td></tr>';}).join('')
+    +'</tbody></table></div></div>';
+  h+='<div class="card"><h3 style="font-size:14px;margin-bottom:8px">Dernières connexions</h3>'+(recents.length?'<div style="overflow-x:auto"><table id="journalRecent" style="border-collapse:collapse;width:100%"><thead><tr>'
+    +'<th style="'+th+'">Début</th><th style="'+th+'">Utilisateur</th><th style="'+th+'">Rôle</th><th style="'+th+'">Agence</th><th style="'+thn+'">Durée</th><th style="'+th+'">Appareil</th><th style="'+thn+'">Enregistrements</th></tr></thead><tbody>'
+    +recents.map(function(r){return '<tr><td style="'+td+'">'+jDateHeure(r.debut)+'</td><td style="'+td+'">'+jEsc(r.nom||r.email||'—')+'</td><td style="'+td+'">'+jEsc(roleLabel(r.role))+'</td><td style="'+td+'">'+jEsc(r.agence||'—')+'</td><td style="'+nb+'">'+dureeLisible(r.duree_minutes)+'</td><td style="'+td+'">'+jEsc(r.appareil||'—')+'</td><td style="'+nb+'">'+r.saisies+'</td></tr>';}).join('')
+    +'</tbody></table></div>':'<p class="hint">Aucune connexion enregistrée pour l\'instant.</p>')+'</div>';
+  z.innerHTML=h;
+}
+
 async function renderAdmin() {
   // Remplir le select agences
   if (q('adminAgence')) {
@@ -9946,6 +10062,7 @@ const FAQ = {
     ['Directeur financier : quels écrans ?', 'Le directeur financier dispose des écrans de suivi du contrôle de gestion : tableau de bord, vue comparative, consolidation, graphiques, et la consultation de chaque agence (Ouvrir une agence, Prévisionnel, Synthèse, Contrôles). La préparation des données reste au contrôleur de gestion. Il valide à la deuxième étape du circuit, avec le contrôleur de gestion.'],
   ],
   admin: [
+    ['Comment voir qui utilise SOMA ?', 'Menu « Journal des connexions ». Pour chaque utilisateur : le nombre de connexions, les jours d\'utilisation, le temps passé (minutes où SOMA est affiché à l\'écran), le nombre d\'enregistrements et la dernière activité. Les comptes jamais connectés apparaissent en orange : ce sont ceux à relancer. Plus bas, les dernières connexions avec leur durée et l\'appareil (ordinateur ou téléphone). Filtrez par rôle et triez selon le besoin. Le journal démarre le 17 novembre 2026 : avant, seule la dernière authentification est connue.'],
     ['Comment rattacher un REX à plusieurs agences ?', 'Dans la liste des utilisateurs, la colonne « Agence » donne l\'agence principale du REX. La colonne « Autres agences (REX) » permet d\'en ajouter (menu « + agence ») ou d\'en retirer (croix). Le REX voit alors un sélecteur d\'agence en haut de son écran et peut construire chaque budget. Chaque budget suit le circuit de validation de son agence, avec le directeur régional de sa région.'],
     ['Comment créer un compte ?', 'Depuis l\'écran d\'administration, la fonction de création de compte vous permet d\'ajouter un utilisateur, de lui attribuer un rôle (responsable, contrôleur de gestion, directeur régional, direction) et, le cas échéant, de le rattacher à une agence ou une région.'],
     ['Comment tester les différents profils ?', 'Depuis l\'écran d\'administration, vous pouvez basculer dans la vue de n\'importe quel rôle pour voir SOMA exactement comme cet utilisateur le voit. Un bandeau orange en haut de l\'écran vous rappelle que vous êtes en simulation et vous permet de revenir à tout moment à l\'administration.'],
