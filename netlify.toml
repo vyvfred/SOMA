@@ -1,0 +1,7 @@
+# L'ancienne adresse vyv2027.netlify.app renvoie vers l'application officielle (nov. 2026).
+# Ce fichier n'est lu que par Netlify : la copie de secours publiée ailleurs n'est pas concernée.
+[[redirects]]
+  from = "/*"
+  to = "https://vyv2027-react.netlify.app/:splat"
+  status = 301
+  force = true
