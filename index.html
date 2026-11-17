@@ -2097,6 +2097,8 @@ const HASH_INITIAL = window.location.hash || '';
 const LIEN_RECUPERATION = /(^|[#&])type=recovery(&|$)/.test(HASH_INITIAL);
 const LIEN_EXPIRE = /error_code=otp_expired|error=access_denied/.test(HASH_INITIAL);
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+// Adresse officielle de l'application : les liens des e-mails (mot de passe) y ramènent toujours
+const URL_APPLI = 'https://vyv2027-react.netlify.app/';
 
 // ═══════════════════════════════════════════════
 // ETAT GLOBAL
@@ -2281,7 +2283,7 @@ async function doForgot() {
   const email = (q('forgotEmail') ? q('forgotEmail').value : '').trim();
   if (!email) { q('authErr').textContent = 'Saisissez votre email.'; return; }
   const {error} = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.href
+    redirectTo: URL_APPLI
   });
   if (error) q('authErr').textContent = 'Erreur : ' + error.message;
   else q('authErr').textContent = 'Lien envoyé ! Vérifiez votre boite mail.';
@@ -7427,7 +7429,8 @@ async function adminCreateUser() {
     });
     const {data, error} = await sbTemp.auth.signUp({
       email: email,
-      password: 'vyvFred01!'
+      password: 'vyvFred01!',
+      options: { emailRedirectTo: URL_APPLI }
     });
     if (error) {
       // Cas frequent : l'identite existe deja dans Authentication
@@ -7526,7 +7529,7 @@ async function adminAgencesSupp(userId, liste) {
 }
 
 async function adminResetPwd(email) {
-  const {error} = await sb.auth.resetPasswordForEmail(email);
+  const {error} = await sb.auth.resetPasswordForEmail(email, { redirectTo: URL_APPLI });
   if (error) showAdminMsg('Erreur : ' + error.message, 'bad');
   else showAdminMsg('Email de réinitialisation envoyé à ' + email, 'ok');
 }
