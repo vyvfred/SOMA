@@ -4004,15 +4004,22 @@ async function choisirVersionSoumission(){
 
 // ═══ SPRINT UX 1 — Auto-save silencieux ═══
 let _autosaveTimer = null;
+// Fermeture ou changement d'onglet : enregistrement immédiat de ce qui attend, et avertissement du
+// navigateur si la page se ferme avec une modification pas encore enregistrée
+function sauvegardeEnAttente(){return !!_autosaveTimer;}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&_autosaveTimer){clearTimeout(_autosaveTimer);_autosaveTimer=null;save();}});
+window.addEventListener('beforeunload',function(e){if(!sauvegardeEnAttente())return;clearTimeout(_autosaveTimer);_autosaveTimer=null;save();e.preventDefault();e.returnValue='';return '';});
 function scheduleAutosave(){
   // Ne rien faire si pas de budget éditable
-  if(!PROFILE || !['rex','cg','admin'].includes(PROFILE.role)) return;
+  // REX, CG, admin… et DR qui saisit à la place du REX
+  if(!PROFILE || !(['rex','cg','admin'].includes(PROFILE.role) || (PROFILE.role==='dr' && SAISIE_DR))) return;
   let a = A();
   if(!a || a.name === 'Nouvelle agence') return;
   // Indicateur immédiat "modifications en cours"
   markSaving();
   if(_autosaveTimer) clearTimeout(_autosaveTimer);
   _autosaveTimer = setTimeout(function(){
+    _autosaveTimer = null;
     save();
   }, 1500); // sauvegarde 1,5s après la dernière modification
 }
@@ -4298,11 +4305,13 @@ async function renderSaisieDR(){
 }
 async function saisirPourREX(nom){
   SAISIE_DR = true;
+  if (q('somSave')) q('somSave').style.display = ''; // indicateur de sauvegarde visible pendant la saisie
   await cgOpenAgence(nom);
 }
 function terminerSaisieDR(){
   if(BUDGET_ID && budgetModifiable()) save();
   SAISIE_DR = false;
+  if (q('somSave')) q('somSave').style.display = 'none';
   show('saisie');
 }
 function majBandeauDR(){
