@@ -1386,6 +1386,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
         <label class="objActChip checked"><input type="checkbox" id="actSan" checked disabled> Sanitaire <span>obligatoire</span></label>
         <label class="objActChip"><input type="checkbox" id="actSai" onchange="setAct('actSai',this.checked)"> Saisonnier</label>
         <label class="objActChip"><input type="checkbox" id="actTP" onchange="setAct('actTP',this.checked)"> Transport de personnes</label>
+        <label class="objActChip" title="Activité commerciale sans besoin d'équipage : CA saisi par mois dans Références CA, hors heures nécessaires, TXR et objectif"><input type="checkbox" id="actFun" data-testid="act-fun-obj" onchange="setAct('actFun',this.checked)"> Funéraire</label>
       </div>
     </div>
 
@@ -1446,6 +1447,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 </section>
 
 <section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan" data-visite="refs"></table></div><div id="refSaiSection"><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div></div><div id="refTPSection"><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></div>
+  <div class="card" id="refFunSection" data-testid="refs-fun" style="display:none;margin-top:14px"></div>
   <div class="stepnav" id="stepnav_refs"></div>
 </section>
 <section id="cal" class="panel">
@@ -3702,7 +3704,13 @@ function joursSemaine(a,w){return indexCal(a).parSemaine.get(w)||[];}
 function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0},ref=null,aj=a.ajustJours&&a.ajustJours[cleJour(m,d)];if(aj){ref={san:ca.san,sai:ca.sai,tp:ca.tp};['san','sai','tp'].forEach(function(k){if(aj[k]!==undefined&&aj[k]!==null&&aj[k]!=='')ca[k]=+aj[k]||0;});}a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp,ref})}}}
 // Clé d'un jour 2027 (« 2027-03-16 ») ; a.ajustJours[clé] = {san?, sai?, tp?} remplace la référence CA de ce jour (ajustement fait sur le calendrier)
 function cleJour(m,d){return '2027-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
-function monthCA(a,m){if(estStructure(a))return caStructure(a,m);if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)}
+function monthCA(a,m){if(estStructure(a))return caStructure(a,m);if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)+caFunMois(a,m)}
+// Activité funéraire (nov. 2026, agence de Cahors) : CA commercial saisi par mois, réparti à parts égales sur les jours du mois.
+// Sans besoin d'équipage : il entre dans le CA (compte de résultat, charges en % du CA) mais ni dans les heures de besoin
+// (qui viennent du CA des jours du calendrier, a.cal[].total), ni dans le TXR, ni dans l'objectif de CA (transport).
+function caFunMois(a,m){if(!a||!a.actFun||!Array.isArray(a.caFuneraire))return 0;return Math.max(0,+a.caFuneraire[m]||0);}
+function caFunJour(a,m){return caFunMois(a,m)/new Date(2027,m+1,0).getDate();}
+function caFunAnnuel(a){return M.reduce(function(s,_,m){return s+caFunMois(a,m);},0);}
 function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
 function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>{let dx=x.days[0],dy=y.days[0];return (dx.month-dy.month)||(dx.day-dy.day)})}
 function needWeeks(a){return weeks(a).map(w=>({week:w.week,days:w.days.length,ca:w.ca,hours:(+a.targetTXR?w.ca/+a.targetTXR:0)}))}
@@ -4061,7 +4069,7 @@ function gaugeRow(label,value){let v=Math.max(0,Math.min(100,Number(value)||0));
 
 function bind(){
   let a=A();
-  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','actSan','actSai','actTP'].forEach(id=>{
+  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','actSan','actSai','actTP','actFun'].forEach(id=>{
     let e=q(id);if(!e)return;
     if(e.type==='checkbox'){e.checked=!!a[id];}else if(document.activeElement!==e){e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
     e.oninput=ev=>{
@@ -4072,7 +4080,7 @@ function bind(){
       return; // annuler la modification
     }
     let v=ev.target.value;
-    a[id]=(id==='perspectives'||id==='schoolZone')?v:(id==='actSan'||id==='actSai'||id==='actTP')?ev.target.checked:v===''?null:parseFr(v);
+    a[id]=(id==='perspectives'||id==='schoolZone')?v:(id==='actSan'||id==='actSai'||id==='actTP'||id==='actFun')?ev.target.checked:v===''?null:parseFr(v);
     if(id==='schoolZone'||id==='actSai'||id==='actTP')genCal(a);
     if(id==='tauxHoraireBrut'||id==='tauxHoraireBrutJuin'||id==='tauxChargePatronal')recalcCostHour();
     render();
@@ -4192,7 +4200,7 @@ async function dupliquerVersion(){
 // il n'est jamais recopié. Seules les saisies propres à une version le sont, par bloc.
 const BLOCS_VERSION=[
   {id:'equipe',label:'Équipe',detail:'salariés, contrats, heures, % roulant, entrées et sorties',cles:['employees']},
-  {id:'objectif',label:'Objectif et références CA',detail:'CA cible, TXR cible, activités, perspectives, CA moyen par type de jour, jours ajustés sur le calendrier',cles:['targetCA','targetTXR','perspectives','actSan','actSai','actTP','refs','ajustJours']},
+  {id:'objectif',label:'Objectif et références CA',detail:'CA cible, TXR cible, activités, perspectives, CA moyen par type de jour, jours ajustés sur le calendrier',cles:['targetCA','targetTXR','perspectives','actSan','actSai','actTP','actFun','caFuneraire','refs','ajustJours']},
   {id:'presence',label:'Présence & HS',detail:'absentéisme, congés, mois travaillés, CP des non-roulants, indemnités',cles:['sick','presence','cpEnveloppes','cpReliquat','cpOptimal','cpOptimalHSCost','cpNR','moisVerrouilles','hs50','hsImproductif','repasRoulant','repasNonRoulant','idjfRoulant','idjfNonRoulant']},
   {id:'charges',label:'Charges',detail:'postes de charges hors personnel (saisies REX et CG)',cles:['rex']}
 ];
@@ -4906,7 +4914,7 @@ function ficheDecisions(d, agenceNom){
   return {
     ca, histCA, targetCA, net, tauxMS, nbRoulants, croissance, medCroissance,
     absRef, absMoy, hsParSalSem, medHSsal, hs50Moy, choix,
-    activites: [d.actSan!==false?'sanitaire':null, d.actSai?'saisonnier':null, d.actTP?'transport de personnes':null].filter(Boolean)
+    activites: [d.actSan!==false?'sanitaire':null, d.actSai?'saisonnier':null, d.actTP?'transport de personnes':null, d.actFun?'funéraire':null].filter(Boolean)
   };
 }
 
@@ -5949,12 +5957,15 @@ function render(){
   // Mettre à jour les badges de complétion dans la nav
   if(PROFILE && (PROFILE.role==='rex'||PROFILE.role==='cg'||PROFILE.role==='df'||PROFILE.role==='admin')) buildNav();
   if(q('cgAgenceName'))q('cgAgenceName').textContent=a.name&&a.name!=='Nouvelle agence'?a.name:'...';
-  kpis('objectiveKpis',[['Objectif CA',euro(a.targetCA)],['CA construit',euro(annualCA(a))],['Écart',euro(annualCA(a)-a.targetCA)],['Heures nécessaires',hsTot(a).need.toFixed(0)+' h'],['HS estimées',hsTot(a).hs.toFixed(0)+' h'],['Zone',a.schoolZone]]);
+  // L'objectif de CA porte sur le transport : le CA funéraire (sans besoin d'équipage) est affiché à part
+  let caFunObj=caFunAnnuel(a),caConstr=annualCA(a)-caFunObj;
+  kpis('objectiveKpis',[['Objectif CA',euro(a.targetCA)],[caFunObj?'CA construit (transport)':'CA construit',euro(caConstr)],['Écart',euro(caConstr-a.targetCA)]].concat(caFunObj?[['CA funéraire',euro(caFunObj)]]:[]).concat([['Heures nécessaires',hsTot(a).need.toFixed(0)+' h'],['HS estimées',hsTot(a).hs.toFixed(0)+' h'],['Zone',a.schoolZone]]));
   refTable('refSan','san');
   if(a.actSai){refTable('refSai','sai');if(q('refSaiSection'))q('refSaiSection').style.display='';}
   else{if(q('refSaiSection'))q('refSaiSection').style.display='none';}
   if(a.actTP){refTable('refTP','tp');if(q('refTPSection'))q('refTPSection').style.display='';}
   else{if(q('refTPSection'))q('refTPSection').style.display='none';}
+  renderRefFun(a);
   renderCal();renderTeam();renderRH();renderChargesREX();renderPrevisionnel();renderCoherence();renderObjectifInsight();renderRefusREX();renderDashboard();renderSynthese();renderRatioMSMensuel();updateAttentionCenter();renderCG();renderControl();renderREX();renderFinance();suivreHistoriqueMono();
   updateStatutBar();
   setTimeout(animateCounters, 100);
@@ -5998,15 +6009,17 @@ function appliquerVerrouValidation(){
     });
   });
 }
-function totauxCalendrier(cal){
-  let mois=Array.from({length:12},(_,m)=>({month:m,ouvres:0,vacances:0,samedis:0,dimanches:0,feries:0,jours:0,san:0,sai:0,tp:0,ca:0}));
+// funMois (facultatif) : CA de l'activité funéraire de chaque mois, réparti sur les jours (compté dans le CA, pas dans les besoins)
+function totauxCalendrier(cal,funMois){
+  let mois=Array.from({length:12},(_,m)=>({month:m,ouvres:0,vacances:0,samedis:0,dimanches:0,feries:0,jours:0,san:0,sai:0,tp:0,fun:0,ca:0}));
   (cal||[]).forEach(function(d){
     let t=mois[d.month];if(!t)return;
     t.jours++;
     if(d.type==='ferie')t.feries++;else if(d.type==='dimanche')t.dimanches++;else if(d.type==='samedi')t.samedis++;else if(d.type==='vacances')t.vacances++;else t.ouvres++;
     let c=d.ca||{};t.san+=+c.san||0;t.sai+=+c.sai||0;t.tp+=+c.tp||0;t.ca+=+d.total||0;
   });
-  let total={month:-1,ouvres:0,vacances:0,samedis:0,dimanches:0,feries:0,jours:0,san:0,sai:0,tp:0,ca:0};
+  if(funMois)mois.forEach(function(t,m){let f=+funMois[m]||0;t.fun=f;t.ca+=f;});
+  let total={month:-1,ouvres:0,vacances:0,samedis:0,dimanches:0,feries:0,jours:0,san:0,sai:0,tp:0,fun:0,ca:0};
   mois.forEach(function(t){Object.keys(total).forEach(function(k){if(k!=='month')total[k]+=t[k]})});
   mois.forEach(function(t){t.part=total.ca?t.ca/total.ca:0;t.moyJour=t.jours?t.ca/t.jours:0});
   total.part=total.ca?1:0;total.moyJour=total.jours?total.ca/total.jours:0;
@@ -6017,11 +6030,12 @@ const MOIS_LONG=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Ao�
 function pctCal(x){return (x*100).toFixed(1).replace('.',',')+' %'}
 function renderCalTotaux(a,month){
   let el=q('calTotaux');if(!el)return;
-  let r=totauxCalendrier(a.cal),mois=r.mois,total=r.total,t=mois[month];
+  let r=totauxCalendrier(a.cal,M.map(function(_,m){return caFunMois(a,m);})),mois=r.mois,total=r.total,t=mois[month];
   let kpis=[['CA du mois',euro(t.ca),true],["Part de l'année",pctCal(t.part)],['CA moyen / jour',euro(t.moyJour)],['Jours de semaine hors vacances scolaires',t.ouvres],['Vacances',t.vacances],['Samedis',t.samedis],['Dimanches',t.dimanches],['Fériés',t.feries]];
   let lignes=[['Jours de semaine hors vacances scolaires','ouvres'],['Vacances','vacances'],['Samedis','samedis'],['Dimanches','dimanches'],['Fériés','feries'],['Total jours','jours'],['CA Sanitaire','san',true]];
   if(a.actSai)lignes.push(['CA Saisonnier','sai',true]);
   if(a.actTP)lignes.push(['CA Transport de personnes','tp',true]);
+  if(total.fun)lignes.push(['CA Funéraire (sans besoin d\'équipage)','fun',true]);
   lignes.push(['CA total','ca',true,true],["Part de l'année",'part','pct']);
   let fmt=(v,k)=>k==='pct'?pctCal(v):k?euro(v):v;
   let cell='padding:4px 8px;text-align:right;white-space:nowrap;',sel='background:rgba(139,127,255,.14);';
@@ -6166,8 +6180,8 @@ function renderCal(){
       +(d.ref?'<span data-testid="ajuste-'+d.day+'" style="position:absolute;right:4px;bottom:3px;font-size:11px;color:var(--violet)" aria-label="jour ajusté">✎</span>':'')
       +'<div class="dh"><span class="dt">'+d.day+'</span>'+badge+'</div>'
       +'<div class="small" style="margin-bottom:4px">'+(isFerie?'Férié':isVac?'Vacances':isWeekend?libJour:d.type)+' • S'+d.week+'</div>'
-      +'<div title="San = sanitaire'+(a.actSai?', Sais = saisonnier':'')+(a.actTP?', TP = transport de personnes':'')+'">San '+euro(d.ca.san)+(a.actSai?'<div>Sais '+euro(d.ca.sai)+'</div>':'')+(a.actTP?'<div>TP '+euro(d.ca.tp)+'</div>':'')+'</div>'
-      +'<div class="tot">'+euro(d.total)+'</div>'
+      +'<div title="San = sanitaire'+(a.actSai?', Sais = saisonnier':'')+(a.actTP?', TP = transport de personnes':'')+'">San '+euro(d.ca.san)+(a.actSai?'<div>Sais '+euro(d.ca.sai)+'</div>':'')+(a.actTP?'<div>TP '+euro(d.ca.tp)+'</div>':'')+(caFunMois(a,m)?'<div title="Funéraire : CA du mois réparti à parts égales sur les jours, sans besoin d\'équipage" style="color:var(--ink65)">Fun '+euro(caFunJour(a,m))+'</div>':'')+'</div>'
+      +'<div class="tot">'+euro(d.total+caFunJour(a,m))+'</div>'
       +'</div>';
   });
 
@@ -7127,7 +7141,7 @@ function renderCoherence(){
 // CA mensuel budgété avec, sous chaque mois, les jours ouvrés et les jours de vacances scolaires (VS)
 function kEuro(v){v=+v||0;return Math.abs(v)>=1e6?(v/1e6).toFixed(2).replace('.',',')+' M€':Math.round(v/1000)+' k€'}
 function caMoisHTML(a,monthly){
-  let t=totauxCalendrier(a.cal).mois,max=Math.max(1,...monthly);
+  let t=totauxCalendrier(a.cal,M.map(function(_,m){return caFunMois(a,m);})).mois,max=Math.max(1,...monthly);
   return '<div class="caMois">'+monthly.map((v,i)=>'<div class="caMoisCol" title="'+M[i]+' : '+euro(v)+'"><div class="caMoisVal">'+kEuro(v)+'</div><div class="caMoisBar" style="height:'+Math.max(2,v/max*170)+'px"></div></div>').join('')+'</div>'
     +'<div class="caMoisPied">'+t.map((x,i)=>'<div><b>'+M[i]+'</b>'+x.ouvres+' sem.<br>'+x.vacances+' VS</div>').join('')+'</div>'
     +'<div class="caMoisLeg">sem. = jours de semaine hors vacances scolaires · VS = jours de semaine en vacances scolaires (zone '+(a.schoolZone||'?')+')</div>';
@@ -7381,7 +7395,7 @@ function renderSynthese(){
   let res = resultatAffiche(a), net = res.val;
   let ms = ann(a,"Charges de personnel");
   let caObj = +a.targetCA || 0;
-  let ecart = ca - caObj;
+  let ecart = ca - caFunAnnuel(a) - caObj; // l'objectif porte sur le transport (hors funéraire)
   let tauxMS = ca ? ms/ca*100 : 0;
   let tensions = hsTot(a);
   let hsR = hsRows(a);
@@ -7461,6 +7475,25 @@ function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Char
 // ═══════════════════════════════════════════════
 function setRef(act,m,t,v){A().refs[act][m][t]=v===''?null:+v;genCal(A());render()}
 function setAct(field,val){A()[field]=val;render()}
+// ── Activité funéraire : CA mensuel (Références CA) ──
+function setFunMois(m,v){
+  let a=A();
+  let x=(a.caFuneraire&&a.caFuneraire.length===12?a.caFuneraire:Array(12).fill(null)).slice();
+  x[m]=v===''?null:Math.max(0,+String(v).replace(',','.')||0);
+  a.caFuneraire=x;render();
+}
+function renderRefFun(a){
+  let el=q('refFunSection');if(!el)return;
+  if(!a.actFun){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='';
+  let modif=!(typeof budgetModifiable==='function'&&!budgetModifiable())&&!CONSULT_MODE;
+  el.innerHTML='<h3 style="font-size:14px;margin-bottom:4px">Funéraire — CA par mois (€)</h3>'
+    +'<p class="hint" style="font-size:12px;margin:0 0 8px">Activité commerciale sans besoin d\'équipage : le montant du mois est réparti à parts égales sur chaque jour du calendrier. Il compte dans le chiffre d\'affaires et le compte de résultat, mais pas dans les heures nécessaires, le TXR ni l\'objectif de CA.</p>'
+    +'<div class="tablewrap"><table style="font-size:11px"><tr><th style="text-align:left">Mois</th>'+M.map(function(x){return '<th>'+x+'</th>';}).join('')+'<th>Total</th></tr>'
+    +'<tr><td>CA du mois</td>'+M.map(function(_,m){let v=a.caFuneraire&&a.caFuneraire[m]!==null&&a.caFuneraire[m]!==undefined?a.caFuneraire[m]:'';return '<td><input type="number" min="0" data-testid="fun-'+m+'"'+drA('caFuneraire.'+m)+' value="'+v+'" placeholder="—" '+(modif?'':'disabled ')+'onchange="setFunMois('+m+',this.value)" style="width:70px"></td>';}).join('')+'<td class="num"><b>'+euro(caFunAnnuel(a))+'</b></td></tr>'
+    +'<tr><td style="color:var(--ink65)">Par jour</td>'+M.map(function(_,m){return '<td class="num" style="color:var(--ink65)">'+(caFunMois(a,m)?Math.round(caFunJour(a,m)).toLocaleString('fr-FR'):'')+'</td>';}).join('')+'<td></td></tr></table></div>';
+}
+
 function setEmp(i,f,v){
   let av=etatConges(A());
   let numFields=['hours','hoursM','hsTarget','pctRoulant','joursSem','coutJour'];
@@ -9627,7 +9660,7 @@ function afficherAlertesCG(){
   let baseHebdo=baseH(a),txr=+a.targetTXR||0;
   if(baseHebdo>0&&txr>0){
     let caMax=Math.round(heuresDispoAnnuelles(a)*txr); // maladie et congés déduits
-    let caB=ann(a,"Chiffre d'affaires");
+    let caB=ann(a,"Chiffre d'affaires")-caFunAnnuel(a); // funéraire : sans besoin d'équipage
     if(caB>caMax*1.15)alertes.push({t:'crit',m:'CA budgete ('+euro(caB)+') depasse de plus de 15% la capacite max ('+euro(caMax)+'). Verifier les references CA.'});
     else if(caB>caMax)alertes.push({t:'warn',m:'CA budgété supérieur à la capacité max sans HS (maladie et congés déduits). Des heures supplémentaires importantes sont nécessaires.'});
   }
@@ -10701,6 +10734,7 @@ const FAQ = {
     ['Que montre le graphique « CA mensuel » de la Synthèse ?', 'Dans « Graphiques détaillés », chaque barre porte le CA du mois. Dessous, « sem. » donne le nombre de jours de semaine hors vacances scolaires et « VS » le nombre de jours de semaine pendant les vacances scolaires de votre zone. Ces deux chiffres expliquent souvent les écarts de CA d\'un mois à l\'autre.'],
     ['Qui saisit les charges hors personnel ?', 'Vous saisissez six postes à l\'étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du chiffre d\'affaires de chaque mois (le taux peut changer d\'un mois à l\'autre), sous-traitance et entretiens véhicules - bâtiment en montant fixe par mois. Les cases partent des valeurs du contrôle de gestion quand il y en a. Les autres charges (loyers, assurances, crédit-bail…) sont saisies par le contrôleur de gestion et apparaissent dans votre prévisionnel au fur et à mesure. Si un de ces montants vous semble faux, signalez-le au contrôle de gestion.'],
     ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'Les salaires de base sont mensualisés : le même montant chaque mois (heures du contrat × 52/12 × taux horaire), au prorata en cas d\'entrée ou de sortie. Seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) suivent les périodes de paie de 4 ou 5 semaines : janvier, avril, juillet et octobre en comptent 5, et les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend les variables de décembre 2026. La masse salariale varie donc surtout avec les heures supplémentaires, les absences et la hausse du taux horaire de juin. Un bandeau le rappelle sur l\'écran Prévisionnel.'],
+    ['Mon agence a une activité funéraire : comment la budgéter ?', 'Cochez <b>Funéraire</b> dans les activités (écran Objectif), puis saisissez le <b>CA de chaque mois</b> dans le bloc « Funéraire » des Références CA. Le montant du mois est réparti à parts égales sur chaque jour du calendrier. C\'est une activité commerciale sans besoin d\'équipage : elle compte dans le chiffre d\'affaires et le compte de résultat (et dans les charges calculées en % du CA), mais pas dans les heures nécessaires, les heures supplémentaires, le TXR ni l\'objectif de CA, qui portent sur le transport.'],
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
   valideur: [
