@@ -1321,7 +1321,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <button id="btnDupVersion" onclick="dupliquerVersion()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--bg3);color:var(--ink);border:1px solid var(--border)">⎘ Dupliquer la version active</button>
       <button onclick="showVersionCompare()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--blue);color:#fff;border:none">⇄ Comparer les versions</button>
       <button id="btnRepriseVersion" onclick="ouvrirRepriseVersion()" style="display:none;width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--bg3);color:var(--ink);border:1px solid var(--border)">↧ Reprendre d'une autre version</button>
-      <button id="btnSupprVersion" onclick="supprimerVersion()" style="display:none;width:auto;margin:0;font-size:12px;padding:7px 12px;background:transparent;color:var(--red);border:1px solid var(--red)">🗑 Supprimer la version</button>
+      <span id="btnsSupprVersion" style="display:contents"></span>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <label style="margin:0;font-size:12px;color:var(--ink65);white-space:nowrap">Description de cette version :</label>
@@ -1467,6 +1467,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <div class="stepnav" id="stepnav_cal"></div>
 </section>
 <section id="team" class="panel"><div class="card"><h2 style="margin-bottom:var(--sp-5)">Équipe</h2>
+    <div id="equipeVide" data-testid="equipe-vide" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;border:1px solid var(--orange);background:rgba(196,83,0,.10);font-size:13px"></div>
     <div class="teamKpiRow" id="teamKpiRow"></div>
     <div class="objInsight" id="teamInsight" style="display:none">
       <span class="objInsightIcon">💬</span>
@@ -4228,6 +4229,17 @@ async function ouvrirRepriseVersion(){
     + '<button id="repriseValider" style="width:auto;margin:0;background:var(--green);color:#fff;border:none" onclick="validerRepriseVersion()">↧ Reprendre dans la '+VERSION_LABELS[ACTIVE_VERSION]+'</button></div></div>';
   document.body.appendChild(m);
 }
+async function reprendreEquipeMono(source){
+  await saveBudgetToSupabase();
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
+  let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
+  if(!versions[source] || !Object.keys(versions[source]).length){ showToast('La version '+VERSION_LABELS[source]+' est vide.', 'warn'); return; }
+  let a = A(), src = Object.assign(agency(a.name), versions[source], {name: a.name});
+  a.employees = reprendreBlocs(a, src, ['equipe']).employees || [];
+  render();
+  scheduleAutosave();
+  showToast('Équipe de la '+VERSION_LABELS[source]+' reprise dans la '+VERSION_LABELS[ACTIVE_VERSION]+' (↶ pour annuler)', 'success');
+}
 async function validerRepriseVersion(){
   let source = q('repriseSource').value;
   let ids = Array.prototype.slice.call(document.querySelectorAll('.repriseBloc:checked')).map(function(c){ return c.value; });
@@ -4250,8 +4262,10 @@ async function validerRepriseVersion(){
   scheduleAutosave();
   showToast('Données de la '+VERSION_LABELS[source]+' reprises dans la '+VERSION_LABELS[ACTIVE_VERSION]+' (↶ pour annuler)', 'success');
 }
-async function supprimerVersion(){
-  let v = ACTIVE_VERSION;
+let VERSIONS_REMPLIES_MONO = ['v1'];
+async function supprimerVersion(v){
+  v = v || ACTIVE_VERSION;
+  let etaitActive = v === ACTIVE_VERSION;
   if(!confirm('Supprimer définitivement la version '+VERSION_LABELS[v]+' et toutes ses saisies ? Cette action ne peut pas être annulée.')) return;
   await saveBudgetToSupabase();
   const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
@@ -4260,16 +4274,20 @@ async function supprimerVersion(){
   let motif = motifRefusSuppression(courant, v, budgetModifiable());
   if(motif){ showToast(motif, 'warn'); return; }
   let out = donneesSansVersion(courant, v);
+  if(!etaitActive) out.meta.activeVersion = ACTIVE_VERSION;
   const res = await ecrire(sb.from('budgets').update({data: out}).eq('id', BUDGET_ID));
   if(res.error){ showToast('Suppression refusée : ' + res.error.message, 'error'); return; }
+  if(!etaitActive) out.meta.activeVersion = ACTIVE_VERSION;
   BUDGET_META = out.meta;
   META_BASE = JSON.parse(JSON.stringify(out.meta));
-  ACTIVE_VERSION = 'v1';
-  let a = A();
-  S.agencies[S.active] = Object.assign({}, agency(a.name), out.versions.v1 || {}, {name: a.name});
-  migrateState();
-  BUDGET_BASE = out.versions.v1 ? JSON.parse(JSON.stringify(out.versions.v1)) : null;
-  viderHistoriqueMono();
+  if(etaitActive){
+    ACTIVE_VERSION = 'v1';
+    let a = A();
+    S.agencies[S.active] = Object.assign({}, agency(a.name), out.versions.v1 || {}, {name: a.name});
+    migrateState();
+    BUDGET_BASE = out.versions.v1 ? JSON.parse(JSON.stringify(out.versions.v1)) : null;
+    viderHistoriqueMono();
+  }
   renderVersionBar();
   render();
   showToast('Version '+VERSION_LABELS[v]+' supprimée', 'success');
@@ -5463,13 +5481,12 @@ async function renderVersionBar(){
   if(q('btnDupVersion')) q('btnDupVersion').disabled = !modif;
   let autresRemplies = ['v1','v2','v3'].filter(function(v){ return v !== ACTIVE_VERSION && versions[v] && Object.keys(versions[v]).length; });
   if(q('btnRepriseVersion')){ q('btnRepriseVersion').style.display = autresRemplies.length ? '' : 'none'; q('btnRepriseVersion').disabled = !modif; }
-  if(q('btnSupprVersion')){
-    let activeRemplie = versions[ACTIVE_VERSION] && Object.keys(versions[ACTIVE_VERSION]).length;
-    q('btnSupprVersion').style.display = (VERSIONS_SUPPRIMABLES.indexOf(ACTIVE_VERSION) >= 0 && activeRemplie) ? '' : 'none';
-    q('btnSupprVersion').textContent = '🗑 Supprimer la ' + VERSION_LABELS[ACTIVE_VERSION];
-    let soumise = meta.submittedVersion === ACTIVE_VERSION;
-    q('btnSupprVersion').disabled = !modif || soumise;
-    q('btnSupprVersion').title = soumise ? 'Version choisie pour la soumission : choisissez-en une autre avant de la supprimer' : '';
+  VERSIONS_REMPLIES_MONO = ['v1','v2','v3'].filter(function(v){ return versions[v] && Object.keys(versions[v]).length; });
+  if(q('btnsSupprVersion')){
+    q('btnsSupprVersion').innerHTML = VERSIONS_SUPPRIMABLES.filter(function(v){ return versions[v] && Object.keys(versions[v]).length; }).map(function(v){
+      let soumise = meta.submittedVersion === v;
+      return '<button data-testid="version-supprimer-'+v+'" onclick="supprimerVersion(\''+v+'\')"'+((!modif || soumise)?' disabled':'')+' title="'+(soumise?'Version choisie pour la soumission : choisissez-en une autre avant de la supprimer':'Supprimer définitivement la '+VERSION_LABELS[v])+'" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:transparent;color:var(--red);border:1px solid var(--red)">🗑 Supprimer la '+VERSION_LABELS[v]+'</button>';
+    }).join('');
   }
   if(q('versionDesc')) q('versionDesc').disabled = !modif;
   // Info soumission
@@ -6117,6 +6134,13 @@ function renderTeam(){
   if(!q('empTable'))return;
   let a=A();
   renderTeamKpis(a);
+  // Version sans salarié alors qu'une autre version en a : proposer de reprendre son équipe
+  if(q('equipeVide')){
+    let srcs=(VERSIONS_REMPLIES_MONO||[]).filter(function(v){return v!==ACTIVE_VERSION;});
+    let voir=budgetModifiable()&&BUDGET_ID&&!(a.employees||[]).length&&srcs.length;
+    q('equipeVide').style.display=voir?'flex':'none';
+    if(voir)q('equipeVide').innerHTML='<span style="flex:1;min-width:220px">⚠ Cette version ('+VERSION_LABELS[ACTIVE_VERSION]+') ne contient aucun salarié.</span>'+srcs.map(function(v){return '<button data-testid="equipe-reprendre-'+v+'" onclick="reprendreEquipeMono(\''+v+'\')" style="width:auto;margin:0">Reprendre l\'équipe de la '+VERSION_LABELS[v]+'</button>';}).join('');
+  }
   let quals=['DEA','AA','TAXI','TPMR','REGULATEUR','REX'];
   let contracts=['CDI','CDD','APPRENTI','INTERIM'];
   ETAT_TRI_EQUIPE=majOrdreEquipe(ETAT_TRI_EQUIPE,a.employees,TRI_EQUIPE,a.name||S.active);
