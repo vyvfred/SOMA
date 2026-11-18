@@ -6681,9 +6681,7 @@ function renderRH(){
       let joursDuMois = a.cal.filter(function(d){return d.month===m;});
       let nbFeriesM = joursDuMois.filter(function(d){return d.type==='ferie';}).length;
       let nbVacM = joursDuMois.filter(function(d){return d.type==='vacances';}).length;
-      let cpM = weeksOfMonth.reduce(function(s,r){
-        let p=a.presence[r.week]||{cp:0};return s+(+p.cp||0);
-      },0);
+      let cpM = weeksOfMonth.reduce(function(s,r){ return s+absPartMois(a,r.week,'cp',m); },0);
       let tensions = weeksOfMonth.filter(function(r){return r.t==='critique';}).length;
       let warnings = weeksOfMonth.filter(function(r){return r.t==='warning';}).length;
       let cpPoss = weeksOfMonth.filter(function(r){return r.t==='sous-charge';}).length;
@@ -6822,6 +6820,9 @@ function showWeekDetail(m){
     +'</tr>';
   let rows=weeksOfMonth.map(function(hr){
     let p=pres(a,hr.week);
+    // Semaine à cheval sur deux mois : on saisit la part de ce mois, le total de la semaine est la somme des parts
+    let aCheval=moisDeSemaine(a,hr.week).length>1;
+    let titreCheval=function(ch){return aCheval?' title="Semaine à cheval sur deux mois : jours de ce mois. Total de la semaine : '+(+((a.presence[hr.week]||{})[ch])||0).toFixed(1)+' J"':(ch==='otherPaid'?' title="Absences payées (jours)"':ch==='other'?' title="Absences non payées (jours)"':'');};
     // Charge de la semaine (HS par personne présente) + langage naturel
     let hp = hsParPersonne(a, hr.week);
     // Verdict ABSOLU : part des HS dans la capacité de la semaine.
@@ -6839,13 +6840,13 @@ function showWeekDetail(m){
     }
     let ecartCls=hr.gap<-5?'bad':hr.gap>5?'ok':'';
     return '<tr>'
-      +'<td>S'+hr.week+'</td>'
+      +'<td>S'+hr.week+(aCheval?'<div style="font-size:10px;color:var(--ink65)" title="Semaine à cheval sur deux mois : saisissez les jours de ce mois, ils s\'additionnent à ceux de l\'autre mois">à cheval · sem. '+(+p.cp||0).toFixed(1)+' J CP</div>':'')+'</td>'
       +'<td class="num">'+p.base.toFixed(1)+'</td>'
-      +'<td><input type="number"'+drA('presence.'+hr.week+'.cp')+' value="'+(p.cp||'')+'" placeholder="0" onchange="setPresence('+hr.week+',\'cp\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number"'+drA('presence.'+hr.week+'.cp')+' value="'+(absPartMois(a,hr.week,'cp',m)||'')+'" placeholder="0"'+titreCheval('cp')+' onchange="setPresence('+hr.week+',\'cp\',this.value,'+m+')" style="width:55px"></td>'
       +'<td class="num">'+pct(p.rate)+'</td>'
       +'<td class="num">'+p.mal.toFixed(1)+'</td>'
-      +'<td><input type="number"'+drA('presence.'+hr.week+'.otherPaid')+' value="'+(p.otherPaid||'')+'" placeholder="0" title="Absences payées (jours)" onchange="setPresence('+hr.week+',\'otherPaid\',this.value)" style="width:55px"></td>'
-      +'<td><input type="number"'+drA('presence.'+hr.week+'.other')+' value="'+(p.other||'')+'" placeholder="0" title="Absences non payées (jours)" onchange="setPresence('+hr.week+',\'other\',this.value)" style="width:55px"></td>'
+      +'<td><input type="number"'+drA('presence.'+hr.week+'.otherPaid')+' value="'+(absPartMois(a,hr.week,'otherPaid',m)||'')+'" placeholder="0"'+titreCheval('otherPaid')+' onchange="setPresence('+hr.week+',\'otherPaid\',this.value,'+m+')" style="width:55px"></td>'
+      +'<td><input type="number"'+drA('presence.'+hr.week+'.other')+' value="'+(absPartMois(a,hr.week,'other',m)||'')+'" placeholder="0"'+titreCheval('other')+' onchange="setPresence('+hr.week+',\'other\',this.value,'+m+')" style="width:55px"></td>'
       +'<td class="num"><b>'+p.av.toFixed(1)+'</b></td>'
       +'<td class="num">'+hr.hours.toFixed(1)+'</td>'
       +'<td class="num"><span class="'+ecartCls+'">'+hr.gap.toFixed(1)+'</span></td>'
@@ -6866,7 +6867,7 @@ function showWeekDetail(m){
   // ── Bandeau impact mensuel temps réel ──
   let hsM = weeksOfMonth.reduce(function(s,r){return s+(r.hs||0);},0);
   let coutHSM = hsM * (chMois(a, m)||28.5) * coefHSMois(a, m);
-  let cpM = weeksOfMonth.reduce(function(s,r){let p2=a.presence[r.week]||{cp:0};return s+(+p2.cp||0);},0);
+  let cpM = weeksOfMonth.reduce(function(s,r){return s+absPartMois(a,r.week,'cp',m);},0);
   let critM = weeksOfMonth.filter(function(r){return r.t==='critique';}).length;
   let okM = weeksOfMonth.filter(function(r){return r.t==='ok';}).length;
   // CA du mois et taux de masse salariale (MS/CA)
@@ -7629,10 +7630,10 @@ function renderHSImproductif(){
   q('hsImpTable').innerHTML = html;
 }
 
-function setPresence(w,f,v){
+function setPresence(w,f,v,m){
   let a=A();
-  if(!a.presence[w])a.presence[w]={cp:0,other:0};
-  a.presence[w][f]=v===''?0:+v;
+  if(m!==undefined&&m!==null){ setAbsPartMois(a,w,f,m,v); }
+  else { if(!a.presence[w])a.presence[w]={cp:0,other:0}; a.presence[w][f]=v===''?0:+v; }
   render();
   // Si le détail d'un mois est ouvert, le redessiner immédiatement avec flash visuel
   if(_activeMonth!==null && _activeMonth!==undefined){
@@ -8753,6 +8754,31 @@ function indicateursMoteur(nom, d, txr){
   return r;
 }
 
+// Semaine à cheval sur deux mois (nov. 2026) : CP et autres absences se saisissent mois par mois, en jours, selon les jours
+// de la semaine qui tombent dans chaque mois. Le total de la semaine (presence[w][champ], utilisé par tous les calculs)
+// est la somme des parts, mémorisées dans presence[w][champ + 'Mois'] = { mois: jours }.
+function moisDeSemaine(a,w){let s=[];joursSemaine(a,w).forEach(function(d){if(s.indexOf(d.month)<0)s.push(d.month);});return s;}
+function absPartMois(a,w,champ,m){
+  let p=a.presence[w]||{},tot=+p[champ]||0,ms=moisDeSemaine(a,w);
+  if(ms.indexOf(m)<0)return 0;
+  if(ms.length<2)return tot;
+  let parts=p[champ+'Mois'];
+  if(parts&&typeof parts==='object')return +parts[m]||0;
+  // Pas de saisie par mois (répartition automatique, ancien budget) : au prorata des jours ouvrés (lundi-vendredi) de chaque mois,
+  // le dernier mois reçoit le reste pour que les parts fassent exactement le total
+  let ouv=function(mm){return joursSemaine(a,w).filter(function(d){let j=new Date(2027,d.month,d.day).getDay();return d.month===mm&&j>0&&j<6;}).length;};
+  let tous=ms.reduce(function(s,mm){return s+ouv(mm);},0);
+  let part=function(mm){return tous>0?Math.round(tot*ouv(mm)/tous*10)/10:(mm===ms[0]?tot:0);};
+  if(m!==ms[ms.length-1])return part(m);
+  return Math.round((tot-ms.slice(0,-1).reduce(function(s,mm){return s+part(mm);},0))*10)/10;
+}
+function setAbsPartMois(a,w,champ,m,v){
+  let ms=moisDeSemaine(a,w),p=Object.assign({cp:0,other:0},a.presence[w]||{});
+  v=(v===''||v===null||v===undefined)?0:(+String(v).replace(',','.')||0);
+  if(ms.length<2||ms.indexOf(m)<0){p[champ]=v;delete p[champ+'Mois'];}
+  else{let parts={};ms.forEach(function(mm){parts[mm]=mm===m?v:absPartMois(a,w,champ,mm);});p[champ+'Mois']=parts;p[champ]=Math.round(ms.reduce(function(s,mm){return s+parts[mm];},0)*10)/10;}
+  a.presence=Object.assign({},a.presence);a.presence[w]=p;return a;
+}
 function cpPlanifies(a) {
   return Object.values(a.presence || {}).reduce(function(s, p) {
     return s + (+p.cp || 0);
@@ -8788,7 +8814,7 @@ function repartirCPAuto(moissLibres){
   needWeeks(a).forEach(function(w){
     let mois = mainMonth(a, w.week);
     if(libres.indexOf(mois) >= 0){
-      if(a.presence[w.week]) a.presence[w.week].cp = 0;
+      if(a.presence[w.week]){ a.presence[w.week].cp = 0; delete a.presence[w.week].cpMois; } // parts par mois (semaine à cheval) recalculées au prorata
     }
   });
 
@@ -9118,7 +9144,7 @@ function impactCPSemaine(a, week, deltaCPjours) {
 function resetCP() {
   let a = A();
   Object.keys(a.presence || {}).forEach(function(w) {
-    if (a.presence[w]) a.presence[w].cp = 0;
+    if (a.presence[w]) { a.presence[w].cp = 0; delete a.presence[w].cpMois; }
   });
   // Plus de répartition : la référence « optimale », le reliquat et les enveloppes affichées n'ont plus de sens
   delete a.cpOptimal; delete a.cpOptimalHSCost; delete a.cpReliquat; delete a.cpEnveloppes;
