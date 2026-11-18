@@ -1524,7 +1524,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">2. Congés payés</div>
     <!-- Compteur CP + action SOMA -->
     <div id="cpCounter" style="padding:10px 14px;border:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--bg3);border-radius:var(--radius-sm);margin-top:var(--sp-3)">
-      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)" title="Jours de congés que l'équipe roulante acquiert sur 2027 : 25 jours par an au prorata du temps de travail et de la part roulante, moins les périodes de maladie">Acquis sur l'année </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)" title="Jours de congés que l'équipe roulante acquiert sur 2027 : 25 jours par an au prorata du temps de travail et de la part roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis sur l'année </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <span style="color:var(--ink30)">→</span>
       <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Posés </span><span id="cpPlanifies" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <span style="color:var(--ink30)">→</span>
@@ -2883,6 +2883,10 @@ async function loadBudgetFromSupabase(agence) {
       migrateState();
       // Point de départ = la version BRUTE lue en base (avant les compléments par défaut de migrateState)
       _baseChargee = JSON.parse(JSON.stringify(versionData));
+      // Règle CP 2024 : budget modifiable enregistré avant la règle → répartition remise à jour une fois et enregistrée
+      if(budgetModifiable() && !CONSULT_MODE && PROFILE && (['rex','cg','admin'].includes(PROFILE.role) || (PROFILE.role==='dr' && SAISIE_DR))){
+        if(appliquerRegleCP2024(S.agencies[S.active], function(){ repartirCPAuto(); })) setTimeout(scheduleAutosave, 0);
+      }
       // Restaurer le mois actif si sauvegardé
       if (S.agencies[S.active].moisActif !== null && S.agencies[S.active].moisActif !== undefined) {
         _activeMonth = S.agencies[S.active].moisActif;
@@ -7580,7 +7584,7 @@ function renderCPNR(){
   let a=A(),c=a.cpNR||cpNRVide(),nb=salariesNR(a).length,acquis=cpNRAcquis(a),saisis=cpNRSaisis(a),reste=Math.round((acquis-saisis)*10)/10;
   let cel='padding:4px 6px';
   el.innerHTML='<div data-testid="cp-nr-compteur" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);font-size:13px;margin-bottom:10px">'
-    +'<span title="25 jours par an au prorata du temps de travail et de la part non roulante, moins l\'absentéisme du mois">Acquis par '+nb+' non-roulant'+(nb>1?'s':'')+' : <b>'+acquis.toFixed(1)+' J</b></span>'
+    +'<span title="25 jours par an au prorata du temps de travail et de la part non roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis par '+nb+' non-roulant'+(nb>1?'s':'')+' : <b>'+acquis.toFixed(1)+' J</b></span>'
     +'<span>Posés : <b>'+saisis.toFixed(1)+' J</b></span>'
     +'<span>Reste à poser : <b style="color:'+(Math.abs(reste)<1?'var(--green)':'var(--orange)')+'">'+reste.toFixed(1)+' J</b></span>'
     +'<button type="button" data-testid="cp-nr-repartir" onclick="repartirCPNR()" style="margin-left:auto;font-size:12px">↗ Répartir les jours acquis (60/20/20)</button></div>'
@@ -7658,6 +7662,15 @@ function rafraichirConges(a,avant,repartirRoulants){
   if(Math.abs(cpGeneres(a)-avant.gen)>0.05&&cpPlanifies(a)>0&&+a.targetCA>0&&+a.targetTXR>0){repartirRoulants(a);r.roulants=true;}
   if(Math.abs(cpNRAcquis(a)-avant.nr)>0.05&&a.cpNR&&a.cpNR.auto){repartirCPNRAuto(a);r.nonRoulants=true;}
   return r;
+}
+// Règle d'acquisition 2024 (nov. 2026 : 80 % du rythme pendant les arrêts maladie). Un budget enregistré avant
+// a ses congés posés sur l'ancien total acquis : à la première ouverture en modification, la répartition des roulants
+// est refaite une fois sur les mois non validés (comme après un changement d'absentéisme). Renvoie true si le budget a changé.
+function appliquerRegleCP2024(a,repartirRoulants){
+  if(!a||a.regleCP===2024)return false;
+  a.regleCP=2024;
+  if(cpPlanifies(a)>0&&+a.targetCA>0&&+a.targetTXR>0&&Math.abs(cpPlanifies(a)-cpGeneres(a))>0.05)repartirRoulants(a);
+  return true;
 }
 // Après une modification qui change les congés acquis : répartitions remises à jour puis affichage
 function majCongesMono(av){ let r=rafraichirConges(A(),av,function(){repartirCPAuto();}); if(!r.roulants) render(); }
@@ -8682,9 +8695,13 @@ function completionBadge(score) {
 // ═══════════════════════════════════════════════
 // Congés payés : 25 jours ouvrés par an (5 semaines légales = 175 h pour un temps plein), soit 25/12 par mois.
 const CP_JOURS_MOIS = 25/12;
+// Arrêt maladie (loi du 22 avril 2024) : les congés continuent de s'acquérir, à 2 jours ouvrables par mois au lieu de 2,5,
+// soit 80 % du rythme normal. L'accident du travail acquiert à 100 %, mais l'absentéisme saisi regroupe maladie et AT :
+// la règle maladie (la plus prudente) s'applique à tout le taux.
+const CP_ACQUIS_MALADIE = 0.8;
 function cpGeneres(a) {
   // CP générés, en jours de 7 h retirés de la présence ROULANTE (audit nov. 2026) :
-  // 25/12 j par mois de présence hors maladie, au prorata du temps de travail (heures / 35) et de la part roulante.
+  // 25/12 j par mois, 80 % de ce rythme pendant les arrêts (loi 2024), au prorata du temps de travail (heures / 35) et de la part roulante.
   // Les non-roulants n'entrent pas : leurs congés n'enlèvent pas de capacité de production.
   let salaries = a.employees.filter(estRoulantPart);
   if (!salaries.length) return 0;
@@ -8694,7 +8711,7 @@ function cpGeneres(a) {
     let dateRef = '2027-' + String(m+1).padStart(2,'0') + '-15';
     salaries.forEach(function(e){
       if(!empPresent(e, dateRef)) return;
-      totalJ += CP_JOURS_MOIS * (1 - tauxMal) * ((+e.hours||0) / 35) * partRoulant(e);
+      totalJ += CP_JOURS_MOIS * (1 - tauxMal * (1 - CP_ACQUIS_MALADIE)) * ((+e.hours||0) / 35) * partRoulant(e);
     });
   });
   return Math.round(totalJ * 10) / 10;
@@ -8703,7 +8720,7 @@ function cpGeneres(a) {
 // suivis avec un compteur acquis / posés. Aucun coût : leur salaire est déjà dans la ligne non-roulants
 // du CG (un congé est payé) et ils ne sont pas remplacés (décision de la direction des opérations).
 function salariesNR(a){return (a.employees||[]).filter(function(e){return !isRoulant(e.qual)&&(1-partRoulant(e))>0;});}
-function cpNRAcquisMois(a,m){let ref='2027-'+String(m+1).padStart(2,'0')+'-15',mal=tauxAbsMois(a,m);return salariesNR(a).reduce(function(s,e){if(!empPresent(e,ref))return s;return s+CP_JOURS_MOIS*(1-mal)*((+e.hours||0)/35)*(1-partRoulant(e));},0);}
+function cpNRAcquisMois(a,m){let ref='2027-'+String(m+1).padStart(2,'0')+'-15',mal=tauxAbsMois(a,m);return salariesNR(a).reduce(function(s,e){if(!empPresent(e,ref))return s;return s+CP_JOURS_MOIS*(1-mal*(1-CP_ACQUIS_MALADIE))*((+e.hours||0)/35)*(1-partRoulant(e));},0);}
 function cpNRAcquis(a){return Math.round(M.reduce(function(s,_,m){return s+cpNRAcquisMois(a,m);},0)*10)/10;}
 function cpNRSaisis(a){let j=a.cpNR&&a.cpNR.jours;return j?Math.round(j.reduce(function(s,v){return s+(+v||0);},0)*10)/10:0;}
 function cpNRVide(){return {jours:Array(12).fill(null)};}
@@ -10479,7 +10496,7 @@ const FAQ = {
     ['Comment lire la courbe de charge et les couleurs des semaines ?', 'La courbe montre les heures supplémentaires par personne présente, semaine par semaine. Une courbe plate signifie une charge équitable. Les trois zones colorées correspondent aux périodes légales de congés. Dans le détail des semaines, chaque semaine porte un verdict en langage clair : aucune tension, charge légère, charge soutenue ou surcharge. Une semaine en surcharge mérite votre attention.'],
     ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste. Il se saisit dès le début, même si l\'objectif ou l\'équipe ne sont pas encore renseignés.'],
     ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, la répartition des mois non validés est refaite automatiquement.'],
-    ['Comment sont calculés les congés acquis sur l\'année ?', 'Un salarié roulant à temps plein acquiert 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Les mois d\'absence maladie n\'en génèrent pas : plus l\'absentéisme saisi est élevé, moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
+    ['Comment sont calculés les congés acquis sur l\'année ?', 'Un salarié roulant à temps plein acquiert 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Pendant un arrêt maladie, les congés continuent de s\'acquérir (loi d\'avril 2024), à 2 jours ouvrables par mois au lieu de 2,5 : SOMA applique 80 % du rythme normal à la part d\'absentéisme saisie. Plus l\'absentéisme est élevé, un peu moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
     ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou des mois déjà validés ne bougent plus. Quand vous modifiez l\'absentéisme ou l\'équipe (salarié ajouté ou retiré, dates, temps de travail, part roulante), les jours acquis changent et SOMA refait aussitôt la répartition des mois non validés : le compteur reste équilibré. Sinon, relancez la répartition ou ajustez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
     ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Le compteur de mois validés suit votre avancement. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
     ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
