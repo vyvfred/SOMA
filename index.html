@@ -1081,7 +1081,7 @@ header{box-shadow:var(--shadow-soft);position:relative;z-index:10;}
   display:flex; align-items:flex-start; gap:5px;
 }
 .ficheVerdict.ok{ color:var(--green); }
-.ficheVerdict.warn{ color:#B26A00; }
+.ficheVerdict.warn{ color:var(--amber); }
 .ficheVerdict.choix{ color:var(--blue); }
 .ficheVerdict.neutre{ color:var(--ink30); }
 .ficheConseq{
@@ -1125,11 +1125,11 @@ header{box-shadow:var(--shadow-soft);position:relative;z-index:10;}
 .envTable td{ padding:8px 10px; font-size:13px; border-bottom:1px solid var(--border); }
 .envTable td.num{ text-align:right; }
 .envEcart.ok{ color:var(--green); font-weight:600; }
-.envEcart.warn{ color:#B26A00; font-weight:700; }
+.envEcart.warn{ color:var(--amber); font-weight:700; }
 .envAlerte{
   margin-top:10px; padding:10px 12px; font-size:12.5px; line-height:1.5;
   background:rgba(178,106,0,.08); border:1px solid rgba(178,106,0,.35);
-  border-radius:var(--radius-sm); color:#B26A00;
+  border-radius:var(--radius-sm); color:var(--amber);
 }
 .envReliquat{
   margin-top:10px; padding:10px 12px; font-size:12.5px; line-height:1.5;
@@ -6895,7 +6895,7 @@ function showWeekDetail(m){
     } else if(txSem > 0.20){
       chargeTxt='surcharge'; chargeDot='var(--orange)'; chargeStyle='color:var(--orange);font-weight:700';
     } else if(txSem > 0.10){
-      chargeTxt='charge soutenue'; chargeDot='var(--amber)'; chargeStyle='color:#B26A00;font-weight:600';
+      chargeTxt='charge soutenue'; chargeDot='var(--amber)'; chargeStyle='color:var(--amber);font-weight:600';
     } else {
       chargeTxt='charge légère'; chargeDot='#7Cc47f'; chargeStyle='color:var(--green)';
     }
@@ -11553,7 +11553,7 @@ function afficherSuiviREX(){
         +'<td style="'+td+'">'+(l.rex.length?l.rex.map(function(r){return '<div style="margin-bottom:2px">'+esc(r.nom)+(r.principale?'':' (agence supp.)')+'<span style="font-size:11px;color:'+(r.activite?'var(--ink65)':'var(--orange)')+'"> · '+(r.activite?ilYALisible(r.jours):'jamais connecté')+'</span></div>';}).join(''):'<span style="color:var(--orange);font-size:12px">aucun REX</span>')+'</td>'
         +'<td style="'+td+';white-space:nowrap"><span style="color:'+coul[l.etat]+';font-weight:600">'+(l.statut?statutLabel(l.statut):'Non commencé')+'</span></td>'
         +'<td style="'+td+';min-width:120px">'+barre(l.pct)+'<div style="font-size:12px;margin-top:3px">'+l.pct+' %</div></td>'
-        +'<td style="'+td+'"><div data-testid="jalons" style="display:flex;gap:3px">'+l.jalons.map(function(j){return '<div title="'+esc(j.lib+' : '+detailJalon(j,l.av))+'" style="width:30px">'+barre(j.pct).replace('border-radius:4px','border-radius:2px')+'<div style="font-size:9px;color:var(--ink65);margin-top:2px;white-space:nowrap;overflow:hidden">'+j.lib.slice(0,5)+'</div></div>';}).join('')+'</div></td>'
+        +'<td style="'+td+'"><div data-testid="jalons" style="display:flex;gap:3px">'+l.jalons.map(function(j){return '<div title="'+esc(j.lib+' : '+detailJalon(j,l.av))+'" style="width:46px">'+barre(j.pct).replace('border-radius:4px','border-radius:2px')+'<div style="font-size:10px;color:var(--ink65);margin-top:2px;white-space:nowrap;overflow:hidden">'+(j.lib.length>7?j.lib.slice(0,6)+'.':j.lib)+'</div></div>';}).join('')+'</div></td>'
         +'<td style="'+td+';white-space:nowrap;font-size:12px">'+(l.maj?ilYALisible(l.joursSansModif):'—')+'</td>'
         +'<td style="'+td+';white-space:nowrap">'+(l.statut?'<button data-testid="suivi-voir-'+ag+'" onclick="consulterBudget(\''+agJs+'\',\'suivi\')" style="width:auto;margin:0 6px 4px 0;font-size:12px;padding:5px 10px">Voir le budget</button>':'')
         +(estDR&&l.statut&&(l.etat==='en_cours'||l.etat==='non_commence')?'<button class="secondary" data-testid="suivi-saisir-'+ag+'" onclick="saisirPourREX(\''+agJs+'\',\'suivi\')" style="width:auto;margin:0;font-size:12px;padding:5px 10px">Saisir</button>':'')+'</td></tr>';
