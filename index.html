@@ -1535,7 +1535,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <button onclick="repartirCPAuto()" style="font-size:12px;padding:8px 14px;background:var(--violet);color:#fff;border:none">↗ Répartir les congés automatiquement</button>
       <button onclick="resetCP()" class="secondary" style="font-size:12px;padding:8px 14px">Réinitialiser</button>
     </div>
-    <p class="hint" style="margin:8px 0 0;font-size:12px">La répartition automatique pose exactement les jours acquis, en lissant la charge et en respectant les enveloppes légales (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Vous pouvez ensuite déplacer des congés semaine par semaine : le compteur suit vos choix. Si vous modifiez l'absentéisme, SOMA refait automatiquement la répartition sur les mois non validés (les congés déplacés à la main sur ces mois sont recalculés). <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'conges')" title="Pourquoi cette règle ?">?</span></p>
+    <p class="hint" style="margin:8px 0 0;font-size:12px">La répartition automatique pose exactement les jours acquis, en lissant la charge et en respectant les enveloppes légales (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Vous pouvez ensuite déplacer des congés semaine par semaine : le compteur suit vos choix. Si les jours acquis changent (absentéisme, équipe, dates d'entrée ou de sortie, temps de travail, part roulante), SOMA refait automatiquement la répartition sur les mois non validés (les congés déplacés à la main sur ces mois sont recalculés). <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'conges')" title="Pourquoi cette règle ?">?</span></p>
     <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">3. Mois par mois</div>
   </div>
 
@@ -4248,8 +4248,9 @@ async function reprendreEquipeMono(source){
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
   if(!versions[source] || !Object.keys(versions[source]).length){ showToast('La version '+VERSION_LABELS[source]+' est vide.', 'warn'); return; }
   let a = A(), src = Object.assign(agency(a.name), versions[source], {name: a.name});
+  let av = etatConges(a);
   a.employees = reprendreBlocs(a, src, ['equipe']).employees || [];
-  render();
+  majCongesMono(av);
   scheduleAutosave();
   showToast('Équipe de la '+VERSION_LABELS[source]+' reprise dans la '+VERSION_LABELS[ACTIVE_VERSION]+' (↶ pour annuler)', 'success');
 }
@@ -4268,10 +4269,11 @@ async function validerRepriseVersion(){
   let alerte = alerteRepriseBlocs(a, src, ids);
   if(alerte && !confirm(alerte + '\n\nReprendre quand même ?')) return;
   // Modification sur place (garde l'historique ↶ ↷), puis enregistrement automatique
-  let nouv = reprendreBlocs(a, src, ids);
+  let nouv = reprendreBlocs(a, src, ids), av = etatConges(a);
   BLOCS_VERSION.forEach(function(b){ if(ids.indexOf(b.id) < 0) return; b.cles.forEach(function(k){ if(nouv[k] === undefined) delete a[k]; else a[k] = nouv[k]; }); });
   if(q('repriseModal')) q('repriseModal').remove();
-  render();
+  // Équipe reprise sans la présence : les congés acquis changent, les répartitions sont remises à jour
+  if(ids.indexOf('presence') < 0) majCongesMono(av); else render();
   scheduleAutosave();
   showToast('Données de la '+VERSION_LABELS[source]+' reprises dans la '+VERSION_LABELS[ACTIVE_VERSION]+' (↶ pour annuler)', 'success');
 }
@@ -7439,6 +7441,7 @@ function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Char
 function setRef(act,m,t,v){A().refs[act][m][t]=v===''?null:+v;genCal(A());render()}
 function setAct(field,val){A()[field]=val;render()}
 function setEmp(i,f,v){
+  let av=etatConges(A());
   let numFields=['hours','hoursM','hsTarget','pctRoulant','joursSem','coutJour'];
   let e=A().employees[i];
   let avantRoulant=isRoulant(e.qual);
@@ -7452,19 +7455,20 @@ function setEmp(i,f,v){
   if((f==='dateEntree'||f==='dateSortie') && e.dateEntree && e.dateSortie && e.dateSortie < e.dateEntree){
     alert('Attention : la date de sortie ('+e.dateSortie+') est antérieure à la date d\'entrée ('+e.dateEntree+'). Ce salarié ne sera compté sur aucune semaine. Corrigez les dates.');
   }
-  render();
+  majCongesMono(av);
 }
 function setDR(f,v){A()[f]=+v;render()}
 function importSGCV(){
   let a=A();
   if(a.name!=='SAINT GILLES CROIX DE VIE'){alert('Cette fonction importe les donnees de Saint-Gilles. Selectionnez d\'abord cette agence.');return;}
   if(a.employees.length>0&&!confirm('Remplacer la liste existante par les données importées ?'))return;
+  let av=etatConges(a);
   a.employees=SGCV_DATA.map(e=>({...e}));
-  render();
+  majCongesMono(av);
 }
-function delEmp(i){A().employees.splice(i,1);render()}
-function addEmployee(){A().employees.push({name:'Nouveau salarié',qual:'DEA',contract:'CDI',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0,dateEntree:'',dateSortie:''});render()}
-function addPostePrevisionnel(){A().employees.push({name:'Poste prévisionnel',qual:'DEA',contract:'CDD',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0,dateEntree:'2027-06-01',dateSortie:'2027-09-30'});render()}
+function delEmp(i){let av=etatConges(A());A().employees.splice(i,1);majCongesMono(av)}
+function addEmployee(){let av=etatConges(A());A().employees.push({name:'Nouveau salarié',qual:'DEA',contract:'CDI',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0,dateEntree:'',dateSortie:''});majCongesMono(av)}
+function addPostePrevisionnel(){let av=etatConges(A());A().employees.push({name:'Poste prévisionnel',qual:'DEA',contract:'CDD',hours:35,hoursM:0,hsTarget:3,pctRoulant:100,joursSem:5,coutJour:0,dateEntree:'2027-06-01',dateSortie:'2027-09-30'});majCongesMono(av)}
 function setIDJF(w, type, v){
   let a = A();
   let key = type==='roulant' ? 'idjfRoulant' : 'idjfNonRoulant';
@@ -7569,7 +7573,7 @@ function renderIndemnites(){
 }
 
 // ── Congés des non-roulants : jours par mois et compteur acquis / posés (aucun coût, pas de remplacement) ──
-function setCPNRJour(m,v){let a=A();if(!a.cpNR)a.cpNR=cpNRVide();if(!a.cpNR.jours)a.cpNR.jours=Array(12).fill(null);a.cpNR.jours[m]=v===''?null:+String(v).replace(',','.');render();}
+function setCPNRJour(m,v){let a=A();if(!a.cpNR)a.cpNR=cpNRVide();a.cpNR.auto=false;if(!a.cpNR.jours)a.cpNR.jours=Array(12).fill(null);a.cpNR.jours[m]=v===''?null:+String(v).replace(',','.');render();}
 function repartirCPNR(){repartirCPNRAuto(A());render();}
 function renderCPNR(){
   let el=q('cpNRBloc');if(!el)return;
@@ -7641,25 +7645,40 @@ function setPresence(w,f,v){
 }
 // Absentéisme modifié : les CP acquis changent, la répartition des mois non validés est refaite automatiquement
 // (seulement si des congés étaient déjà posés ; les mois validés ne bougent pas).
-function majCPApresAbsenteisme(){ let a=A(); if(cpPlanifies(a)>0 && +a.targetCA>0 && +a.targetTXR>0) repartirCPAuto(); else render(); }
-function setSick(m,v){A().sick[m]=v===''?null:+v;majCPApresAbsenteisme()}
+// Mise à jour des congés payés après un changement qui modifie les jours ACQUIS (audit CP nov. 2026) :
+// équipe (ajout, suppression, import, reprise d'une autre version), dates d'entrée / de sortie, temps de travail,
+// part roulante, qualification, absentéisme.
+// Roulants : si des congés étaient déjà posés, la répartition automatique est refaite sur les mois non validés
+// (les mois validés ne bougent pas), pour que les jours posés restent égaux aux jours acquis.
+// Non-roulants : la répartition 60/20/20 est refaite seulement si elle venait du bouton « Répartir »
+// (cpNR.auto) ; une saisie à la main n'est jamais écrasée, le compteur « Reste à poser » signale l'écart.
+function etatConges(a){return {gen:cpGeneres(a),nr:cpNRAcquis(a)};}
+function rafraichirConges(a,avant,repartirRoulants){
+  let r={roulants:false,nonRoulants:false};
+  if(Math.abs(cpGeneres(a)-avant.gen)>0.05&&cpPlanifies(a)>0&&+a.targetCA>0&&+a.targetTXR>0){repartirRoulants(a);r.roulants=true;}
+  if(Math.abs(cpNRAcquis(a)-avant.nr)>0.05&&a.cpNR&&a.cpNR.auto){repartirCPNRAuto(a);r.nonRoulants=true;}
+  return r;
+}
+// Après une modification qui change les congés acquis : répartitions remises à jour puis affichage
+function majCongesMono(av){ let r=rafraichirConges(A(),av,function(){repartirCPAuto();}); if(!r.roulants) render(); }
+function setSick(m,v){let av=etatConges(A());A().sick[m]=v===''?null:+v;majCongesMono(av)}
 function setHS50(m,v){
   let val = v===''?null:Math.max(0,Math.min(100,+v));
   if(!A().hs50) A().hs50 = Array(12).fill(null);
   A().hs50[m]=val;
   render();
 }
-function applyAvg(){let v=A().targetAbsRate!==null?+A().targetAbsRate:0;A().sick=Array(12).fill(v);majCPApresAbsenteisme()}
+function applyAvg(){let av=etatConges(A());let v=A().targetAbsRate!==null?+A().targetAbsRate:0;A().sick=Array(12).fill(v);majCongesMono(av)}
 
 // Rééquilibrage intelligent : garde la FORME de répartition voulue par le REX,
 // mais ajuste pour que la moyenne annuelle revienne à la cible du CG.
 function reequilibrerSick(){
-  let a = A();
+  let a = A(), av = etatConges(a);
   let cible = +a.targetAbsRate || 0;
   // Mois renseignés (les vides restent vides)
   let idxRemplis = [];
   a.sick.forEach(function(v,i){ if(v!==null&&v!==undefined) idxRemplis.push(i); });
-  if(!idxRemplis.length){ a.sick = Array(12).fill(cible); majCPApresAbsenteisme(); return; }
+  if(!idxRemplis.length){ a.sick = Array(12).fill(cible); majCongesMono(av); return; }
 
   let moyActuelle = idxRemplis.reduce(function(s,i){return s+(+a.sick[i]||0);},0)/idxRemplis.length;
   let ecart = moyActuelle - cible; // >0 : on est trop haut, il faut baisser
@@ -7685,7 +7704,7 @@ function reequilibrerSick(){
   }
   idxRemplis.forEach(function(i){ ajust[i] = Math.round(ajust[i]*100)/100; });
   a.sick = ajust;
-  majCPApresAbsenteisme();
+  majCongesMono(av);
   showToast('Répartition ajustée pour respecter la moyenne du contrôle de gestion.', 'success');
 }
 function setRexMode(l,v){let x=A().rex[l];if(v==='pctMois'&&!Array.isArray(x.pcts))x.pcts=Array(12).fill(x.mode==='pct'&&+x.pct?+x.pct:null);x.mode=v;render()}
@@ -8489,10 +8508,11 @@ function handleExcelImport(event) {
       }
       if (!employees.length) { showImportMsg('Aucun salarié trouvé. Vérifiez le fichier.', 'bad'); return; }
       if (A().employees.length > 0 && !confirm(employees.length + ' salariés trouvés. Remplacer la liste existante ?')) return;
+      let avConges = etatConges(A());
       A().employees = employees;
       // Réinitialiser l'input file
       event.target.value = '';
-      render();
+      majCongesMono(avConges);
       showImportMsg(employees.length + ' salariés importés !' + (skipped ? ' (' + skipped + ' facturier(s) ignoré(s))' : ''), 'ok');
     } catch(err) {
       showImportMsg('Erreur de lecture : ' + err.message, 'bad');
@@ -8694,7 +8714,7 @@ function repartirCPNRAuto(a){
   // Reliquat d'arrondi (demi-journées) reporté sur août, pour poser exactement les jours acquis
   let ecart=Math.round(tot*2)/2-j.reduce(function(s,v){return s+v;},0);j[7]=Math.max(0,Math.round((j[7]+ecart)*10)/10);
   if(!a.cpNR)a.cpNR=cpNRVide();
-  a.cpNR.jours=j;return a;
+  a.cpNR.jours=j;a.cpNR.auto=true;return a;
 }
 // Heures roulantes disponibles sur l'année hors heures supplémentaires : base contractuelle moins
 // la maladie (taux moyen saisi, sinon cible) et les congés générés. Ne dépend pas du placement des CP.
@@ -8942,9 +8962,21 @@ function coutDuChoixREX(a){
   if(!a.cpOptimal){
     return { mesurable:false, surcout:0, hsSup:0, semaines:[] };
   }
+  // Référence périmée : les congés acquis ont changé depuis la dernière répartition automatique
+  // (équipe, dates, part roulante, absentéisme…) → comparer n'aurait pas de sens (audit CP nov. 2026).
+  let totOpt = Object.keys(a.cpOptimal).reduce(function(s,k){ return s + (+a.cpOptimal[k] || 0); }, 0);
+  let gen = cpGeneres(a);
+  if(Math.abs(totOpt - gen) > Math.max(0.5, gen * 0.05)){
+    return { mesurable:false, perimee:true, surcout:0, hsSup:0, semaines:[] };
+  }
   // Coût HS actuel (avec les choix du REX)
   let coutActuel = coutHSTotal(a);
-  let coutOptimal = a.cpOptimalHSCost || 0;
+  // Coût HS de la répartition optimale recalculé sur les données ACTUELLES (même équipe, même objectif,
+  // même coût horaire) : seul le placement des congés diffère, le surcoût mesure donc uniquement le choix du REX.
+  let ref = Object.assign({}, a, { presence: {} });
+  Object.keys(a.presence || {}).forEach(function(w){ ref.presence[w] = Object.assign({}, a.presence[w], { cp: +a.cpOptimal[w] || 0 }); });
+  Object.keys(a.cpOptimal).forEach(function(w){ if(!ref.presence[w]) ref.presence[w] = { cp: +a.cpOptimal[w] || 0, other: 0 }; });
+  let coutOptimal = coutHSTotal(ref);
   let surcout = Math.max(0, Math.round(coutActuel - coutOptimal));
 
   // Détail des semaines où le REX a dévié de l'optimum
@@ -9071,6 +9103,8 @@ function resetCP() {
   Object.keys(a.presence || {}).forEach(function(w) {
     if (a.presence[w]) a.presence[w].cp = 0;
   });
+  // Plus de répartition : la référence « optimale », le reliquat et les enveloppes affichées n'ont plus de sens
+  delete a.cpOptimal; delete a.cpOptimalHSCost; delete a.cpReliquat; delete a.cpEnveloppes;
   render();
 }
 
@@ -10446,7 +10480,7 @@ const FAQ = {
     ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste. Il se saisit dès le début, même si l\'objectif ou l\'équipe ne sont pas encore renseignés.'],
     ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, la répartition des mois non validés est refaite automatiquement.'],
     ['Comment sont calculés les congés acquis sur l\'année ?', 'Un salarié roulant à temps plein acquiert 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Les mois d\'absence maladie n\'en génèrent pas : plus l\'absentéisme saisi est élevé, moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
-    ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou des mois déjà validés ne bougent plus. Quand vous modifiez l\'absentéisme, les jours acquis changent et SOMA refait aussitôt la répartition des mois non validés : le compteur reste équilibré. Sinon, relancez la répartition ou ajustez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
+    ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou des mois déjà validés ne bougent plus. Quand vous modifiez l\'absentéisme ou l\'équipe (salarié ajouté ou retiré, dates, temps de travail, part roulante), les jours acquis changent et SOMA refait aussitôt la répartition des mois non validés : le compteur reste équilibré. Sinon, relancez la répartition ou ajustez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
     ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Le compteur de mois validés suit votre avancement. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
     ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
     ['Comment sont pris en compte les régulateurs et responsables ?', 'Ce sont du personnel improductif : ils ne produisent pas de chiffre d\'affaires sur la route, mais ils ont un coût. SOMA les intègre dans la masse salariale sans les compter dans la capacité roulante. Leur coût est saisi en une seule ligne globale par le contrôleur de gestion : vous n\'avez pas de salaire à renseigner. Leur absentéisme suit le même taux que les roulants. Chaque agence en a, c\'est normal. Leurs jours de congés se saisissent dans le bloc « Personnel improductif » de l\'écran Présence & HS, mois par mois, avec un compteur acquis / posés et une répartition automatique 60/20/20. Ces congés n\'ont aucun coût dans le budget : leur salaire est déjà dans la ligne globale et ils ne sont pas remplacés.'],
