@@ -1524,7 +1524,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">2. Congés payés</div>
     <!-- Compteur CP + action SOMA -->
     <div id="cpCounter" style="padding:10px 14px;border:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:var(--bg3);border-radius:var(--radius-sm);margin-top:var(--sp-3)">
-      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)" title="Jours de congés que l'équipe roulante acquiert sur 2027 : 25 jours par an au prorata du temps de travail et de la part roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis sur l'année </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
+      <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)" title="Jours de congés que l'équipe roulante acquiert sur 2027 : 30 jours ouvrables par an (6 par semaine de congés) au prorata du temps de travail et de la part roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis sur l'année </span><span id="cpGeneres" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <span style="color:var(--ink30)">→</span>
       <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Posés </span><span id="cpPlanifies" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <span style="color:var(--ink30)">→</span>
@@ -2879,13 +2879,15 @@ async function loadBudgetFromSupabase(agence) {
       BUDGET_META = { activeVersion:'v1', submittedVersion:null, descriptions:{v1:'',v2:'',v3:''} };
     }
     if (!versionVide && versionData && Object.keys(versionData).length) {
-      S.agencies[S.active] = {...agency(agence), ...versionData, name: agence};
+      // Copie profonde : migrateState modifie des sous-objets (CP convertis…), la version lue (point de départ de la fusion) doit rester intacte
+      S.agencies[S.active] = {...agency(agence), ...JSON.parse(JSON.stringify(versionData)), name: agence};
       migrateState();
       // Point de départ = la version BRUTE lue en base (avant les compléments par défaut de migrateState)
       _baseChargee = JSON.parse(JSON.stringify(versionData));
       // Règle CP 2024 : budget modifiable enregistré avant la règle → répartition remise à jour une fois et enregistrée
       if(budgetModifiable() && !CONSULT_MODE && PROFILE && (['rex','cg','admin'].includes(PROFILE.role) || (PROFILE.role==='dr' && SAISIE_DR))){
-        if(appliquerRegleCP2024(S.agencies[S.active], function(){ repartirCPAuto(); })) setTimeout(scheduleAutosave, 0);
+        let converti = versionData.uniteCP !== 'ouvrables'; // CP passés en jours ouvrables au chargement (migrateState)
+        if(appliquerRegleCP2024(S.agencies[S.active], function(){ repartirCPAuto(); }) || converti) setTimeout(scheduleAutosave, 0);
       }
       // Restaurer le mois actif si sauvegardé
       if (S.agencies[S.active].moisActif !== null && S.agencies[S.active].moisActif !== undefined) {
@@ -3760,10 +3762,10 @@ function pres(a,w){
   let p=a.presence[w]||{cp:0,other:0};
   let m=mainMonth(a,w);
   let rate=a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]:0;
-  // CP et autres absences exprimés en jours (1J = 7H).
+  // CP en jours ouvrables (6 par semaine, 1 J = 35/6 h) ; autres absences en jours de 7 h.
   // Autres absences (décision nov. 2026) : « payées » (formation, événements familiaux,
   // récupération…) coûtées au taux horaire comme les congés ; « non payées » (sans solde) non coûtées.
-  let cpH=(+p.cp||0)*7;
+  let cpH=(+p.cp||0)*CP_HEURES_JOUR; // CP en jours ouvrables (6 par semaine)
   let otherH=(+p.other||0)*7;
   let otherPaidH=(+p.otherPaid||0)*7;
   let mal=base*rate/100;
@@ -4116,7 +4118,7 @@ async function switchVersion(v){
   // Recharger depuis Supabase pour récupérer la version cible
   const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   if(data && data.data && data.data.versions && data.data.versions[v] && Object.keys(data.data.versions[v]).length){
-    S.agencies[S.active] = {...agency(a.name), ...data.data.versions[v], name: a.name};
+    S.agencies[S.active] = {...agency(a.name), ...JSON.parse(JSON.stringify(data.data.versions[v])), name: a.name};
     migrateState();
     BUDGET_BASE = JSON.parse(JSON.stringify(data.data.versions[v]));
     META_BASE = data.data.meta ? JSON.parse(JSON.stringify(data.data.meta)) : null;
@@ -4251,7 +4253,8 @@ async function reprendreEquipeMono(source){
   const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
   if(!versions[source] || !Object.keys(versions[source]).length){ showToast('La version '+VERSION_LABELS[source]+' est vide.', 'warn'); return; }
-  let a = A(), src = Object.assign(agency(a.name), versions[source], {name: a.name});
+  let a = A(), src = Object.assign(agency(a.name), JSON.parse(JSON.stringify(versions[source])), {name: a.name});
+  convertirCPOuvrables(src); // version source saisie avant en jours ouvrés
   let av = etatConges(a);
   a.employees = reprendreBlocs(a, src, ['equipe']).employees || [];
   majCongesMono(av);
@@ -4269,7 +4272,8 @@ async function validerRepriseVersion(){
   let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
   if(!versions[source] || !Object.keys(versions[source]).length){ showToast('La version '+VERSION_LABELS[source]+' est vide.', 'warn'); return; }
   let a = A();
-  let src = Object.assign(agency(a.name), versions[source], {name: a.name});
+  let src = Object.assign(agency(a.name), JSON.parse(JSON.stringify(versions[source])), {name: a.name});
+  convertirCPOuvrables(src); // version source saisie avant en jours ouvrés
   let alerte = alerteRepriseBlocs(a, src, ids);
   if(alerte && !confirm(alerte + '\n\nReprendre quand même ?')) return;
   // Modification sur place (garde l'historique ↶ ↷), puis enregistrement automatique
@@ -4303,7 +4307,7 @@ async function supprimerVersion(v){
     let nv = out.meta.activeVersion;
     ACTIVE_VERSION = nv;
     let a = A();
-    S.agencies[S.active] = Object.assign({}, agency(a.name), out.versions[nv] || {}, {name: a.name});
+    S.agencies[S.active] = Object.assign({}, agency(a.name), JSON.parse(JSON.stringify(out.versions[nv] || {})), {name: a.name});
     migrateState();
     BUDGET_BASE = out.versions[nv] ? JSON.parse(JSON.stringify(out.versions[nv])) : null;
     viderHistoriqueMono();
@@ -5280,12 +5284,15 @@ async function loadAffectationMap(){
 // Gère la structure versionnée ET l'ancienne structure plate (rétrocompat).
 function budgetData(d){
   if(!d) return {};
+  let r = d; // ancienne structure plate
   if(d.versions){
     let meta = d.meta || {};
     let v = meta.submittedVersion || meta.activeVersion || 'v1';
-    return d.versions[v] || premiereVersionRemplie(d.versions);
+    r = d.versions[v] || premiereVersionRemplie(d.versions);
   }
-  return d; // ancienne structure plate
+  // CP saisis avant en jours ouvrés : copie convertie en jours ouvrables (la donnée lue n'est pas modifiée)
+  if(r && r.presence && r.uniteCP !== 'ouvrables'){ r = JSON.parse(JSON.stringify(r)); convertirCPOuvrables(r); }
+  return r;
 }
 
 // ═══ SPRINT UX 3 — Centre d'attention global ═══
@@ -5543,7 +5550,7 @@ async function showVersionCompare(){
   ['v1','v2','v3'].forEach(function(v){
     if(!versions[v] || !Object.keys(versions[v]).length) return;
     // Charger temporairement cette version dans A()
-    S.agencies[S.active] = {...agency(nom), ...versions[v], name: nom};
+    S.agencies[S.active] = {...agency(nom), ...JSON.parse(JSON.stringify(versions[v])), name: nom};
     migrateState();
     let a = A();
     let ca = ann(a,"Chiffre d'affaires");
@@ -6809,7 +6816,7 @@ function showWeekDetail(m){
   if(q('rhWeekDetailTitle'))q('rhWeekDetailTitle').textContent='Détail semaines — '+M[m];
   let header='<tr>'
     +'<th>Sem.</th><th>Cap. (h)</th>'
-    +'<th title="Congés payés en jours — à saisir" style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ CP (J)</th>'
+    +'<th title="Congés payés en jours ouvrables — une semaine de congés = 6 jours (lundi au samedi)" style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ CP (J)</th>'
     +'<th>Mal.+AT %</th><th>Mal.+AT (h)</th>'
     +'<th title="Absences payées en jours — formation, événements familiaux, récupération… Coûtées au taux horaire comme les congés." style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ Abs. payées (J)</th>'
     +'<th title="Absences non payées en jours — congé sans solde… Retirées de la capacité, sans coût salarial." style="background:rgba(139,127,255,.12);color:var(--violet2)">✎ Abs. non payées (J)</th>'
@@ -7585,7 +7592,7 @@ function renderCPNR(){
   let a=A(),c=a.cpNR||cpNRVide(),nb=salariesNR(a).length,acquis=cpNRAcquis(a),saisis=cpNRSaisis(a),reste=Math.round((acquis-saisis)*10)/10;
   let cel='padding:4px 6px';
   el.innerHTML='<div data-testid="cp-nr-compteur" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);font-size:13px;margin-bottom:10px">'
-    +'<span title="25 jours par an au prorata du temps de travail et de la part non roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis par '+nb+' non-roulant'+(nb>1?'s':'')+' : <b>'+acquis.toFixed(1)+' J</b></span>'
+    +'<span title="30 jours ouvrables par an (6 par semaine de congés) au prorata du temps de travail et de la part non roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis par '+nb+' non-roulant'+(nb>1?'s':'')+' : <b>'+acquis.toFixed(1)+' J</b></span>'
     +'<span>Posés : <b>'+saisis.toFixed(1)+' J</b></span>'
     +'<span>Reste à poser : <b style="color:'+(Math.abs(reste)<1?'var(--green)':'var(--orange)')+'">'+reste.toFixed(1)+' J</b></span>'
     +'<button type="button" data-testid="cp-nr-repartir" onclick="repartirCPNR()" style="margin-left:auto;font-size:12px">↗ Répartir les jours acquis (60/20/20)</button></div>'
@@ -7672,6 +7679,22 @@ function appliquerRegleCP2024(a,repartirRoulants){
   a.regleCP=2024;
   if(cpPlanifies(a)>0&&+a.targetCA>0&&+a.targetTXR>0&&Math.abs(cpPlanifies(a)-cpGeneres(a))>0.05)repartirRoulants(a);
   return true;
+}
+// Unité des CP (nov. 2026) : jours OUVRABLES, 6 par semaine. Un budget saisi avant en jours ouvrés (5 par semaine, 7 h)
+// est converti une fois (× 6/5) au chargement : les heures retirées de la présence restent les mêmes. Renvoie true si converti.
+function convertirCPOuvrables(a){
+  if(!a||a.uniteCP==='ouvrables')return false;
+  let r=function(v){return Math.round((+v||0)*6/5*10)/10;};
+  Object.keys(a.presence||{}).forEach(function(w){
+    let p=a.presence[w];if(!p)return;
+    if(p.cpMois&&typeof p.cpMois==='object'){let s=0;Object.keys(p.cpMois).forEach(function(m){p.cpMois[m]=r(p.cpMois[m]);s+=p.cpMois[m];});p.cp=Math.round(s*10)/10;}
+    else if(+p.cp)p.cp=r(p.cp);
+  });
+  if(a.cpOptimal)Object.keys(a.cpOptimal).forEach(function(w){a.cpOptimal[w]=r(a.cpOptimal[w]);});
+  if(a.cpNR&&Array.isArray(a.cpNR.jours))a.cpNR.jours=a.cpNR.jours.map(function(v){return (v===null||v===undefined||v==='')?v:r(v);});
+  if(Array.isArray(a.cpEnveloppes))a.cpEnveloppes=a.cpEnveloppes.map(function(e){return Object.assign({},e,{cible:r(e.cible),verrouille:r(e.verrouille),budget:r(e.budget)});});
+  if(+a.cpReliquat)a.cpReliquat=r(a.cpReliquat);
+  a.uniteCP='ouvrables';return true;
 }
 // Après une modification qui change les congés acquis : répartitions remises à jour puis affichage
 function majCongesMono(av){ let r=rafraichirConges(A(),av,function(){repartirCPAuto();}); if(!r.roulants) render(); }
@@ -7782,6 +7805,8 @@ function migrateState(){S.agencies.forEach(a=>{
   // TXR de référence saisi par le CG après la création du budget : repris dans les champs vides du REX
   if(a.histTXR2026){ if(a.histTXR===null||a.histTXR===undefined||a.histTXR==='') a.histTXR=a.histTXR2026; if(a.targetTXR===null||a.targetTXR===undefined||a.targetTXR==='') a.targetTXR=a.histTXR2026; }
   a.calScolaire=2;
+  // CP en jours ouvrables (6 par semaine) : budget saisi avant en jours ouvrés converti une fois
+  convertirCPOuvrables(a);
   if(!Array.isArray(a.hs50))a.hs50=Array(12).fill(null);
   if(a.drCostAnnual===undefined)a.drCostAnnual=0;
   if(a.tauxHoraireBrut===undefined)a.tauxHoraireBrut=null;
@@ -8694,15 +8719,17 @@ function completionBadge(score) {
 // ═══════════════════════════════════════════════
 // GESTION CP
 // ═══════════════════════════════════════════════
-// Congés payés : 25 jours ouvrés par an (5 semaines légales = 175 h pour un temps plein), soit 25/12 par mois.
-const CP_JOURS_MOIS = 25/12;
+// Congés payés en jours OUVRABLES (nov. 2026) : une semaine de congés = 6 jours (lundi à samedi), 30 jours par an
+// (5 semaines légales = 175 h pour un temps plein), soit 2,5 jours par mois ; un jour de CP retire 35/6 h ≈ 5,83 h.
+const CP_JOURS_MOIS = 30/12;
+const CP_HEURES_JOUR = 35/6;
 // Arrêt maladie (loi du 22 avril 2024) : les congés continuent de s'acquérir, à 2 jours ouvrables par mois au lieu de 2,5,
 // soit 80 % du rythme normal. L'accident du travail acquiert à 100 %, mais l'absentéisme saisi regroupe maladie et AT :
 // la règle maladie (la plus prudente) s'applique à tout le taux.
 const CP_ACQUIS_MALADIE = 0.8;
 function cpGeneres(a) {
   // CP générés, en jours de 7 h retirés de la présence ROULANTE (audit nov. 2026) :
-  // 25/12 j par mois, 80 % de ce rythme pendant les arrêts (loi 2024), au prorata du temps de travail (heures / 35) et de la part roulante.
+  // 2,5 j ouvrables par mois, 80 % de ce rythme pendant les arrêts (loi 2024), au prorata du temps de travail (heures / 35) et de la part roulante.
   // Les non-roulants n'entrent pas : leurs congés n'enlèvent pas de capacité de production.
   let salaries = a.employees.filter(estRoulantPart);
   if (!salaries.length) return 0;
@@ -8739,7 +8766,7 @@ function repartirCPNRAuto(a){
 function heuresDispoAnnuelles(a) {
   let remplis = (a.sick||[]).filter(function(v){ return v!==null && v!==undefined; });
   let mal = remplis.length ? remplis.reduce(function(s,v){ return s+(+v||0); },0)/remplis.length/100 : (+a.targetAbsRate||0)/100;
-  return Math.max(0, baseH(a)*52*(1-mal) - cpGeneres(a)*7);
+  return Math.max(0, baseH(a)*52*(1-mal) - cpGeneres(a)*CP_HEURES_JOUR);
 }
 // Indicateurs d'une agence lus depuis les données brutes d'un budget, PAR LE MOTEUR (mêmes chiffres que l'écran
 // de l'agence) : capacité hors HS, HS, CP générés et planifiés. Utilisé par la Consolidation, l'export, les graphiques.
@@ -8764,9 +8791,10 @@ function absPartMois(a,w,champ,m){
   if(ms.length<2)return tot;
   let parts=p[champ+'Mois'];
   if(parts&&typeof parts==='object')return +parts[m]||0;
-  // Pas de saisie par mois (répartition automatique, ancien budget) : au prorata des jours ouvrés (lundi-vendredi) de chaque mois,
+  // Pas de saisie par mois (répartition automatique, ancien budget) : au prorata des jours de chaque mois — ouvrables
+  // (lundi-samedi) pour les CP, ouvrés (lundi-vendredi) pour les autres absences ; 
   // le dernier mois reçoit le reste pour que les parts fassent exactement le total
-  let ouv=function(mm){return joursSemaine(a,w).filter(function(d){let j=new Date(2027,d.month,d.day).getDay();return d.month===mm&&j>0&&j<6;}).length;};
+  let ouv=function(mm){return joursSemaine(a,w).filter(function(d){let j=new Date(2027,d.month,d.day).getDay();return d.month===mm&&j>0&&j<(champ==='cp'?7:6);}).length;};
   let tous=ms.reduce(function(s,mm){return s+ouv(mm);},0);
   let part=function(mm){return tous>0?Math.round(tot*ouv(mm)/tous*10)/10:(mm===ms[0]?tot:0);};
   if(m!==ms[ms.length-1])return part(m);
@@ -9125,10 +9153,10 @@ function tensionColor(hsHeures, seuils) {
 
 function impactCPSemaine(a, week, deltaCPjours) {
   // Impact financier d'ajouter/retirer deltaCPjours sur cette semaine
-  // 1J de CP = 7h. Si semaine en HS, retirer 1J = +7h HS = +7*coût horaire*coefficient HS du mois (barème 25/50)
+  // 1J de CP (jour ouvrable) = 35/6 h. Si semaine en HS, retirer 1J = +5,83 h HS × coût horaire × coefficient HS du mois (barème 25/50)
   // Si semaine en sous-charge, ajouter 1J = économie nulle (pas de HS à éviter)
   let hr = hsRows(a).find(function(r){ return r.week === week; }) || {hs:0, gap:0};
-  let hsDelta = -deltaCPjours * 7; // retirer CP augmente les HS
+  let hsDelta = -deltaCPjours * CP_HEURES_JOUR; // retirer CP augmente les HS
   let costHour = chMois(a, mainMonth(a, week)) || 28.5;
   let coefHS = coefHSMois(a, mainMonth(a, week));
   if (hr.gap > 0) {
@@ -10522,7 +10550,7 @@ const FAQ = {
     ['Comment lire la courbe de charge et les couleurs des semaines ?', 'La courbe montre les heures supplémentaires par personne présente, semaine par semaine. Une courbe plate signifie une charge équitable. Les trois zones colorées correspondent aux périodes légales de congés. Dans le détail des semaines, chaque semaine porte un verdict en langage clair : aucune tension, charge légère, charge soutenue ou surcharge. Une semaine en surcharge mérite votre attention.'],
     ['Pourquoi mon absentéisme doit-il rester proche de la référence ?', 'Le taux d\'absentéisme maladie et accident de travail est calculé par le service RH à partir de l\'historique. C\'est une donnée de référence. Vous pouvez ajuster sa répartition mois par mois selon la réalité de votre agence, mais la moyenne annuelle doit rester proche de cette référence. Sinon votre budget repose sur une hypothèse d\'absentéisme irréaliste. Il se saisit dès le début, même si l\'objectif ou l\'équipe ne sont pas encore renseignés.'],
     ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, la répartition des mois non validés est refaite automatiquement.'],
-    ['Comment sont calculés les congés acquis sur l\'année ?', 'Un salarié roulant à temps plein acquiert 25 jours de congés par an (5 semaines, soit 175 h), environ 2,1 jours par mois de présence. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Pendant un arrêt maladie, les congés continuent de s\'acquérir (loi d\'avril 2024), à 2 jours ouvrables par mois au lieu de 2,5 : SOMA applique 80 % du rythme normal à la part d\'absentéisme saisie. Plus l\'absentéisme est élevé, un peu moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
+    ['Comment sont calculés les congés acquis sur l\'année ?', 'Les congés se comptent en jours ouvrables : une semaine de congés = 6 jours (du lundi au samedi). Un salarié roulant à temps plein acquiert 30 jours par an (5 semaines, soit 175 h), 2,5 jours par mois de présence ; un jour de congé retire donc 35/6 ≈ 5,8 h à un temps plein. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Pendant un arrêt maladie, les congés continuent de s\'acquérir (loi d\'avril 2024), à 2 jours ouvrables par mois au lieu de 2,5 : SOMA applique 80 % du rythme normal à la part d\'absentéisme saisie. Plus l\'absentéisme est élevé, un peu moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
     ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou des mois déjà validés ne bougent plus. Quand vous modifiez l\'absentéisme ou l\'équipe (salarié ajouté ou retiré, dates, temps de travail, part roulante), les jours acquis changent et SOMA refait aussitôt la répartition des mois non validés : le compteur reste équilibré. Sinon, relancez la répartition ou ajustez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
     ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Le compteur de mois validés suit votre avancement. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
     ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
