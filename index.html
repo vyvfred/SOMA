@@ -1320,6 +1320,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <div id="versionTabs" style="display:flex;gap:6px"></div>
       <button id="btnDupVersion" onclick="dupliquerVersion()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--bg3);color:var(--ink);border:1px solid var(--border)">⎘ Dupliquer la version active</button>
       <button onclick="showVersionCompare()" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--blue);color:#fff;border:none">⇄ Comparer les versions</button>
+      <button id="btnRepriseVersion" onclick="ouvrirRepriseVersion()" style="display:none;width:auto;margin:0;font-size:12px;padding:7px 12px;background:var(--bg3);color:var(--ink);border:1px solid var(--border)">↧ Reprendre d'une autre version</button>
+      <button id="btnSupprVersion" onclick="supprimerVersion()" style="display:none;width:auto;margin:0;font-size:12px;padding:7px 12px;background:transparent;color:var(--red);border:1px solid var(--red)">🗑 Supprimer la version</button>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <label style="margin:0;font-size:12px;color:var(--ink65);white-space:nowrap">Description de cette version :</label>
@@ -3998,6 +4000,120 @@ async function dupliquerVersion(){
   showToast('Version '+VERSION_LABELS[cible]+' créée à partir de '+VERSION_LABELS[source], 'success');
 }
 
+// Reprise de données entre versions et suppression d'une version (nov. 2026) —
+// texte identique dans le mono-fichier (index.html) et ici.
+// Le paramétrage du CG (taux, périodes de paie, variables, historiques) est commun aux versions :
+// il n'est jamais recopié. Seules les saisies propres à une version le sont, par bloc.
+const BLOCS_VERSION=[
+  {id:'equipe',label:'Équipe',detail:'salariés, contrats, heures, % roulant, entrées et sorties',cles:['employees']},
+  {id:'objectif',label:'Objectif et références CA',detail:'CA cible, TXR cible, activités, perspectives, CA moyen par type de jour',cles:['targetCA','targetTXR','perspectives','actSan','actSai','actTP','refs']},
+  {id:'presence',label:'Présence & HS',detail:'absentéisme, congés, mois travaillés, CP des non-roulants, indemnités',cles:['sick','presence','cpEnveloppes','cpReliquat','cpOptimal','cpOptimalHSCost','cpNR','moisVerrouilles','hs50','hsImproductif','repasRoulant','repasNonRoulant','idjfRoulant','idjfNonRoulant']},
+  {id:'charges',label:'Charges',detail:'postes de charges hors personnel (saisies REX et CG)',cles:['rex']}
+];
+const VERSIONS_SUPPRIMABLES=['v2','v3'];
+// Copie dans l'agence cible les blocs choisis de l'agence source. Renvoie une nouvelle agence.
+function reprendreBlocs(cible,source,ids){
+  let out=JSON.parse(JSON.stringify(cible||{}));
+  BLOCS_VERSION.forEach(function(b){
+    if(ids.indexOf(b.id)<0)return;
+    b.cles.forEach(function(k){
+      if(source&&source[k]!==undefined)out[k]=JSON.parse(JSON.stringify(source[k]));
+      else delete out[k];
+    });
+  });
+  return out;
+}
+// Avertissement si la présence est reprise sans l'équipe alors que les équipes diffèrent
+// (les saisies de présence sont rattachées aux salariés).
+function alerteRepriseBlocs(cible,source,ids){
+  if(ids.indexOf('presence')<0||ids.indexOf('equipe')>=0)return null;
+  let n=function(a){return (a&&a.employees||[]).length;};
+  if(n(cible)===n(source))return null;
+  return 'La présence de la version source a été saisie pour '+n(source)+' salariés, la version active en compte '+n(cible)+'. Reprenez aussi l\'équipe pour garder des saisies cohérentes.';
+}
+// Une version peut être supprimée si : V2 ou V3, remplie, pas choisie pour la soumission, budget modifiable.
+function motifRefusSuppression(data,v,editable){
+  if(!editable)return 'Budget en validation : les versions ne peuvent plus être modifiées.';
+  if(VERSIONS_SUPPRIMABLES.indexOf(v)<0)return 'La V1 est la version de référence : elle ne peut pas être supprimée.';
+  if(!(data&&data.versions&&data.versions[v]&&Object.keys(data.versions[v]).length))return 'Cette version est déjà vide.';
+  if(data.meta&&data.meta.submittedVersion===v)return 'Cette version est choisie pour la soumission : choisissez-en une autre avant de la supprimer.';
+  return null;
+}
+// Données du budget sans la version v (la version active repasse sur la V1 si c'était elle).
+function donneesSansVersion(data,v){
+  let out=JSON.parse(JSON.stringify(data||{}));
+  out.versions=out.versions||{};
+  delete out.versions[v];
+  out.meta=out.meta||{};
+  if(out.meta.descriptions)delete out.meta.descriptions[v];
+  if(out.meta.activeVersion===v)out.meta.activeVersion='v1';
+  return out;
+}
+// ── Reprise de données d'une autre version / suppression de version (nov. 2026) — même logique que BudgetBar.jsx
+async function ouvrirRepriseVersion(){
+  if(!budgetModifiable()){ showToast('Budget en validation : les versions ne peuvent plus être modifiées', 'warn'); return; }
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
+  let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
+  let sources = ['v1','v2','v3'].filter(function(v){ return v !== ACTIVE_VERSION && versions[v] && Object.keys(versions[v]).length; });
+  if(!sources.length){ showToast('Aucune autre version remplie', 'warn'); return; }
+  let m = document.createElement('div');
+  m.className = 'modal'; m.id = 'repriseModal'; m.style.display = 'flex'; m.style.padding = '20px';
+  m.onclick = function(e){ if(e.target === m) m.remove(); };
+  m.innerHTML = '<div class="modalCard" style="width:100%;max-width:560px"><h2 style="margin-top:0">Reprendre les données d\'une autre version</h2>'
+    + '<p class="hint">Les blocs cochés remplacent ceux de la version '+VERSION_LABELS[ACTIVE_VERSION]+'. Le paramétrage du contrôle de gestion, commun à toutes les versions, n\'est pas touché. ↶ annule la reprise.</p>'
+    + '<label style="display:block;margin:12px 0;font-size:13px">Version source <select id="repriseSource">'+sources.map(function(v){ return '<option value="'+v+'">'+VERSION_LABELS[v]+'</option>'; }).join('')+'</select></label>'
+    + BLOCS_VERSION.map(function(b){ return '<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer"><input type="checkbox" class="repriseBloc" value="'+b.id+'"'+(b.id==='equipe'?' checked':'')+' style="width:auto;margin-top:3px"><span><b>'+b.label+'</b><br><span style="color:var(--ink65);font-size:12px">'+b.detail+'</span></span></label>'; }).join('')
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="secondary" style="width:auto;margin:0" onclick="document.getElementById(\'repriseModal\').remove()">Annuler</button>'
+    + '<button id="repriseValider" style="width:auto;margin:0;background:var(--green);color:#fff;border:none" onclick="validerRepriseVersion()">↧ Reprendre dans la '+VERSION_LABELS[ACTIVE_VERSION]+'</button></div></div>';
+  document.body.appendChild(m);
+}
+async function validerRepriseVersion(){
+  let source = q('repriseSource').value;
+  let ids = Array.prototype.slice.call(document.querySelectorAll('.repriseBloc:checked')).map(function(c){ return c.value; });
+  if(!ids.length){ showToast('Choisissez au moins un bloc à reprendre.', 'warn'); return; }
+  let libelles = BLOCS_VERSION.filter(function(b){ return ids.indexOf(b.id) >= 0; }).map(function(b){ return b.label; }).join(', ');
+  if(!confirm('Remplacer dans la '+VERSION_LABELS[ACTIVE_VERSION]+' : '+libelles+' — par les données de la '+VERSION_LABELS[source]+' ?')) return;
+  await saveBudgetToSupabase();
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
+  let versions = (data && data.data && data.data.versions) ? data.data.versions : {};
+  if(!versions[source] || !Object.keys(versions[source]).length){ showToast('La version '+VERSION_LABELS[source]+' est vide.', 'warn'); return; }
+  let a = A();
+  let src = Object.assign(agency(a.name), versions[source], {name: a.name});
+  let alerte = alerteRepriseBlocs(a, src, ids);
+  if(alerte && !confirm(alerte + '\n\nReprendre quand même ?')) return;
+  // Modification sur place (garde l'historique ↶ ↷), puis enregistrement automatique
+  let nouv = reprendreBlocs(a, src, ids);
+  BLOCS_VERSION.forEach(function(b){ if(ids.indexOf(b.id) < 0) return; b.cles.forEach(function(k){ if(nouv[k] === undefined) delete a[k]; else a[k] = nouv[k]; }); });
+  if(q('repriseModal')) q('repriseModal').remove();
+  render();
+  scheduleAutosave();
+  showToast('Données de la '+VERSION_LABELS[source]+' reprises dans la '+VERSION_LABELS[ACTIVE_VERSION]+' (↶ pour annuler)', 'success');
+}
+async function supprimerVersion(){
+  let v = ACTIVE_VERSION;
+  if(!confirm('Supprimer définitivement la version '+VERSION_LABELS[v]+' et toutes ses saisies ? Cette action ne peut pas être annulée.')) return;
+  await saveBudgetToSupabase();
+  const {data} = await sb.from('budgets').select('data').eq('id', BUDGET_ID).single();
+  let courant = Object.assign({}, (data && data.data) || {});
+  courant.meta = Object.assign({}, courant.meta || {}, BUDGET_META || {});
+  let motif = motifRefusSuppression(courant, v, budgetModifiable());
+  if(motif){ showToast(motif, 'warn'); return; }
+  let out = donneesSansVersion(courant, v);
+  const res = await ecrire(sb.from('budgets').update({data: out}).eq('id', BUDGET_ID));
+  if(res.error){ showToast('Suppression refusée : ' + res.error.message, 'error'); return; }
+  BUDGET_META = out.meta;
+  META_BASE = JSON.parse(JSON.stringify(out.meta));
+  ACTIVE_VERSION = 'v1';
+  let a = A();
+  S.agencies[S.active] = Object.assign({}, agency(a.name), out.versions.v1 || {}, {name: a.name});
+  migrateState();
+  BUDGET_BASE = out.versions.v1 ? JSON.parse(JSON.stringify(out.versions.v1)) : null;
+  viderHistoriqueMono();
+  renderVersionBar();
+  render();
+  showToast('Version '+VERSION_LABELS[v]+' supprimée', 'success');
+}
+
 function setVersionDesc(v){
   if(!budgetModifiable()) return;
   if(!BUDGET_META.descriptions) BUDGET_META.descriptions = {v1:'',v2:'',v3:''};
@@ -5184,6 +5300,16 @@ async function renderVersionBar(){
   updateVersionIndicator();
   let modif = budgetModifiable();
   if(q('btnDupVersion')) q('btnDupVersion').disabled = !modif;
+  let autresRemplies = ['v1','v2','v3'].filter(function(v){ return v !== ACTIVE_VERSION && versions[v] && Object.keys(versions[v]).length; });
+  if(q('btnRepriseVersion')){ q('btnRepriseVersion').style.display = autresRemplies.length ? '' : 'none'; q('btnRepriseVersion').disabled = !modif; }
+  if(q('btnSupprVersion')){
+    let activeRemplie = versions[ACTIVE_VERSION] && Object.keys(versions[ACTIVE_VERSION]).length;
+    q('btnSupprVersion').style.display = (VERSIONS_SUPPRIMABLES.indexOf(ACTIVE_VERSION) >= 0 && activeRemplie) ? '' : 'none';
+    q('btnSupprVersion').textContent = '🗑 Supprimer la ' + VERSION_LABELS[ACTIVE_VERSION];
+    let soumise = meta.submittedVersion === ACTIVE_VERSION;
+    q('btnSupprVersion').disabled = !modif || soumise;
+    q('btnSupprVersion').title = soumise ? 'Version choisie pour la soumission : choisissez-en une autre avant de la supprimer' : '';
+  }
   if(q('versionDesc')) q('versionDesc').disabled = !modif;
   // Info soumission
   if(q('versionSubmitInfo')){
@@ -10028,7 +10154,7 @@ const FAQ = {
     ['Comment sauvegarder mon travail ?', 'SOMA sauvegarde automatiquement au fil de votre saisie, en silence. Vous n\'avez pas de bouton à presser. Une petite mention vous confirme l\'enregistrement. Vos données sont conservées sur le serveur et vous les retrouvez à votre prochaine connexion.'],
     ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, cliquez sur « Soumettre au DR ». Le bouton se trouve dans le bandeau « Statut du budget » de l\'écran Objectif ; il vous est aussi proposé à la fin du parcours, avec « Terminer et sauvegarder » sur la Synthèse. SOMA vous demande confirmation et vous prévient si votre absentéisme s\'écarte de la référence ou si aucun directeur régional n\'est encore affecté à votre agence. La version active devient le budget officiel : il part dans le circuit de validation (directeur régional, puis contrôle de gestion et direction financière, puis Direction) et n\'est plus modifiable tant qu\'il est en validation. Relisez votre synthèse avant de soumettre.'],
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
-    ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
+    ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. « Reprendre d\'une autre version » recopie dans la version active les blocs choisis d\'une autre version (équipe, objectif et références CA, présence & HS, charges) : pratique pour remettre à jour l\'équipe d\'une V2 après des changements faits dans la V1. ↶ annule la reprise. « Supprimer la V2 » (ou la V3) efface définitivement cette version ; la V1 et la version choisie pour la soumission ne peuvent pas être supprimées. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
     ['Pourquoi certaines valeurs sont-elles en orange ?', 'Ce sont des valeurs saisies par votre directeur régional à votre place, par exemple pendant un accompagnement (la légende « saisie du DR » apparaît alors en haut de l\'écran). Elles comptent comme les vôtres. Dès que vous en modifiez une, elle reprend la couleur normale.'],
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026. En haut de l\'écran, le récapitulatif donne pour le mois choisi le CA, sa part dans l\'année, le CA moyen par jour et le nombre de jours de chaque type, puis un tableau des 12 mois : jours de semaine hors vacances scolaires, jours de vacances, samedis, dimanches, fériés et CA par activité. Un clic sur un mois l\'affiche.'],
