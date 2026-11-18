@@ -1756,7 +1756,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <!-- Charges à reporter 2028 -->
     <div id="report2028" style="margin-top:14px;padding:14px;background:rgba(196,83,0,.08);border:1px solid var(--orange);display:none">
       <h3 style="margin-bottom:8px;color:var(--orange)">Charges à reporter sur paie Janvier 2028</h3>
-      <p class="hint" style="margin-bottom:8px">La période du 06/12/2027 au 31/12/2027 ne sera pas comptabilisée en 2027. Ces charges apparaîtront en paie de janvier 2028.</p>
+      <p class="hint" style="margin-bottom:8px">Les variables du 06/12/2027 au 31/12/2027 (heures supplémentaires et retenues d'absence) ne seront pas comptabilisées en 2027 : elles apparaîtront en paie de janvier 2028. Les salaires de base de décembre 2027 sont payés en décembre.</p>
       <div style="font-family:'DM Mono',monospace;font-size:18px;font-weight:700;color:var(--orange)" id="report2028Amount">—</div>
     </div>
   </div>
@@ -1899,7 +1899,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <details class="objCollapse" id="prevCollapse" open>
       <summary>Détail du compte de résultat (SIG, 12 mois)</summary>
       <div class="objCollapseBody">
-        <div id="prevPaieBadge" style="display:none;padding:6px 12px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:12px;color:var(--blue2);margin-bottom:12px;border-radius:var(--radius-sm)">ℹ La ligne <b>Charges de personnel</b> est calculée selon les périodes de paie 2027 (et non par mois civil). Les heures supplémentaires de la 5e semaine des mois de 5 semaines (janvier, avril, juillet, octobre) sont lissées sur les deux mois suivants du trimestre.</div>
+        <div id="prevPaieBadge" style="display:none;padding:6px 12px;background:rgba(74,158,255,.08);border:1px solid var(--blue2);font-size:12px;color:var(--blue2);margin-bottom:12px;border-radius:var(--radius-sm)">ℹ La ligne <b>Charges de personnel</b> est calculée selon les périodes de paie 2027 (et non par mois civil). Les salaires de base sont mensualisés (le même montant chaque mois) ; seules les variables (heures supplémentaires, retenues d'absence) suivent les périodes de paie, et les heures supplémentaires de la 5e semaine des mois de 5 semaines (janvier, avril, juillet, octobre) sont lissées sur les deux mois suivants du trimestre.</div>
         <div class="tablewrap"><table id="prevTable"></table></div>
       </div>
     </details>
@@ -9691,14 +9691,14 @@ function payrollPayMonth(a, moisIdx) {
   let debut = new Date(periode.debut);
   let fin = new Date(periode.fin);
 
-  // Heures roulantes disponibles sur cette période
-  // Pour janvier : ajouter le montant décembre 2026 si saisi
-  // + le salaire de base des roulants pour les jours de décembre 2026 inclus dans la période
-  let msJan2026 = moisIdx === 0 ? varDec2026Total(a) + baseDec2026(a) : 0;
+  // Salaires mensualisés (nov. 2026) : le salaire de base des roulants est celui du mois civil, le même chaque mois ;
+  // seules les variables suivent la période de paie de 4 ou 5 semaines.
+  // Janvier : + les variables de décembre 2026 saisies (le salaire de base de décembre 2026 a été payé en décembre 2026)
+  let msJan2026 = moisIdx === 0 ? varDec2026Total(a) : 0;
 
-  // Agréger les semaines ISO dont la majorité des jours tombe dans la période
+  // Variables des semaines de la période (au prorata des jours compris dans la période)
   let hsR = hsRows(a);
-  let ms = msJan2026;
+  let ms = msJan2026 + msRoulantBaseMois(a, moisIdx);
 
   hsR.forEach(function(r) {
     // Trouver les jours de cette semaine dans le calendrier
@@ -9717,14 +9717,11 @@ function payrollPayMonth(a, moisIdx) {
     let ratio = daysInPeriode / daysTotal;
     if (ratio <= 0) return;
 
-    // Coût pro-ratisé de cette semaine
-    let coutSem = coutRoulantSemaine(a, r);
-    ms += coutSem * ratio;
+    // Variables pro-ratisées de cette semaine (HS majorées − retenues)
+    ms += variablesRoulantSemaine(a, r) * ratio;
   });
 
-  // Masse salariale non-roulants et DR : répartie sur la période (approximation pro-rata)
-  let nbJoursPeriode = Math.round((fin - debut) / (1000*60*60*24)) + 1;
-  let nbJoursAn = 365;
+  // Masse salariale non-roulants et DR : salaires mensualisés, un mois de salaire par mois de paie
 
   // Non-roulants : ligne globale CG = un salaire mensuel par mois de paie.
   // À défaut, ancien calcul au coût journalier pro-rata de la période.
@@ -9732,7 +9729,7 @@ function payrollPayMonth(a, moisIdx) {
     ? a.employees.filter(function(e) {
         return !['DEA','AA','TAXI','TPMR','FACTURIERE'].includes(e.qual);
       }).reduce(function(s, e) {
-        return s + (+e.coutJour || 0) * (1 - partRoulant(e)) * (nbJoursPeriode * (+e.joursSem || 5) / 7);
+        return s + (+e.coutJour || 0) * (1 - partRoulant(e)) * (+e.joursSem || 5) * 52 / 12; // mensualisé
       }, 0)
     : 0;
 
@@ -9774,7 +9771,7 @@ function payrollPayMonth(a, moisIdx) {
   });
 
   // DR pro-rata
-  let msDR = msNRMensuel(a)!==null ? 0 : (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 * (nbJoursPeriode / nbJoursAn);
+  let msDR = msNRMensuel(a)!==null ? 0 : (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 / 12; // mensualisé
 
   // Lissage de la 5e semaine de variables sur le trimestre (voir lissage5eSemaine)
   return ms + msNonRoulants + msHSImp + repasPeriode + msDR + lissage5eSemaine(a, moisIdx);
@@ -9845,35 +9842,38 @@ function lissage5eSemaine(a, moisIdx){
 }
 
 // Calcul de la période non couverte (charges à reporter sur 2028)
-function chargesReport2028(a) {
-  // Période du 06/12/2027 au 31/12/2027
-  let debut = new Date(2027, 11, 6);  // 6 décembre 2027
-  let fin   = new Date(2027, 11, 31); // 31 décembre 2027
-  let nbJours = 26;
-  let hsR = hsRows(a);
-  let ms = 0;
-
-  hsR.forEach(function(r) {
+// Salaire de base mensualisé des roulants (nov. 2026, art. L3242-1 du Code du travail) : heures du contrat × 52/12
+// × taux horaire du mois, le même chaque mois quel que soit le nombre de semaines de la période de paie ; au prorata
+// des jours du mois en cas d'entrée ou de sortie ; prime de précarité des CDD comprise. Congés payés et absences
+// payées sont dans ce salaire (maintien) ; HS et retenues sont des variables (variablesRoulantSemaine).
+function msRoulantBaseMois(a,m){
+  let nbj=new Date(2027,m+1,0).getDate(),ch=chMois(a,m);
+  return (a.employees||[]).filter(estRoulantPart).reduce(function(s,e){
+    let f=1;
+    if(e.dateEntree||e.dateSortie){let p=0;for(let d=1;d<=nbj;d++)if(empPresent(e,cleJour(m,d)))p++;f=p/nbj;}
+    return s+(+e.hours||0)*partRoulant(e)*52/12*ch*f*(1+(isCDD(e)?TAUX_PRECARITE_CDD:0));
+  },0);
+}
+// Variables d'une semaine, payées sur la période de paie qui la contient : HS majorées, moins les retenues
+// (part de la maladie non maintenue, absences non payées), précarité CDD comprise
+function variablesRoulantSemaine(a,r){
+  let m=mainMonth(a,r.week),ch=chMois(a,m);
+  let v=(r.hs||0)*ch*coefHSMois(a,m)-(r.mal||0)*ch*(1-ratioMaintien(a))-(r.otherH||0)*ch;
+  return v*(1+TAUX_PRECARITE_CDD*partCDDSemaine(a,r.week));
+}
+function chargesReport2028(a){
+  // Variables du 06/12/2027 au 31/12/2027 (HS, retenues, HS improductives) : payées sur la paie de janvier 2028.
+  // Les salaires mensualisés de décembre (roulants, non-roulants, DR) sont payés en décembre : rien n'est reporté.
+  let debut = new Date(2027, 11, 6), fin = new Date(2027, 11, 31), ms = 0;
+  hsRows(a).forEach(function(r){
     let daysOfWeek = joursSemaine(a, r.week);
-    let daysInPeriode = daysOfWeek.filter(function(d) {
-      let dt = new Date(2027, d.month, d.day);
-      return dt >= debut && dt <= fin;
-    }).length;
-    if (!daysOfWeek.length) return;
-    let ratio = daysInPeriode / daysOfWeek.length;
-    if (ratio <= 0) return;
-    let coutSem = coutRoulantSemaine(a, r);
-    ms += coutSem * ratio;
+    if(!daysOfWeek.length) return;
+    let ratio = daysOfWeek.filter(function(d){ let dt = new Date(2027, d.month, d.day); return dt >= debut && dt <= fin; }).length / daysOfWeek.length;
+    if(ratio <= 0) return;
+    ms += variablesRoulantSemaine(a, r) * ratio;
+    let hsImp = a.hsImproductif && a.hsImproductif[r.week] ? +a.hsImproductif[r.week] : 0;
+    if(hsImp) ms += hsImp * coutHoraireImproductif(a) * coefHSMois(a, mainMonth(a, r.week)) * ratio;
   });
-
-  // Non-roulants pro-rata (ancien calcul uniquement : avec la ligne globale, le salaire
-  // mensualisé de décembre est payé sur la paie de décembre, rien n'est reporté)
-  if (msNRMensuel(a) === null) ms += (a.employees || [])
-    .filter(function(e) { return !['DEA','AA','TAXI','TPMR','FACTURIERE'].includes(e.qual); })
-    .reduce(function(s, e) { return s + (+e.coutJour || 0) * (1 - partRoulant(e)) * nbJours * (+e.joursSem || 5) / 7; }, 0);
-
-  if (msNRMensuel(a) === null) ms += (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 * (nbJours / 365);
-
   return Math.round(ms);
 }
 
@@ -9895,7 +9895,7 @@ function renderPeriodes(){
     insight.style.display = '';
     let nb5sem = a.periodesPaie.filter(function(p){return p.semaines===5;}).length;
     let hasDec = varDec2026Total(a) > 0;
-    let p = 'Le calendrier de paie 2027 compte <b>'+nb5sem+' mois à 5 semaines</b> : leurs heures travaillées restent plus nombreuses, mais les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend aussi le salaire de base des roulants pour les jours de décembre 2026 de sa période. ';
+    let p = 'Le calendrier de paie 2027 compte <b>'+nb5sem+' mois à 5 semaines</b> : les salaires de base sont mensualisés (le même montant chaque mois), seules les variables (heures supplémentaires, retenues d\'absence) suivent la période de paie, et les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend les variables de décembre 2026 de sa période. ';
     if(hasDec){
       p += 'Les variables de décembre 2026 sont renseignées.';
     } else {
@@ -9922,7 +9922,7 @@ function renderPeriodes(){
     + '<th>Nb semaines</th>'
     + '<th>MS calculée</th>'
     + '<th>dont variables déc. 2026</th>'
-    + '<th title="Salaire de base des roulants pour les jours de décembre 2026 compris dans la période de paie de janvier">dont base déc. 2026</th>'
+    + '<th title="Salaire de base mensualisé des roulants : heures du contrat × 52/12 × taux horaire du mois, au prorata des entrées et sorties">dont salaire de base roulants</th>'
     + '<th title="4 semaines de variables par mois : la 5e semaine de HS est lissée sur le trimestre">dont lissage 5e semaine</th>'
     + '</tr>';
 
@@ -9930,7 +9930,7 @@ function renderPeriodes(){
     let ms = payrollPayMonth(a, i);
     let msStr = a.costHour && a.cal && a.cal.length ? euro(Math.round(ms)) : '—';
     let dec2026 = i === 0 && varDec2026Total(a) > 0 ? euro(Math.round(varDec2026Total(a))) : '';
-    let base2026 = i === 0 && a.costHour && baseDec2026(a) > 0 ? euro(Math.round(baseDec2026(a))) : '';
+    let base2026 = a.costHour && a.cal && a.cal.length ? euro(Math.round(msRoulantBaseMois(a, i))) : '';
     let isTrimestre = nbSemPeriode(p) === 5;
     let lis = a.costHour && a.cal && a.cal.length ? lissage5eSemaine(a, i) : 0;
     let lisStr = Math.abs(lis) >= 0.5 ? (lis > 0 ? '+' : '') + euro(Math.round(lis)) : '';
@@ -9941,7 +9941,7 @@ function renderPeriodes(){
       + '<td style="text-align:center;font-family:DM Mono,monospace">' + nbSemPeriode(p) + '</td>'
       + '<td class="num"><b>' + msStr + '</b></td>'
       + '<td class="num" style="color:var(--blue2)">' + dec2026 + '</td>'
-      + '<td class="num" style="color:var(--blue2)">' + base2026 + '</td>'
+      + '<td class="num" style="color:var(--ink65)">' + base2026 + '</td>'
       + '<td class="num" style="color:' + (lis < 0 ? 'var(--green)' : 'var(--orange)') + '">' + lisStr + '</td>'
       + '</tr>';
   }).join('');
@@ -10501,7 +10501,7 @@ const FAQ_CG_SECTIONS = [
     ['Quel calendrier scolaire SOMA utilise-t-il ?', 'Le calendrier officiel de l\'Éducation nationale (2026-2027 puis 2027-2028), selon la zone de l\'agence (A, B ou C) : fin des vacances de Noël le 3 janvier, vacances d\'hiver et de printemps selon la zone, été du 3 juillet au 1er septembre, Toussaint du 23 octobre au 7 novembre, Noël à partir du 18 décembre 2027. Les jours de reprise des cours sont des jours de semaine normaux. Les 11 jours fériés de 2027 sont appliqués.'],
   ]},
   { t: 'Étape 2 — Périodes de paie', items: [
-    ['Comment fonctionnent les périodes de paie ?', 'Chaque mois de paie collecte les variables d\'une période qui ne coïncide pas avec le mois civil (par défaut, la paie de janvier couvre du 7 décembre 2026 au 10 janvier 2027). SOMA rattache le coût des heures et des variables à la bonne période. La paie de janvier comprend donc le salaire de base des roulants du 7 au 31 décembre 2026 (calculé avec l\'équipe présente fin 2026 et le coût horaire de janvier) en plus des variables de décembre saisies. Chaque trimestre compte un mois de paie à 5 semaines (janvier, avril, juillet, octobre). On ne garde que 4 semaines de variables par mois : les heures supplémentaires de la 5e semaine sont lissées sur le trimestre (le mois à 5 semaines est diminué des 2/3 de cette semaine, chacun des deux mois suivants en reçoit 1/3). Les heures du 6 au 31 décembre 2027 passent sur la paie de janvier 2028 : leur montant est affiché à part, en charges à reporter.'],
+    ['Comment fonctionnent les périodes de paie ?', 'Chaque mois de paie collecte les variables d\'une période qui ne coïncide pas avec le mois civil (par défaut, la paie de janvier couvre du 7 décembre 2026 au 10 janvier 2027). Les salaires de base sont mensualisés (le même montant chaque mois, art. L3242-1 du Code du travail) : seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) sont rattachées à la période de paie. La paie de janvier comprend les variables de décembre 2026 saisies ; les variables du 6 au 31 décembre 2027 sont reportées sur la paie de janvier 2028. Chaque trimestre compte un mois de paie à 5 semaines (janvier, avril, juillet, octobre). On ne garde que 4 semaines de variables par mois : les heures supplémentaires de la 5e semaine sont lissées sur le trimestre (le mois à 5 semaines est diminué des 2/3 de cette semaine, chacun des deux mois suivants en reçoit 1/3). Les heures du 6 au 31 décembre 2027 passent sur la paie de janvier 2028 : leur montant est affiché à part, en charges à reporter.'],
     ['Les dates s\'appliquent-elles à toutes les agences ?', 'Non : les périodes sont propres à chaque agence. Ouvrez l\'agence (« Ouvrir une agence »), puis revenez sur Périodes de paie pour vérifier ou corriger ses dates ; la modification est enregistrée automatiquement. Sans agence ouverte, l\'écran montre le calendrier standard, et une modification n\'est enregistrée nulle part. Si le calendrier standard correspond à votre paie, il n\'y a rien à faire. « Réinitialiser par défaut » remet le calendrier standard sur l\'agence ouverte.'],
     ['Pourquoi la masse salariale ne colle pas au temps travaillé du mois ?', 'Parce que la paie suit ses propres périodes, décalées par rapport aux mois civils, et qu\'elle intègre des éléments variables (heures supplémentaires, indemnités) rattachés à la période où ils sont payés, pas à celle où ils sont travaillés.'],
   ]},
@@ -10580,7 +10580,7 @@ const FAQ = {
     ['Quel niveau de masse salariale viser ?', 'Le seuil est de 62 % du chiffre d\'affaires sur l\'année (charges de personnel, quotes-parts comprises). Au-dessus, la Synthèse, le Prévisionnel et le centre d\'attention le signalent en orange. Sur la Synthèse, le tableau « Masse salariale / CA, mois par mois » donne le ratio de chaque mois : vert jusqu\'à 62 %, orange au-delà. Un mois au-dessus du seuil n\'est pas une erreur, les mois creux le sont souvent : c\'est la moyenne annuelle qui compte.'],
     ['Que montre le graphique « CA mensuel » de la Synthèse ?', 'Dans « Graphiques détaillés », chaque barre porte le CA du mois. Dessous, « sem. » donne le nombre de jours de semaine hors vacances scolaires et « VS » le nombre de jours de semaine pendant les vacances scolaires de votre zone. Ces deux chiffres expliquent souvent les écarts de CA d\'un mois à l\'autre.'],
     ['Qui saisit les charges hors personnel ?', 'Vous saisissez six postes à l\'étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du chiffre d\'affaires de chaque mois (le taux peut changer d\'un mois à l\'autre), sous-traitance et entretiens véhicules - bâtiment en montant fixe par mois. Les cases partent des valeurs du contrôle de gestion quand il y en a. Les autres charges (loyers, assurances, crédit-bail…) sont saisies par le contrôleur de gestion et apparaissent dans votre prévisionnel au fur et à mesure. Si un de ces montants vous semble faux, signalez-le au contrôle de gestion.'],
-    ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'La paie suit des périodes de 4 ou 5 semaines, pas les mois civils : janvier, avril, juillet et octobre en comptent 5. Les heures supplémentaires de la 5e semaine sont lissées sur le trimestre, et la paie de janvier comprend la fin de décembre 2026 (salaire de base des roulants et variables de décembre). Un bandeau le rappelle sur l\'écran Prévisionnel.'],
+    ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'Les salaires de base sont mensualisés : le même montant chaque mois (heures du contrat × 52/12 × taux horaire), au prorata en cas d\'entrée ou de sortie. Seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) suivent les périodes de paie de 4 ou 5 semaines : janvier, avril, juillet et octobre en comptent 5, et les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend les variables de décembre 2026. La masse salariale varie donc surtout avec les heures supplémentaires, les absences et la hausse du taux horaire de juin. Un bandeau le rappelle sur l\'écran Prévisionnel.'],
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
   valideur: [
