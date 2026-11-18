@@ -1451,12 +1451,14 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 <section id="cal" class="panel">
   <div class="card">
     <h2>3. Calendrier intelligent</h2>
-    <div class="hint" style="margin-bottom:16px">✨ <b>Rien à saisir ici.</b> Ce calendrier est construit automatiquement à partir de vos références CA (étape 2) et du calendrier officiel 2027 (jours fériés, vacances scolaires de votre zone). Il répartit votre chiffre d'affaires jour par jour et semaine par semaine. Vérifiez qu'il correspond à votre réalité, puis passez à l'étape suivante.</div>
+    <div class="hint" style="margin-bottom:16px">✨ Ce calendrier est construit automatiquement à partir de vos références CA (étape 2) et du calendrier officiel 2027 (jours fériés, vacances scolaires de votre zone). Il répartit votre chiffre d'affaires jour par jour et semaine par semaine. Vérifiez qu'il correspond à votre réalité ; un jour particulier (par exemple le transport de personnes le mercredi) s'ajuste d'un clic sur sa case.</div>
     <label>Mois</label>
     <select id="monthSel" style="max-width:220px"></select>
     <div id="calTotaux" data-testid="cal-totaux-mensuels" data-visite="cal-totaux" style="margin-top:12px"></div>
     <div id="calLegend"></div>
     <div class="calendar" id="calGrid"></div>
+    <div id="calEditeur" data-testid="editeur-jour" style="display:none;margin-top:14px;padding:14px 16px;border:1px solid var(--violet);background:var(--bg2)"></div>
+    <p class="hint" id="calAjustInfo" style="font-size:12px;margin-top:10px;display:none"></p>
     <div id="calSummary"></div>
   </div>
   <div class="card">
@@ -2426,7 +2428,7 @@ const ETAPES_VISITE_REX=[
   {ecran:'objectif',cible:'objectif',titre:'1. Objectif',texte:'Saisissez votre objectif de chiffre d\'affaires 2027 et votre TXR cible (CA par heure travaillée). SOMA vous dit aussitôt si votre effectif peut le tenir.'},
   {ecran:'objectif',cible:'versions',titre:'Versions V1, V2, V3',texte:'Testez des hypothèses sans toucher à votre budget : dupliquez la version, reprenez l\'équipe d\'une autre version, comparez-les, puis choisissez celle à soumettre (★).'},
   {ecran:'refs',cible:'refs',titre:'2. Références CA',texte:'Pour chaque mois, le CA moyen d\'une journée selon son type : semaine, vacances scolaires, samedi, dimanche, férié. C\'est la base de tout le calcul.'},
-  {ecran:'cal',cible:'cal-totaux',titre:'3. Calendrier',texte:'SOMA applique vos références au calendrier 2027 de votre zone scolaire. Vérifiez les totaux du mois : un écart vient presque toujours des références.'},
+  {ecran:'cal',cible:'cal-totaux',titre:'3. Calendrier',texte:'SOMA applique vos références au calendrier 2027 de votre zone scolaire. Vérifiez les totaux du mois. Un jour particulier, comme le transport de personnes le mercredi, s\'ajuste d\'un clic sur sa case.'},
   {ecran:'team',cible:'equipe',titre:'4. Équipe',texte:'Contrôlez chaque salarié : qualification, contrat, heures, part roulante, dates d\'entrée et de sortie 2027. Ajoutez les postes prévus (CDD saisonniers).'},
   {ecran:'rh',cible:'absenteisme',titre:'5. Présence & HS — absentéisme',texte:'Commencez par l\'absentéisme mois par mois, en gardant la moyenne fixée par le contrôle de gestion. Les congés se recalculent tout seuls ensuite.'},
   {ecran:'rh',cible:'conges',titre:'Congés payés',texte:'Un clic sur « Répartir les congés automatiquement » pose les jours acquis en lissant la charge (60 % juin-octobre, 20 % / 20 % sur le reste de l\'année).'},
@@ -3685,7 +3687,9 @@ function isoWeek(date){let d=new Date(Date.UTC(date.getFullYear(),date.getMonth(
 const INDEX_CAL=new WeakMap();
 function indexCal(a){let c=a.cal||[],x=INDEX_CAL.get(c);if(x&&x.n===c.length)return x;x={n:c.length,parSemaine:new Map(),moisPrincipal:new Map()};c.forEach(function(d){let l=x.parSemaine.get(d.week);if(!l){l=[];x.parSemaine.set(d.week,l);}l.push(d);});INDEX_CAL.set(c,x);return x;}
 function joursSemaine(a,w){return indexCal(a).parSemaine.get(w)||[];}
-function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0};a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp})}}}
+function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0},ref=null,aj=a.ajustJours&&a.ajustJours[cleJour(m,d)];if(aj){ref={san:ca.san,sai:ca.sai,tp:ca.tp};['san','sai','tp'].forEach(function(k){if(aj[k]!==undefined&&aj[k]!==null&&aj[k]!=='')ca[k]=+aj[k]||0;});}a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp,ref})}}}
+// Clé d'un jour 2027 (« 2027-03-16 ») ; a.ajustJours[clé] = {san?, sai?, tp?} remplace la référence CA de ce jour (ajustement fait sur le calendrier)
+function cleJour(m,d){return '2027-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 function monthCA(a,m){if(estStructure(a))return caStructure(a,m);if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)}
 function annualCA(a){return M.reduce((s,_,m)=>s+monthCA(a,m),0)}
 function weeks(a){if(!a.cal.length)genCal(a);let map={};a.cal.forEach(d=>{if(!map[d.week])map[d.week]={week:d.week,days:[],ca:0};map[d.week].days.push(d);map[d.week].ca+=d.total});return Object.values(map).sort((x,y)=>{let dx=x.days[0],dy=y.days[0];return (dx.month-dy.month)||(dx.day-dy.day)})}
@@ -4168,7 +4172,7 @@ async function dupliquerVersion(){
 // il n'est jamais recopié. Seules les saisies propres à une version le sont, par bloc.
 const BLOCS_VERSION=[
   {id:'equipe',label:'Équipe',detail:'salariés, contrats, heures, % roulant, entrées et sorties',cles:['employees']},
-  {id:'objectif',label:'Objectif et références CA',detail:'CA cible, TXR cible, activités, perspectives, CA moyen par type de jour',cles:['targetCA','targetTXR','perspectives','actSan','actSai','actTP','refs']},
+  {id:'objectif',label:'Objectif et références CA',detail:'CA cible, TXR cible, activités, perspectives, CA moyen par type de jour, jours ajustés sur le calendrier',cles:['targetCA','targetTXR','perspectives','actSan','actSai','actTP','refs','ajustJours']},
   {id:'presence',label:'Présence & HS',detail:'absentéisme, congés, mois travaillés, CP des non-roulants, indemnités',cles:['sick','presence','cpEnveloppes','cpReliquat','cpOptimal','cpOptimalHSCost','cpNR','moisVerrouilles','hs50','hsImproductif','repasRoulant','repasNonRoulant','idjfRoulant','idjfNonRoulant']},
   {id:'charges',label:'Charges',detail:'postes de charges hors personnel (saisies REX et CG)',cles:['rex']}
 ];
@@ -5998,6 +6002,93 @@ function renderCalTotaux(a,month){
     +'</tbody></table></div></div>';
   el.querySelectorAll('th[data-mois]').forEach(th=>th.onclick=function(){S.month=+th.dataset.mois;render()});
 }
+// Ajustement du CA d'un jour sur le calendrier (nov. 2026) — texte identique dans le mono-fichier (index.html) et ici.
+// a.ajustJours = { '2027-03-16': { tp: 1200 } } : la valeur saisie remplace la référence CA de ce jour pour cette
+// activité (genCal l'applique). Pratique pour le transport de personnes, dont l'activité varie selon le jour de la semaine.
+const ACTIVITES_AJUST=[['san','Sanitaire','actSan'],['sai','Saisonnier','actSai'],['tp','Transport de personnes','actTP']];
+const JOURS_SEMAINE=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+const LIB_TYPE_JOUR={semaine:'jour de semaine',vacances:'jour de vacances scolaires',samedi:'samedi',dimanche:'dimanche',ferie:'jour férié'};
+function activitesAjustables(a){return ACTIVITES_AJUST.filter(function(x){return x[0]==='san'||!!a[x[2]];});}
+// Jours visés : ce jour seul, ou tous les mêmes jours de la semaine et du même type (semaine, vacances…) du mois ou de l'année.
+function joursCibles(a,m,d,portee){
+  let ref=(a.cal||[]).find(function(x){return x.month===m&&x.day===d;});
+  if(!ref)return [];
+  if(portee!=='mois'&&portee!=='annee')return [cleJour(m,d)];
+  let wd=new Date(2027,m,d).getDay();
+  return (a.cal||[]).filter(function(x){return x.type===ref.type&&new Date(2027,x.month,x.day).getDay()===wd&&(portee==='annee'||x.month===m);}).map(function(x){return cleJour(x.month,x.day);});
+}
+// valeurs : {tp: 1200, san: ''} — un nombre ajuste, '' ou null revient à la référence. Recalcule le calendrier.
+function appliquerAjustJours(a,cles,valeurs){
+  let aj=Object.assign({},a.ajustJours||{});
+  cles.forEach(function(k){
+    let o=Object.assign({},aj[k]||{});
+    Object.keys(valeurs).forEach(function(act){
+      let v=valeurs[act];
+      if(v===''||v===null||v===undefined)delete o[act];
+      else{let n=+String(v).replace(',','.');if(isFinite(n)&&n>=0)o[act]=n;}
+    });
+    if(Object.keys(o).length)aj[k]=o;else delete aj[k];
+  });
+  a.ajustJours=aj;
+  genCal(a);
+  return a;
+}
+function effacerAjustJours(a,cles){
+  let aj=Object.assign({},a.ajustJours||{});
+  (cles||Object.keys(aj)).forEach(function(k){delete aj[k];});
+  a.ajustJours=aj;
+  genCal(a);
+  return a;
+}
+function nbJoursAjustes(a){return Object.keys(a.ajustJours||{}).length;}
+function libelleJour(m,d){
+  let dt=new Date(2027,m,d),mois=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  let j=JOURS_SEMAINE[dt.getDay()];
+  return j.charAt(0).toUpperCase()+j.slice(1)+' '+d+' '+mois[m]+' 2027';
+}
+function libellePortee(a,m,d,portee){
+  let ref=(a.cal||[]).find(function(x){return x.month===m&&x.day===d;});
+  let j=JOURS_SEMAINE[new Date(2027,m,d).getDay()]+'s';
+  let t=ref&&ref.type!=='samedi'&&ref.type!=='dimanche'?' ('+LIB_TYPE_JOUR[ref.type]+')':'';
+  let mois=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][m];
+  if(portee==='mois')return 'Tous les '+j+' de '+mois+t;
+  if(portee==='annee')return 'Tous les '+j+' de l\'année'+t;
+  return 'Ce jour seulement';
+}
+let AJUST_SEL=null,AJUST_PORTEE='jour';
+function peutAjusterCal(){return !!(PROFILE&&budgetModifiable()&&(['rex','cg','admin'].indexOf(PROFILE.role)>=0||SAISIE_DR));}
+function ouvrirAjustJour(m,d){
+  if(!peutAjusterCal())return;
+  AJUST_SEL=(AJUST_SEL&&AJUST_SEL.m===m&&AJUST_SEL.d===d)?null:{m:m,d:d};AJUST_PORTEE='jour';
+  renderCal();
+  if(AJUST_SEL&&q('calEditeur'))q('calEditeur').scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function renderEditeurJour(a){
+  let z=q('calEditeur');if(!z)return;
+  if(!AJUST_SEL||AJUST_SEL.m!==S.month||!peutAjusterCal()){z.style.display='none';z.innerHTML='';return;}
+  let m=AJUST_SEL.m,d=AJUST_SEL.d,jour=a.cal.find(function(x){return x.month===m&&x.day===d;});
+  if(!jour){z.style.display='none';return;}
+  let ref=jour.ref||jour.ca,acts=activitesAjustables(a),n=joursCibles(a,m,d,AJUST_PORTEE).length;
+  z.style.display='';
+  z.innerHTML='<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px"><b style="font-size:15px">'+libelleJour(m,d)+'</b><span style="font-size:12px;color:var(--ink65)">'+LIB_TYPE_JOUR[jour.type]+'</span><button onclick="AJUST_SEL=null;renderCal()" aria-label="Fermer" style="margin-left:auto;width:auto;margin:0;font-size:11px;padding:3px 8px">✕</button></div>'
+    +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px">'+acts.map(function(x){return '<label style="font-size:12px"><span style="display:block;color:var(--ink65);margin-bottom:4px">'+x[1]+' (référence '+euro(ref[x[0]])+')</span><input id="ajust_'+x[0]+'" data-testid="ajust-'+x[0]+'" type="text" inputmode="decimal" value="'+(jour.ref?jour.ca[x[0]]:'')+'" placeholder="'+ref[x[0]]+'" style="width:150px"></label>';}).join('')+'</div>'
+    +'<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin-bottom:12px">'+['jour','mois','annee'].map(function(p){return '<label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="radio" name="porteeAjust" data-testid="portee-'+p+'" '+(AJUST_PORTEE===p?'checked':'')+' onchange="AJUST_PORTEE=\''+p+'\';majBoutonAjust()" style="width:auto;margin:0">'+libellePortee(a,m,d,p)+'</label>';}).join('')+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button id="btnAjustAppliquer" data-testid="ajust-appliquer" onclick="appliquerAjustMono(false)" style="width:auto;margin:0;background:var(--green);color:#fff;border:none">Appliquer ('+n+' jour'+(n>1?'s':'')+')</button><button data-testid="ajust-reference" onclick="appliquerAjustMono(true)" style="width:auto;margin:0">Revenir à la référence</button></div>'
+    +'<p class="hint" style="font-size:11px;margin:10px 0 0">Laissez une case vide pour garder la référence de l\'activité. ↶ (Ctrl+Z) annule un ajustement.</p>';
+}
+function majBoutonAjust(){let a=A();if(!AJUST_SEL||!q('btnAjustAppliquer'))return;let n=joursCibles(a,AJUST_SEL.m,AJUST_SEL.d,AJUST_PORTEE).length;q('btnAjustAppliquer').textContent='Appliquer ('+n+' jour'+(n>1?'s':'')+')';}
+function appliquerAjustMono(efface){
+  let a=A();if(!AJUST_SEL)return;
+  let vals={};activitesAjustables(a).forEach(function(x){vals[x[0]]=efface?'':(q('ajust_'+x[0])?q('ajust_'+x[0]).value:'');});
+  appliquerAjustJours(a,joursCibles(a,AJUST_SEL.m,AJUST_SEL.d,AJUST_PORTEE),vals);
+  AJUST_SEL=null;
+  render();scheduleAutosave();
+}
+function effacerTousAjustMono(){
+  let a=A(),n=nbJoursAjustes(a);if(!n)return;
+  if(!confirm('Revenir aux références CA pour les '+n+' jours ajustés ?'))return;
+  effacerAjustJours(a);AJUST_SEL=null;render();scheduleAutosave();
+}
 function renderCal(){
   if(!q('monthSel'))return;
   let a=A(),m=S.month;
@@ -6034,7 +6125,9 @@ function renderCal(){
     if(isFerie)badge='<span style="background:var(--orange);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em">Férié</span>';
     else if(isVac)badge='<span style="background:#FF8F00;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em">Vacances</span>';
     else if(isWeekend)badge='<span style="background:#8B7FFF;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;text-transform:uppercase;letter-spacing:.04em">'+libJour+'</span>';
-    h+='<div class="day '+(isVac?'vac':'')+' '+(isWeekend?'weekend':'')+' '+(isFerie?'ferie':'')+'">'
+    let choisi=AJUST_SEL&&AJUST_SEL.m===m&&AJUST_SEL.d===d.day,modif=peutAjusterCal();
+    h+='<div class="day '+(isVac?'vac':'')+' '+(isWeekend?'weekend':'')+' '+(isFerie?'ferie':'')+'" data-testid="jour-'+d.day+'"'+(modif?' role="button" tabindex="0" onclick="ouvrirAjustJour('+m+','+d.day+')" onkeydown="if(event.key===\'Enter\'){ouvrirAjustJour('+m+','+d.day+')}"':'')+' title="'+(d.ref?'CA ajusté sur le calendrier — référence : '+euro(d.ref.san+d.ref.sai+d.ref.tp):(modif?'Cliquer pour ajuster le CA de ce jour':''))+'" style="position:relative;'+(modif?'cursor:pointer;':'')+(choisi?'outline:2px solid var(--violet);':d.ref?'outline:1px dashed var(--violet);':'')+'">'
+      +(d.ref?'<span data-testid="ajuste-'+d.day+'" style="position:absolute;right:4px;bottom:3px;font-size:11px;color:var(--violet)" aria-label="jour ajusté">✎</span>':'')
       +'<div class="dh"><span class="dt">'+d.day+'</span>'+badge+'</div>'
       +'<div class="small" style="margin-bottom:4px">'+(isFerie?'Férié':isVac?'Vacances':isWeekend?libJour:d.type)+' • S'+d.week+'</div>'
       +'<div title="San = sanitaire'+(a.actSai?', Sais = saisonnier':'')+(a.actTP?', TP = transport de personnes':'')+'">San '+euro(d.ca.san)+(a.actSai?'<div>Sais '+euro(d.ca.sai)+'</div>':'')+(a.actTP?'<div>TP '+euro(d.ca.tp)+'</div>':'')+'</div>'
@@ -6043,6 +6136,12 @@ function renderCal(){
   });
 
   if(q('calGrid'))q('calGrid').innerHTML=h;
+  renderEditeurJour(a);
+  if(q('calAjustInfo')){
+    let nb=nbJoursAjustes(a);
+    q('calAjustInfo').style.display=peutAjusterCal()?'':'none';
+    q('calAjustInfo').innerHTML='✎ Cliquez sur un jour pour ajuster son CA (par exemple le transport de personnes un jour de la semaine), pour ce jour seul ou pour tous les mêmes jours du mois ou de l\'année.'+(nb?' <b data-testid="nb-ajustes">'+nb+' jour'+(nb>1?'s':'')+' ajusté'+(nb>1?'s':'')+'</b> sur l\'année. <button data-testid="effacer-ajustements" onclick="effacerTousAjustMono()" style="width:auto;margin:0;font-size:11px;padding:3px 8px">Tout remettre aux références</button>':'');
+  }
 
   // Résumé du mois
   if(q('calSummary')){
@@ -10339,6 +10438,7 @@ const FAQ = {
     ['Comment sauvegarder mon travail ?', 'SOMA sauvegarde automatiquement au fil de votre saisie, en silence. Vous n\'avez pas de bouton à presser. Une petite mention vous confirme l\'enregistrement. Vos données sont conservées sur le serveur et vous les retrouvez à votre prochaine connexion.'],
     ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, cliquez sur « Soumettre au DR ». Le bouton se trouve dans le bandeau « Statut du budget » de l\'écran Objectif ; il vous est aussi proposé à la fin du parcours, avec « Terminer et sauvegarder » sur la Synthèse. SOMA vous demande confirmation et vous prévient si votre absentéisme s\'écarte de la référence ou si aucun directeur régional n\'est encore affecté à votre agence. La version active devient le budget officiel : il part dans le circuit de validation (directeur régional, puis contrôle de gestion et direction financière, puis Direction) et n\'est plus modifiable tant qu\'il est en validation. Relisez votre synthèse avant de soumettre.'],
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
+    ['Comment ajuster le CA d\'un jour précis, par exemple le transport de personnes le mercredi ?', 'Dans l\'écran Calendrier, cliquez sur la case du jour. Saisissez le CA de l\'activité à ajuster (laissez vide pour garder la référence), puis choisissez la portée : ce jour seulement, tous les mêmes jours du mois, ou tous les mêmes jours de l\'année (même type de jour : semaine, vacances…). Les jours ajustés portent un ✎. « Revenir à la référence » efface l\'ajustement, et « Tout remettre aux références » efface tous les ajustements de l\'année. Les ajustements sont gardés quand vous modifiez les références CA.'],
     ['Comment revoir la visite guidée ?', 'La visite guidée s\'ouvre toute seule à votre première connexion : 16 bulles qui présentent les 8 étapes du budget écran par écran. Pour la revoir, ouvrez l\'écran Aide et cliquez sur « Revoir la visite guidée ». Dans la visite, « Suivant » ou la flèche → avance, « ← Précédent » ou la flèche ← revient, « Passer » ou Échap la ferme.'],
     ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. « Reprendre d\'une autre version » recopie dans la version active les blocs choisis d\'une autre version (équipe, objectif et références CA, présence & HS, charges) : pratique pour remettre à jour l\'équipe d\'une V2 après des changements faits dans la V1. ↶ annule la reprise. « Supprimer la V2 » (ou la V3) efface définitivement cette version ; la V1 et la version choisie pour la soumission ne peuvent pas être supprimées. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
     ['Pourquoi certaines valeurs sont-elles en orange ?', 'Ce sont des valeurs saisies par votre directeur régional à votre place, par exemple pendant un accompagnement (la légende « saisie du DR » apparaît alors en haut de l\'écran). Elles comptent comme les vôtres. Dès que vous en modifiez une, elle reprend la couleur normale.'],
