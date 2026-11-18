@@ -1262,7 +1262,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
     <!-- Annuler / rétablir (comme dans Excel) — aussi Ctrl+Z et Ctrl+Y -->
     <select id="choixAgenceREX" data-testid="choix-agence-rex" style="display:none;width:auto;font-size:12px;padding:4px 8px" title="Vos agences : choisissez celle dont vous construisez le budget" onchange="changerAgenceREX(this.value)"></select>
-    <button id="btnAnnuler" data-testid="btn-annuler" class="somMenuBtn" style="display:none" onclick="annulerMono()" title="Rien à annuler">↶</button>
+    <button id="btnAnnuler" data-testid="btn-annuler" data-visite="historique" class="somMenuBtn" style="display:none" onclick="annulerMono()" title="Rien à annuler">↶</button>
     <button id="btnRetablir" data-testid="btn-retablir" class="somMenuBtn" style="display:none" onclick="retablirMono()" title="Rien à rétablir">↷</button>
 
     <div class="userBadge">
@@ -1300,7 +1300,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   </div>
 </div>
 
-<div class="app"><nav id="nav"></nav><button id="navToggleBtn" onclick="toggleNav()" title="Réduire/Agrandir la sidebar" style="position:fixed;top:50%;left:260px;transform:translateY(-50%);z-index:50;width:16px;height:48px;background:var(--violet);color:#fff;border:none;border-radius:0 6px 6px 0;cursor:pointer;font-size:12px;font-weight:900;padding:0;transition:left .2s ease;display:flex;align-items:center;justify-content:center;box-shadow:2px 0 6px rgba(0,0,0,.15)">‹</button><main id="mainContent">
+<div class="app"><nav id="nav" data-visite="menu"></nav><button id="navToggleBtn" onclick="toggleNav()" title="Réduire/Agrandir la sidebar" style="position:fixed;top:50%;left:260px;transform:translateY(-50%);z-index:50;width:16px;height:48px;background:var(--violet);color:#fff;border:none;border-radius:0 6px 6px 0;cursor:pointer;font-size:12px;font-weight:900;padding:0;transition:left .2s ease;display:flex;align-items:center;justify-content:center;box-shadow:2px 0 6px rgba(0,0,0,.15)">‹</button><main id="mainContent">
 
 <!-- PANELS REX -->
 <section id="objectif" class="panel active">
@@ -1314,7 +1314,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
     <a class="visionLink" onclick="showVision(false)">La vision de SOMA</a>
   </div>
-  <div class="card" id="budgetVersionBar" style="display:none">
+  <div class="card" id="budgetVersionBar" data-visite="versions" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-weight:700;font-size:14px">Versions du budget :</span>
       <div id="versionTabs" style="display:flex;gap:6px"></div>
@@ -1330,7 +1330,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div id="versionSubmitInfo" style="margin-top:8px;font-size:12px"></div>
   </div>
 
-  <div class="card" id="budgetStatutBar" style="display:none">
+  <div class="card" id="budgetStatutBar" data-visite="soumettre" style="display:none">
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
       <span>Statut du budget :</span>
       <span class="statut" id="budgetStatutBadge">brouillon</span>
@@ -1347,7 +1347,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
 
     <!-- 2 KPI éditables : les 2 décisions que le REX vient prendre -->
-    <div class="objKpiRow">
+    <div class="objKpiRow" data-visite="objectif">
       <label class="objKpi" for="targetCA">
         <span class="objKpiLabel">Objectif de chiffre d'affaires</span>
         <span class="objKpiField">
@@ -1445,7 +1445,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <div class="stepnav" id="stepnav_objectif"></div>
 </section>
 
-<section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan"></table></div><div id="refSaiSection"><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div></div><div id="refTPSection"><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></div>
+<section id="refs" class="panel"><div class="card"><h2>2. Références CA journalier</h2><div class="hint" style="margin-bottom:14px">📊 <b>C'est l'étape clé.</b> Indiquez le chiffre d'affaires moyen réalisé selon le type de journée (semaine normale, vacances scolaires, samedi, dimanche, jour férié) et ce pour chaque mois. Ces valeurs servent à construire automatiquement votre calendrier budgétaire. Exprimez les montants en euros par jour.</div><br><h3>Sanitaire</h3><div class="tablewrap"><table id="refSan" data-visite="refs"></table></div><div id="refSaiSection"><br><h3>Saisonnier</h3><div class="tablewrap"><table id="refSai"></table></div></div><div id="refTPSection"><br><h3>Transport de personnes</h3><div class="tablewrap"><table id="refTP"></table></div></div></div>
   <div class="stepnav" id="stepnav_refs"></div>
 </section>
 <section id="cal" class="panel">
@@ -1454,7 +1454,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div class="hint" style="margin-bottom:16px">✨ <b>Rien à saisir ici.</b> Ce calendrier est construit automatiquement à partir de vos références CA (étape 2) et du calendrier officiel 2027 (jours fériés, vacances scolaires de votre zone). Il répartit votre chiffre d'affaires jour par jour et semaine par semaine. Vérifiez qu'il correspond à votre réalité, puis passez à l'étape suivante.</div>
     <label>Mois</label>
     <select id="monthSel" style="max-width:220px"></select>
-    <div id="calTotaux" data-testid="cal-totaux-mensuels" style="margin-top:12px"></div>
+    <div id="calTotaux" data-testid="cal-totaux-mensuels" data-visite="cal-totaux" style="margin-top:12px"></div>
     <div id="calLegend"></div>
     <div class="calendar" id="calGrid"></div>
     <div id="calSummary"></div>
@@ -1480,7 +1480,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <span id="importMsg" style="font-family:Outfit,sans-serif;font-size:14px;color:var(--green);align-self:center"></span>
     </div>
     <div id="triEquipeBox" style="display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:12px;color:var(--ink65)"></div>
-    <div class="tablewrap"><table id="empTable"></table></div>
+    <div class="tablewrap" data-visite="equipe"><table id="empTable"></table></div>
     <details class="objCollapse" id="teamEvolutionCollapse" style="display:none;margin-top:var(--sp-4)">
       <summary>Évolution de l'effectif dans l'année</summary>
       <div class="objCollapseBody"><div id="teamEvolution"></div></div>
@@ -1509,7 +1509,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <div class="chargeCurveNote" id="chargeCurveNote"></div>
     </div>
     <!-- Étape 1 : l'absentéisme d'abord, les congés acquis en dépendent -->
-    <details class="objCollapse" id="collapseSick" open style="margin-top:var(--sp-3)">
+    <details class="objCollapse" id="collapseSick" data-visite="absenteisme" open style="margin-top:var(--sp-3)">
       <summary>1. Absentéisme maladie &amp; AT, mois par mois</summary>
       <div class="objCollapseBody">
         <p class="hint" style="margin:0 0 8px">À saisir en premier : les congés payés acquis par l'équipe en dépendent (pas d'acquisition pendant les absences maladie). Si vous le modifiez après avoir réparti les congés, SOMA refait aussitôt la répartition des mois non validés.</p>
@@ -1528,7 +1528,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <div><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)">Reste à poser </span><span id="cpRestant" style="font-family:DM Mono,monospace;font-size:15px;font-weight:700">—</span></div>
       <div id="cpEquilibre" style="margin-left:auto;font-size:13px;font-weight:700">—</div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:var(--sp-3);flex-wrap:wrap">
+    <div data-visite="conges" style="display:flex;gap:8px;margin-top:var(--sp-3);flex-wrap:wrap">
       <button onclick="repartirCPAuto()" style="font-size:12px;padding:8px 14px;background:var(--violet);color:#fff;border:none">↗ Répartir les congés automatiquement</button>
       <button onclick="resetCP()" class="secondary" style="font-size:12px;padding:8px 14px">Réinitialiser</button>
     </div>
@@ -1537,7 +1537,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   </div>
 
   <!-- LE PILOTAGE : cartes mensuelles + détail semaines (position centrale) -->
-  <div id="rhMonthCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
+  <div id="rhMonthCards" data-visite="mois" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px"></div>
 
   <div id="rhWeekDetail" style="display:none" class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px">
@@ -1599,7 +1599,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <div class="card" data-testid="charges-rex">
     <h2>Charges d'exploitation</h2>
     <p class="hint" style="margin-bottom:14px">Vous construisez six postes de charges. Les quatre premiers se saisissent en <b>% du chiffre d'affaires de chaque mois</b> (le taux peut changer d'un mois à l'autre) ; la sous-traitance et l'entretien des véhicules et du bâtiment en <b>montant fixe par mois</b>. Les cases sont pré-remplies avec les valeurs du contrôle de gestion quand il y en a : ajustez-les. Le bouton ⇉ recopie la valeur de janvier sur les 12 mois. Les autres charges restent saisies par le contrôle de gestion.</p>
-    <div id="chargesREXBloc"></div>
+    <div id="chargesREXBloc" data-visite="charges"></div>
   </div>
   <div class="stepnav" id="stepnav_charges"></div>
 </section>
@@ -1684,6 +1684,10 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <div class="card">
     <h2 style="margin-bottom:6px">Aide & questions fréquentes</h2>
     <p class="hint" style="margin-bottom:16px">Les réponses ci-dessous sont adaptées à votre profil. Cliquez sur une question pour dérouler la réponse.</p>
+    <div id="visiteAideZone" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;border:1px solid var(--violet)">
+      <span style="flex:1;min-width:200px;font-size:13px">🧭 <b>Visite guidée</b> : les 8 étapes du budget expliquées écran par écran, en 2 minutes.</span>
+      <button data-testid="relancer-visite" onclick="visiteREXMono(true)" style="width:auto;margin:0">Revoir la visite guidée</button>
+    </div>
     <div id="faqContent"></div>
   </div>
 </section>
@@ -1874,7 +1878,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     </div>
 
     <!-- 4 KPI décisifs : mon budget tient-il ? -->
-    <div class="kpis" id="prevKpis" style="margin-bottom:var(--sp-4)"></div>
+    <div class="kpis" id="prevKpis" data-visite="previsionnel" style="margin-bottom:var(--sp-4)"></div>
 
     <!-- Interprétation : SOMA juge la santé du budget -->
     <div class="objInsight" id="prevInsight" style="display:none">
@@ -1912,7 +1916,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div class="kpis" id="synthKpis" style="margin-bottom:var(--sp-4)"></div>
 
     <!-- Masse salariale / CA, mois par mois -->
-    <div id="ratioMSMensuel" data-testid="ratio-ms-mensuel" style="margin-bottom:18px;border:1px solid var(--border);padding:12px 14px"></div>
+    <div id="ratioMSMensuel" data-testid="ratio-ms-mensuel" data-visite="ms-ca" style="margin-bottom:18px;border:1px solid var(--border);padding:12px 14px"></div>
 
     <!-- Lecture synthétique en langage naturel -->
     <div class="objInsight" id="synthInsight" style="display:none">
@@ -2279,6 +2283,7 @@ async function afterLogin(user) {
   q('userRolePill').textContent = roleLabel(prof.role);
   setupUI();
   setTimeout(animateCounters, 500);
+  planifierVisiteREX();
 }
 
 function showForgot() {
@@ -2403,6 +2408,124 @@ function fermerPourquoi(){
   if(b) b.remove();
 }
 
+// Visite guidée du REX (nov. 2026) — texte identique dans le mono-fichier (index.html) et ici.
+// Bulles d'aide posées sur les éléments marqués data-visite="…" dans les deux versions.
+// Lancée automatiquement à la première connexion d'un REX (une fois par compte et par navigateur),
+// relançable depuis l'écran Aide. aller(ecran) ouvre l'écran demandé (ids communs : objectif, refs…).
+const CLE_VISITE_REX='soma.visiteREX.vue';
+const ETAPES_VISITE_REX=[
+  {ecran:'objectif',cible:null,titre:'Bienvenue dans SOMA',texte:'En 2 minutes, voici comment construire le budget 2027 de votre agence. Vous pourrez revoir cette visite à tout moment depuis l\'écran Aide.'},
+  {ecran:'objectif',cible:'menu',titre:'8 étapes, dans l\'ordre du menu',texte:'Suivez le menu de haut en bas, de l\'Objectif à la Synthèse. Votre équipe, vos historiques et vos taux sont déjà chargés par le contrôle de gestion.'},
+  {ecran:'objectif',cible:'objectif',titre:'1. Objectif',texte:'Saisissez votre objectif de chiffre d\'affaires 2027 et votre TXR cible (CA par heure travaillée). SOMA vous dit aussitôt si votre effectif peut le tenir.'},
+  {ecran:'objectif',cible:'versions',titre:'Versions V1, V2, V3',texte:'Testez des hypothèses sans toucher à votre budget : dupliquez la version, reprenez l\'équipe d\'une autre version, comparez-les, puis choisissez celle à soumettre (★).'},
+  {ecran:'refs',cible:'refs',titre:'2. Références CA',texte:'Pour chaque mois, le CA moyen d\'une journée selon son type : semaine, vacances scolaires, samedi, dimanche, férié. C\'est la base de tout le calcul.'},
+  {ecran:'cal',cible:'cal-totaux',titre:'3. Calendrier',texte:'SOMA applique vos références au calendrier 2027 de votre zone scolaire. Vérifiez les totaux du mois : un écart vient presque toujours des références.'},
+  {ecran:'team',cible:'equipe',titre:'4. Équipe',texte:'Contrôlez chaque salarié : qualification, contrat, heures, part roulante, dates d\'entrée et de sortie 2027. Ajoutez les postes prévus (CDD saisonniers).'},
+  {ecran:'rh',cible:'absenteisme',titre:'5. Présence & HS — absentéisme',texte:'Commencez par l\'absentéisme mois par mois, en gardant la moyenne fixée par le contrôle de gestion. Les congés se recalculent tout seuls ensuite.'},
+  {ecran:'rh',cible:'conges',titre:'Congés payés',texte:'Un clic sur « Répartir les congés automatiquement » pose les jours acquis en lissant la charge (60 % juin-octobre, 20 % / 20 % sur le reste de l\'année).'},
+  {ecran:'rh',cible:'mois',titre:'Mois par mois',texte:'Ouvrez chaque mois, ajustez les congés et absences semaine par semaine, regardez les heures supplémentaires, puis « Valider ce mois ».'},
+  {ecran:'charges',cible:'charges',titre:'6. Charges',texte:'Six postes sont à vous : quatre en % du CA (matériel, carburant…), deux en montant fixe par mois. Les cases sont préremplies : ajustez-les.'},
+  {ecran:'previsionnel',cible:'previsionnel',titre:'7. Prévisionnel',texte:'Le compte d\'exploitation de l\'agence se construit tout seul à partir de vos saisies, jusqu\'au résultat d\'exploitation.'},
+  {ecran:'finance',cible:'ms-ca',titre:'8. Synthèse',texte:'Contrôlez la masse salariale / CA mois par mois : vert jusqu\'à 62 %, orange au-delà. Les points à revoir sont signalés en haut de l\'écran.'},
+  {ecran:'finance',cible:'historique',titre:'Enregistrement automatique',texte:'Tout est enregistré quelques secondes après chaque saisie. Une erreur ? ↶ annule (Ctrl+Z), ↷ rétablit, jusqu\'à 50 actions.'},
+  {ecran:'objectif',cible:'soumettre',titre:'Soumettre au DR',texte:'Quand tout est prêt, « Soumettre au DR ». Votre budget passe en lecture seule ; s\'il vous est renvoyé, le motif s\'affiche ici. Date limite : 27 novembre.'},
+  {ecran:'objectif',cible:'nav-aide',titre:'Besoin d\'aide ?',texte:'L\'écran Aide contient la FAQ du REX et le bouton pour revoir cette visite. Bonne construction !'}
+];
+function visiteDejaVue(uid){try{return localStorage.getItem(CLE_VISITE_REX+'.'+uid)==='1';}catch(e){return true;}}
+function marquerVisiteVue(uid){try{localStorage.setItem(CLE_VISITE_REX+'.'+uid,'1');}catch(e){}}
+// Position de la bulle : sous la cible si la place le permet, sinon au-dessus, sinon centrée.
+function positionBulle(r,vw,vh,bw,bh){
+  let m=12;
+  if(!r)return {left:Math.max(m,(vw-bw)/2),top:Math.max(m,(vh-bh)/2),place:'centre'};
+  let left=Math.min(Math.max(m,r.left+r.width/2-bw/2),vw-bw-m);
+  if(r.bottom+m+bh<=vh-m)return {left:left,top:r.bottom+m,place:'dessous'};
+  if(r.top-m-bh>=m)return {left:left,top:r.top-m-bh,place:'dessus'};
+  return {left:Math.max(m,(vw-bw)/2),top:Math.max(m,vh-bh-m),place:'bas'};
+}
+let VISITE_EN_COURS=null;
+function lancerVisite(etapes,aller,surFin){
+  if(VISITE_EN_COURS)VISITE_EN_COURS.fermer(false);
+  let i=0,cible=null,fini=false,jeton=0;
+  let voile=document.createElement('div'),spot=document.createElement('div'),bulle=document.createElement('div');
+  voile.setAttribute('data-testid','visite-voile');
+  voile.style.cssText='position:fixed;inset:0;z-index:10000;background:transparent';
+  spot.style.cssText='position:fixed;z-index:10001;pointer-events:none;border:2px solid var(--violet,#7c3aed);border-radius:8px;box-shadow:0 0 0 9999px rgba(8,10,20,.62);transition:all .25s ease';
+  bulle.setAttribute('data-testid','visite-bulle');bulle.setAttribute('role','dialog');bulle.setAttribute('aria-live','polite');
+  bulle.style.cssText='position:fixed;z-index:10002;width:min(380px,calc(100vw - 24px));background:var(--bg2,#151826);color:var(--ink,#f3f4f6);border:1px solid var(--violet,#7c3aed);border-radius:10px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.45);font-size:14px;line-height:1.5';
+  document.body.appendChild(voile);document.body.appendChild(spot);document.body.appendChild(bulle);
+  function placer(){
+    let r=null;
+    if(cible&&document.body.contains(cible)){let b=cible.getBoundingClientRect();if(b.width>0&&b.height>0)r=b;}
+    if(r){let p=6;spot.style.display='';spot.style.left=(r.left-p)+'px';spot.style.top=(r.top-p)+'px';spot.style.width=(r.width+2*p)+'px';spot.style.height=(r.height+2*p)+'px';}
+    else{spot.style.display='';spot.style.left='50%';spot.style.top='50%';spot.style.width='0px';spot.style.height='0px';}
+    let pos=positionBulle(r?{left:r.left,top:r.top-6,width:r.width,height:r.height+12,bottom:r.bottom+6}:null,window.innerWidth,window.innerHeight,bulle.offsetWidth||380,bulle.offsetHeight||180);
+    bulle.style.left=pos.left+'px';bulle.style.top=pos.top+'px';
+  }
+  function bouton(txt,principal,id){return '<button data-visite-btn="'+id+'" style="width:auto;margin:0;font-size:13px;padding:7px 14px;cursor:pointer;border-radius:6px;'+(principal?'background:var(--violet,#7c3aed);color:#fff;border:none;font-weight:700':'background:transparent;color:var(--ink65,#9ca3af);border:1px solid var(--border,#333)')+'">'+txt+'</button>';}
+  function afficher(){
+    let e=etapes[i],n=etapes.length;
+    bulle.innerHTML='<div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink65,#9ca3af);margin-bottom:4px">Visite guidée · '+(i+1)+' / '+n+'</div>'
+      +'<div style="font-weight:700;font-size:16px;margin-bottom:6px">'+e.titre+'</div>'
+      +'<div>'+e.texte+'</div>'
+      +'<div style="display:flex;gap:8px;align-items:center;margin-top:14px">'+(i<n-1?bouton('Passer',false,'passer'):'')+'<span style="flex:1"></span>'+(i>0?bouton('← Précédent',false,'prec'):'')+bouton(i<n-1?'Suivant →':'Terminer',true,i<n-1?'suiv':'fin')+'</div>';
+    placer();
+    let s=bulle.querySelector('[data-visite-btn="suiv"],[data-visite-btn="fin"]');if(s)s.focus();
+  }
+  function trouver(nom,t,essais){
+    if(t!==jeton)return;
+    let el=nom?document.querySelector('[data-visite="'+nom+'"]'):null;
+    let visible=el&&el.getBoundingClientRect().width>0;
+    if(nom&&!visible&&essais>0){setTimeout(function(){trouver(nom,t,essais-1);},100);return;}
+    cible=visible?el:null;
+    if(cible)cible.scrollIntoView({block:'center',behavior:'auto'});
+    setTimeout(function(){if(t===jeton)afficher();},60);
+  }
+  function aEtape(k){
+    i=Math.max(0,Math.min(etapes.length-1,k));let e=etapes[i],t=++jeton;
+    try{if(e.ecran&&aller)aller(e.ecran);}catch(err){}
+    trouver(e.cible,t,30);
+  }
+  function fermer(complete){
+    if(fini)return;fini=true;jeton++;
+    window.removeEventListener('resize',placer);window.removeEventListener('scroll',placer,true);document.removeEventListener('keydown',clavier,true);
+    [voile,spot,bulle].forEach(function(x){if(x.parentNode)x.parentNode.removeChild(x);});
+    VISITE_EN_COURS=null;
+    if(surFin)surFin(!!complete);
+  }
+  function clavier(ev){
+    if(ev.key==='Escape'){ev.preventDefault();fermer(false);}
+    else if(ev.key==='ArrowRight'){ev.preventDefault();if(i<etapes.length-1)aEtape(i+1);else fermer(true);}
+    else if(ev.key==='ArrowLeft'){ev.preventDefault();if(i>0)aEtape(i-1);}
+  }
+  bulle.addEventListener('click',function(ev){
+    let b=ev.target.closest('[data-visite-btn]');if(!b)return;
+    let a=b.getAttribute('data-visite-btn');
+    if(a==='suiv')aEtape(i+1);else if(a==='prec')aEtape(i-1);else if(a==='passer')fermer(false);else if(a==='fin')fermer(true);
+  });
+  window.addEventListener('resize',placer);window.addEventListener('scroll',placer,true);document.addEventListener('keydown',clavier,true);
+  VISITE_EN_COURS={fermer:fermer,etape:function(){return i;}};
+  aEtape(0);
+  return VISITE_EN_COURS;
+}
+// Lancement de la visite dans le mono-fichier : à la première connexion du REX (après la page vision,
+// une fois le budget chargé), ou à la demande depuis l'écran Aide.
+function visiteREXMono(force){
+  if(!PROFILE || PROFILE.role !== 'rex') return;
+  if(!force && visiteDejaVue(PROFILE.id)) return;
+  lancerVisite(ETAPES_VISITE_REX, function(id){ show(id); }, function(){ marquerVisiteVue(PROFILE.id); });
+}
+let _planVisite = null;
+function planifierVisiteREX(){
+  if(!PROFILE || PROFILE.role !== 'rex' || visiteDejaVue(PROFILE.id)) return;
+  if(_planVisite) clearInterval(_planVisite);
+  let essais = 0;
+  _planVisite = setInterval(function(){
+    essais++;
+    let ov = q('visionOverlay'), visionOuverte = ov && ov.style.display === 'flex';
+    let pret = A() && A().name !== 'Nouvelle agence' && BUDGET_ID;
+    if((pret && !visionOuverte) || essais > 60){ clearInterval(_planVisite); _planVisite = null; if(pret && !visionOuverte) setTimeout(function(){ visiteREXMono(false); }, 300); }
+  }, 500);
+}
 // ═══════════════════════════════════════════════════════════
 // PAGE DE VISION SOMA — affichée au premier lancement (par utilisateur)
 // ═══════════════════════════════════════════════════════════
@@ -2434,6 +2557,7 @@ function closeVision(){
   document.body.style.overflow = '';
   // Mémoriser que cet utilisateur a vu la vision
   try{ localStorage.setItem(visionKey(), '1'); }catch(e){}
+  planifierVisiteREX();
 }
 
 function setupUI() {
@@ -2538,7 +2662,7 @@ function buildNav() {
         let icon = (pid === 'cgdash')
           ? '<span class="navStepIcon todo">◇</span>'
           : (pid === 'aide' ? '<span class="navStepIcon todo">?</span>' : '<span class="navStepIcon todo">·</span>');
-        h += '<button class="navbtn navStep ' + (isActive?'current':'todo') + '" data-p="' + pid + '" title="' + labelMap[pid] + '">'
+        h += '<button class="navbtn navStep ' + (isActive?'current':'todo') + '" data-p="' + pid + '" data-visite="nav-' + pid + '" title="' + labelMap[pid] + '">'
           + icon
           + '<span class="navStepLabel">' + labelMap[pid] + '</span>'
           + '</button>';
@@ -2568,7 +2692,7 @@ function buildNav() {
     // 'aide' garde une icône neutre
     if (x[0] === 'aide') icon = '<span class="navStepIcon todo">?</span>';
 
-    h += '<button class="navbtn navStep ' + state + '" data-p="' + x[0] + '" title="' + x[1] + '">'
+    h += '<button class="navbtn navStep ' + state + '" data-p="' + x[0] + '" data-visite="nav-' + x[0] + '" title="' + x[1] + '">'
       + icon
       + '<span class="navStepLabel">' + x[1] + '</span>'
       + '</button>';
@@ -10154,6 +10278,7 @@ const FAQ = {
     ['Comment sauvegarder mon travail ?', 'SOMA sauvegarde automatiquement au fil de votre saisie, en silence. Vous n\'avez pas de bouton à presser. Une petite mention vous confirme l\'enregistrement. Vos données sont conservées sur le serveur et vous les retrouvez à votre prochaine connexion.'],
     ['Comment soumettre mon budget ?', 'Quand votre budget est prêt, cliquez sur « Soumettre au DR ». Le bouton se trouve dans le bandeau « Statut du budget » de l\'écran Objectif ; il vous est aussi proposé à la fin du parcours, avec « Terminer et sauvegarder » sur la Synthèse. SOMA vous demande confirmation et vous prévient si votre absentéisme s\'écarte de la référence ou si aucun directeur régional n\'est encore affecté à votre agence. La version active devient le budget officiel : il part dans le circuit de validation (directeur régional, puis contrôle de gestion et direction financière, puis Direction) et n\'est plus modifiable tant qu\'il est en validation. Relisez votre synthèse avant de soumettre.'],
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
+    ['Comment revoir la visite guidée ?', 'La visite guidée s\'ouvre toute seule à votre première connexion : 16 bulles qui présentent les 8 étapes du budget écran par écran. Pour la revoir, ouvrez l\'écran Aide et cliquez sur « Revoir la visite guidée ». Dans la visite, « Suivant » ou la flèche → avance, « ← Précédent » ou la flèche ← revient, « Passer » ou Échap la ferme.'],
     ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. « Reprendre d\'une autre version » recopie dans la version active les blocs choisis d\'une autre version (équipe, objectif et références CA, présence & HS, charges) : pratique pour remettre à jour l\'équipe d\'une V2 après des changements faits dans la V1. ↶ annule la reprise. « Supprimer la V2 » (ou la V3) efface définitivement cette version ; la V1 et la version choisie pour la soumission ne peuvent pas être supprimées. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
     ['Pourquoi certaines valeurs sont-elles en orange ?', 'Ce sont des valeurs saisies par votre directeur régional à votre place, par exemple pendant un accompagnement (la légende « saisie du DR » apparaît alors en haut de l\'écran). Elles comptent comme les vôtres. Dès que vous en modifiez une, elle reprend la couleur normale.'],
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
@@ -10206,6 +10331,7 @@ const FAQ = {
 };
 
 function renderAide(){
+  if(q('visiteAideZone')) q('visiteAideZone').style.display = (PROFILE && PROFILE.role === 'rex') ? 'flex' : 'none';
   let box = q('faqContent');
   if(!box) return;
   let role = PROFILE.role;
