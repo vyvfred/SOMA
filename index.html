@@ -1986,6 +1986,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <p class="hint" style="max-width:760px">Ouvrez le budget d'une agence de votre région pour le saisir à la place du REX, par exemple pendant un accompagnement. Tout ce que vous saisissez s'affiche <span class="legendeDR" style="margin-left:0"><i></i> en orange</span> : le REX voit ce que vous avez modifié. Dès qu'il modifie une de ces valeurs, elle reprend la couleur normale. Un budget déjà soumis ne se saisit plus : il se valide dans « Budgets à valider ».</p>
   <div id="saisieDRListe" data-visite="saisie-agences"><p class="hint">Chargement…</p></div>
 </section>
+<section id="suivi" class="panel"><div class="card"><div id="suiviContenu" data-testid="suivi-rex"><p class="hint">Chargement…</p></div></div></section>
 <section id="validation" class="panel">
   <div class="card">
     <div style="margin-bottom:var(--sp-4)">
@@ -2447,6 +2448,7 @@ const ETAPES_VISITE_DR=[
   {ecran:'validation',cible:'val-kpis',titre:'Budgets à valider',texte:'Les compteurs donnent les budgets qui attendent votre décision, ceux que vous avez validés et ceux que vous avez refusés.'},
   {ecran:'validation',cible:'val-fiche',titre:'La fiche de décisions',texte:'Pour chaque budget soumis : CA, masse salariale / CA, résultat et choix de congés, avec un verdict. « Voir tous les écrans » ouvre le budget en lecture.'},
   {ecran:'validation',cible:'val-decision',titre:'Valider ou refuser',texte:'Le commentaire est obligatoire. Validé, le budget passe au contrôle de gestion et au DF ; refusé, il revient au REX avec votre motif.'},
+  {ecran:'suivi',cible:'suivi-table',titre:'Suivi des REX',texte:'L\'avancement de chaque REX de votre région, jalon par jalon, brouillons compris, avec sa dernière activité. Les agences à relancer sont en tête ; « Voir le budget » ouvre tous ses écrans en lecture seule.'},
   {ecran:'saisie',cible:'saisie-agences',titre:'Saisir pour un REX',texte:'Ouvrez le budget d\'une agence pour le saisir à la place du REX, pendant un accompagnement. Vos saisies s\'affichent en orange pour lui.'},
   {ecran:'consolidation',cible:'conso-kpis',titre:'Consolidation région',texte:'L\'état de chaque agence de votre région : non commencé, brouillon, soumis, validé, et le CA consolidé.'},
   {ecran:'consolidation',cible:'conso-table',titre:'Suivre et relancer',texte:'Le tableau donne l\'avancement de chaque budget. Relancez les agences qui n\'avancent plus : les REX doivent soumettre avant le 27 novembre.'},
@@ -2650,7 +2652,7 @@ function buildNavValidateur() {
   let role = PROFILE.role;
   let labels = { dr:'Directeur Régional', dg:'Direction (DG, directeurs opérationnels)', pdg:'Direction (DG, directeurs opérationnels)' };
   let panels = (role === 'dr')
-    ? [['validation','Budgets à valider'],['saisie','Saisir pour un REX'],['consolidation','Consolidation région'],['aide','Aide']]
+    ? [['validation','Budgets à valider'],['suivi','Suivi des REX'],['saisie','Saisir pour un REX'],['consolidation','Consolidation région'],['aide','Aide']]
     : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['aide','Aide']];
   let h = '<div class="navgroup navGlobalLabel">' + (labels[role]||'Validation') + '</div>';
   let activeId = document.querySelector('.panel.active')?.id || 'validation';
@@ -2814,6 +2816,7 @@ function show(id) {
   if (id === 'graphiques') renderGraphiques();
   if (id === 'aide') renderAide();
   if (id === 'consolidation') renderConsolidation();
+  if (id === 'suivi') renderSuiviREX();
   if (id === 'affectation') renderAffectation();
   if (id === 'admin') renderAdmin();
   if (id === 'journal') renderJournal();
@@ -4619,8 +4622,10 @@ async function renderSaisieDR(){
   });
   box.innerHTML = h + '</table>';
 }
-async function saisirPourREX(nom){
+let SAISIE_DR_RETOUR = 'saisie';
+async function saisirPourREX(nom, retour){
   SAISIE_DR = true;
+  SAISIE_DR_RETOUR = retour || 'saisie';
   if (q('somSave')) q('somSave').style.display = ''; // indicateur de sauvegarde visible pendant la saisie
   await cgOpenAgence(nom);
 }
@@ -4628,7 +4633,7 @@ function terminerSaisieDR(){
   if(BUDGET_ID && budgetModifiable()) save();
   SAISIE_DR = false;
   if (q('somSave')) q('somSave').style.display = 'none';
-  show('saisie');
+  show(SAISIE_DR_RETOUR || 'saisie');
 }
 function majBandeauDR(){
   let main = document.querySelector('main'); if(!main) return;
@@ -5081,7 +5086,7 @@ function setConsultMode(on, returnPanel){
     }
     banner.innerHTML = '<span class="consultBannerDot"></span>'
       + '<span>Mode consultation — lecture seule</span>'
-      + '<button onclick="exitConsultMode()">↩ Revenir à la validation</button>';
+      + '<button onclick="exitConsultMode()">'+(CONSULT_RETURN==='suivi'?'↩ Revenir au suivi des REX':'↩ Revenir à la validation')+'</button>';
     banner.style.display = 'flex';
     // Désactiver toutes les saisies dans main
     applyConsultLock(true);
@@ -5117,7 +5122,7 @@ function exitConsultMode(){
 }
 
 // Le validateur ouvre un budget en consultation (parcourt tous les écrans REX)
-async function consulterBudget(agenceNom){
+async function consulterBudget(agenceNom, retour){
   // Charger l'agence comme le fait cgOpenAgence, mais en lecture seule
   let idx = S.agencies.findIndex(function(a){return a.name===agenceNom;});
   if(idx<0){
@@ -5132,7 +5137,7 @@ async function consulterBudget(agenceNom){
   await loadBudgetFromSupabase(agenceNom);
   show('finance'); // ouvre sur la Synthèse
   // Activer le mode consultation après le rendu
-  setTimeout(function(){ setConsultMode(true, 'validation'); }, 300);
+  setTimeout(function(){ setConsultMode(true, retour || 'validation'); }, 300);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -10466,6 +10471,7 @@ const FAQ = {
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
   valideur: [
+    ['Comment suivre l\'avancement de mes REX ?', 'Écran « Suivi des REX » : pour chaque agence de votre région, le REX et sa dernière activité dans SOMA, le statut du budget, son avancement et ses six jalons (objectif, références CA, équipe, absentéisme, mois validés, charges), et la date de la dernière modification. Les agences à relancer sont en tête : budget non commencé, REX jamais connecté, ou aucune modification depuis 7 jours. « Voir le budget » ouvre tous les écrans de l\'agence en lecture seule, même en brouillon ; « Saisir » ouvre la saisie à la place du REX.'],
     ['Le DR peut-il voir les versions V1, V2, V3 d\'un budget ?', 'Oui. Quand vous ouvrez une agence avec « Saisir pour un REX », ou un budget avec « Voir tous les écrans », la barre des versions de l\'écran Objectif permet de passer d\'une version à l\'autre et de les comparer. En validation, la fiche de décisions porte toujours sur la version que le REX a choisie pour la soumission (★).'],
     ['Où trouver la visite guidée et les supports de formation ?', 'La visite guidée de vos écrans s\'ouvre à votre première connexion. Pour la revoir, ouvrez l\'écran Aide : le bloc « Supports de formation » la relance, et donne aussi la vidéo du parcours du REX (2 min 35) et la présentation de formation des REX en PDF. Le DR qui ouvre une agence avec « Saisir pour un REX » y trouve en plus la visite des écrans REX.'],
     ['Comment fonctionne le circuit de validation collégial ?', 'Le circuit comporte trois étapes successives. D\'abord le directeur régional de l\'agence. Puis le contrôleur de gestion et le directeur financier ensemble. Enfin la Direction (direction générale et directeurs opérationnels) ensemble. À chaque étape, tous les valideurs concernés doivent valider pour passer à la suivante. Un seul refus, à n\'importe quelle étape, renvoie le budget au responsable pour correction.'],
@@ -11159,6 +11165,98 @@ function consolideHtml(c, region){
   return h+'</table></div></div></details>';
 }
 
+// Suivi des REX par le DR (nov. 2026) — texte identique dans le mono-fichier (index.html) et ici.
+// Pour chaque agence du périmètre : le ou les REX et leur dernière activité, le statut du budget, son avancement
+// par jalon, la dernière modification, et s'il faut relancer. avancementFn = avancementBudget(d, updatedAt, maintenant).
+const JALONS_AVANCEMENT=[['Objectif','objectif'],['Références CA','refs'],['Équipe','equipe'],['Absentéisme','abs'],['Mois validés','mois'],['Charges','charges']];
+const SEUIL_RELANCE_JOURS=7;
+function jalonsAvancement(av){
+  av=av||{};
+  let v={objectif:av.objectif?100:0,refs:+av.refsPct||0,equipe:av.nbSalaries?100:0,abs:Math.round((+av.absSaisis||0)/12*100),mois:Math.round((+av.moisValides||0)/12*100),charges:Math.round((+av.chargesREX||0)/6*100)};
+  return JALONS_AVANCEMENT.map(function(j){return {lib:j[0],pct:v[j[1]]};});
+}
+function detailJalon(j,av){
+  av=av||{};
+  if(j.lib==='Objectif')return av.objectif?'fixé':'à fixer';
+  if(j.lib==='Références CA')return j.pct+' % des cases';
+  if(j.lib==='Équipe')return (av.nbSalaries||0)+' salarié'+((av.nbSalaries||0)>1?'s':'');
+  if(j.lib==='Absentéisme')return (av.absSaisis||0)+'/12 mois';
+  if(j.lib==='Mois validés')return (av.moisValides||0)+'/12';
+  return (av.chargesREX||0)+'/6 postes';
+}
+// agences : noms du périmètre ; budgets : {agence: {statut, data (version suivie), updated_at}} ; rexListe : lignes de suivi_rex()
+function suiviAgencesRex(agences,budgets,rexListe,avancementFn,maintenant){
+  maintenant=maintenant||Date.now();
+  let lignes=(agences||[]).map(function(nom){
+    let b=budgets&&budgets[nom];
+    let rex=(rexListe||[]).filter(function(r){return r.agence===nom||(r.agences_supp||[]).indexOf(nom)>=0;}).map(function(r){
+      let t=r.derniere_activite?Date.parse(r.derniere_activite):null;
+      return {nom:r.nom||r.email||'—',email:r.email,activite:t,jours:t?Math.floor((maintenant-t)/86400000):null,nbConnexions:+r.nb_connexions||0,saisies:+r.saisies||0,principale:r.agence===nom};
+    });
+    let statut=b?(b.statut||'brouillon'):null;
+    let av=b?avancementFn(b.data||{},b.updated_at,maintenant):null;
+    let etat=!b?'non_commence':statut==='brouillon'?((av&&av.pct>0)?'en_cours':'non_commence'):statut==='valide_pdg'?'valide':'soumis';
+    let jm=av?av.joursSansModif:null;
+    let motifs=[];
+    if(etat==='non_commence'||etat==='en_cours'){
+      if(!rex.length)motifs.push('aucun REX rattaché');
+      else if(rex.every(function(r){return !r.activite;}))motifs.push('REX jamais connecté');
+      if(etat==='non_commence')motifs.push('budget non commencé');
+      else if(jm!==null&&jm>=SEUIL_RELANCE_JOURS)motifs.push('aucune modification depuis '+jm+' jours');
+    }
+    return {agence:nom,statut:statut,etat:etat,av:av,pct:av?av.pct:0,jalons:jalonsAvancement(av),rex:rex,joursSansModif:jm,maj:b?b.updated_at:null,aRelancer:motifs.length>0,motifs:motifs};
+  });
+  let ordre={non_commence:0,en_cours:1,soumis:2,valide:3};
+  lignes.sort(function(x,y){return (y.aRelancer?1:0)-(x.aRelancer?1:0)||ordre[x.etat]-ordre[y.etat]||x.pct-y.pct||x.agence.localeCompare(y.agence);});
+  let n=function(e){return lignes.filter(function(l){return l.etat===e;}).length;};
+  let enCours=lignes.filter(function(l){return l.etat==='en_cours'||l.etat==='non_commence';});
+  let moy=enCours.length?Math.round(enCours.reduce(function(s,l){return s+l.pct;},0)/enCours.length):null;
+  return {lignes:lignes,kpi:{total:lignes.length,nonCommences:n('non_commence'),enCours:n('en_cours'),soumis:n('soumis'),valides:n('valide'),aRelancer:lignes.filter(function(l){return l.aRelancer;}).length,avancementMoyen:moy}};
+}
+function ilYALisible(jours){if(jours===null||jours===undefined)return 'jamais';if(jours<=0)return 'aujourd\'hui';if(jours===1)return 'hier';return 'il y a '+jours+' jours';}
+let SUIVI_FILTRE='tous',SUIVI_DONNEES=null;
+function renderSuiviREX(recharger){
+  let z=q('suiviContenu');if(!z)return;
+  if(recharger===false&&SUIVI_DONNEES){afficherSuiviREX();return;}
+  z.innerHTML='<h2>Suivi des REX</h2><p class="hint">Chargement…</p>';
+  let estDR=!!(PROFILE&&PROFILE.role==='dr');
+  let perimetre=estDR?sb.from('agences').select('nom').eq('region_id',PROFILE.region_id||''):Promise.resolve(null);
+  Promise.all([sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027),perimetre,sb.rpc('suivi_rex')]).then(function(rs){
+    if(rs[2].error)throw new Error(rs[2].error.message);
+    let noms=(rs[1]&&rs[1].data)?rs[1].data.map(function(r){return r.nom;}):null;
+    let agencesP=agencesReseau().map(function(x){return x.nom;}).filter(function(n){return !noms||noms.indexOf(n)>=0;});
+    let budgets={};(rs[0].data||[]).forEach(function(b){budgets[b.agence]={statut:b.statut,data:budgetData(b.data),updated_at:b.updated_at};});
+    SUIVI_DONNEES={estDR:estDR,suivi:suiviAgencesRex(agencesP,budgets,rs[2].data||[],avancementBudget,Date.now())};
+    afficherSuiviREX();
+  }).catch(function(e){z.innerHTML='<h2>Suivi des REX</h2><p class="hint">Erreur : '+(e.message||e)+'</p>';});
+}
+function afficherSuiviREX(){
+  let z=q('suiviContenu');if(!z||!SUIVI_DONNEES)return;
+  let estDR=SUIVI_DONNEES.estDR,lignes=SUIVI_DONNEES.suivi.lignes,k=SUIVI_DONNEES.suivi.kpi;
+  if(!lignes.length){z.innerHTML='<h2>Suivi des REX</h2><p class="hint">Aucune agence n\'est rattachée à votre région. Le contrôleur de gestion fait l\'affectation.</p>';return;}
+  let esc=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');};
+  let coul={non_commence:'var(--orange)',en_cours:'var(--violet2)',soumis:'var(--blue2)',valide:'var(--green)'};
+  let F=SUIVI_FILTRE,vis=lignes.filter(function(l){return F==='tous'||(F==='relancer'?l.aRelancer:F==='brouillon'?(l.etat==='en_cours'||l.etat==='non_commence'):(l.etat==='soumis'||l.etat==='valide'));});
+  let th='padding:8px;text-align:left;font-size:12px;color:var(--ink65);border-bottom:1px solid var(--border);white-space:nowrap',td='padding:10px 8px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top';
+  let barre=function(p){return '<div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="width:'+p+'%;height:100%;background:'+(p>=100?'var(--green)':'var(--violet)')+'"></div></div>';};
+  let h='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px"><h2 style="margin:0">Suivi des REX'+(estDR?' de ma région':'')+'</h2><button onclick="renderSuiviREX()" style="width:auto;margin:0;font-size:12px;padding:6px 12px">↺ Actualiser</button></div>'
+    +'<div class="kpis" data-visite="suivi-kpis" style="margin-bottom:14px">'+kpiHtml('Agences',k.total,'')+kpiHtml('Non commencés',k.nonCommences,'')+kpiHtml('En cours',k.enCours,k.avancementMoyen!==null?'avancement moyen '+k.avancementMoyen+' %':'')+kpiHtml('Soumis',k.soumis,k.valides?k.valides+' validé'+(k.valides>1?'s':'')+' définitivement':'')+kpiHtml('À relancer',k.aRelancer,k.aRelancer?'avant le 27 novembre':'✓')+'</div>'
+    +'<div style="padding:12px 16px;background:var(--bg2);border:1px solid var(--border);font-size:13px;color:var(--ink65);margin-bottom:14px">💬 '+(k.aRelancer?'<b>'+k.aRelancer+' agence'+(k.aRelancer>1?'s':'')+'</b> à relancer (budget non commencé, REX jamais connecté ou aucune modification depuis '+SEUIL_RELANCE_JOURS+' jours). ':'Aucune agence à relancer. ')+'Cliquez sur « Voir le budget » pour parcourir tous les écrans d\'une agence en lecture seule, même en brouillon.</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+[['tous','Toutes'],['relancer','À relancer'],['brouillon','En brouillon'],['soumis','Soumis']].map(function(x){return '<button data-testid="suivi-filtre-'+x[0]+'" onclick="SUIVI_FILTRE=\''+x[0]+'\';afficherSuiviREX()" style="width:auto;margin:0;font-size:12px;padding:5px 12px;'+(F===x[0]?'background:var(--violet);color:#fff;':'background:transparent;color:var(--ink65);')+'border:1px solid var(--border)">'+x[1]+'</button>';}).join('')+'</div>'
+    +'<div class="tablewrap" data-visite="suivi-table"><table data-testid="suivi-table" style="border-collapse:collapse;width:100%"><thead><tr><th style="'+th+'">Agence</th><th style="'+th+'">REX · dernière activité</th><th style="'+th+'">Statut</th><th style="'+th+'">Avancement</th><th style="'+th+'">Jalons</th><th style="'+th+'">Budget modifié</th><th style="'+th+'"></th></tr></thead><tbody>'
+    +vis.map(function(l){
+      let ag=esc(l.agence),agJs=l.agence.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return '<tr data-testid="suivi-'+ag+'"><td style="'+td+'"><b>'+ag+'</b>'+(l.aRelancer?'<div style="font-size:11px;color:var(--orange);margin-top:3px">⚠ '+esc(l.motifs.join(' · '))+'</div>':'')+'</td>'
+        +'<td style="'+td+'">'+(l.rex.length?l.rex.map(function(r){return '<div style="margin-bottom:2px">'+esc(r.nom)+(r.principale?'':' (agence supp.)')+'<span style="font-size:11px;color:'+(r.activite?'var(--ink65)':'var(--orange)')+'"> · '+(r.activite?ilYALisible(r.jours):'jamais connecté')+'</span></div>';}).join(''):'<span style="color:var(--orange);font-size:12px">aucun REX</span>')+'</td>'
+        +'<td style="'+td+';white-space:nowrap"><span style="color:'+coul[l.etat]+';font-weight:600">'+(l.statut?statutLabel(l.statut):'Non commencé')+'</span></td>'
+        +'<td style="'+td+';min-width:120px">'+barre(l.pct)+'<div style="font-size:12px;margin-top:3px">'+l.pct+' %</div></td>'
+        +'<td style="'+td+'"><div data-testid="jalons" style="display:flex;gap:3px">'+l.jalons.map(function(j){return '<div title="'+esc(j.lib+' : '+detailJalon(j,l.av))+'" style="width:30px">'+barre(j.pct).replace('border-radius:4px','border-radius:2px')+'<div style="font-size:9px;color:var(--ink65);margin-top:2px;white-space:nowrap;overflow:hidden">'+j.lib.slice(0,5)+'</div></div>';}).join('')+'</div></td>'
+        +'<td style="'+td+';white-space:nowrap;font-size:12px">'+(l.maj?ilYALisible(l.joursSansModif):'—')+'</td>'
+        +'<td style="'+td+';white-space:nowrap">'+(l.statut?'<button data-testid="suivi-voir-'+ag+'" onclick="consulterBudget(\''+agJs+'\',\'suivi\')" style="width:auto;margin:0 6px 4px 0;font-size:12px;padding:5px 10px">Voir le budget</button>':'')
+        +(estDR&&l.statut&&(l.etat==='en_cours'||l.etat==='non_commence')?'<button class="secondary" data-testid="suivi-saisir-'+ag+'" onclick="saisirPourREX(\''+agJs+'\',\'suivi\')" style="width:auto;margin:0;font-size:12px;padding:5px 10px">Saisir</button>':'')+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+  z.innerHTML=h;
+}
 function renderConsolidation(){
   let box=q('consolidationContent');
   if(!box)return;
