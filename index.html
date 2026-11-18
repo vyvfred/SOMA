@@ -1478,7 +1478,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div style="display:flex;gap:10px;margin:var(--sp-4) 0;flex-wrap:wrap">
       <button onclick="addEmployee()">+ Salarié</button>
       <button onclick="addPostePrevisionnel()" style="background:var(--orange-light);color:var(--orange);border:1px solid var(--orange)">+ Poste prévisionnel</button>
-      <button class="secondary" onclick="triggerImportExcel()">📥 Importer depuis Excel</button>
+      <button class="secondary" id="btnImportEquipe" data-testid="importer-equipe" onclick="triggerImportExcel()">📥 Importer depuis Excel</button>
       <input type="file" id="excelFileInput" accept=".xlsx" style="display:none" onchange="handleExcelImport(event)">
       <span id="importMsg" style="font-family:Outfit,sans-serif;font-size:14px;color:var(--green);align-self:center"></span>
     </div>
@@ -2862,7 +2862,9 @@ async function loadBudgetFromSupabase(agence) {
       ACTIVE_VERSION = BUDGET_META.activeVersion || 'v1';
       // Budget en validation : on ouvre la version officielle, celle que voient les valideurs
       if (STATUTS_MODIFIABLES.indexOf(data.statut) < 0 && BUDGET_META.submittedVersion && d.versions[BUDGET_META.submittedVersion] && Object.keys(d.versions[BUDGET_META.submittedVersion]).length) ACTIVE_VERSION = BUDGET_META.submittedVersion;
-      versionData = d.versions[ACTIVE_VERSION] || d.versions.v1 || {};
+      // Version active supprimée (ex. la V1) : ouvrir la première version remplie
+      if(!(d.versions[ACTIVE_VERSION] && Object.keys(d.versions[ACTIVE_VERSION]).length)){ let rv = versionsRempliesDe(d)[0]; if(rv){ ACTIVE_VERSION = rv; BUDGET_META.activeVersion = rv; } }
+      versionData = d.versions[ACTIVE_VERSION] || premiereVersionRemplie(d.versions);
       versionVide = !Object.keys(versionData).length;
       // Références CG laissées au premier niveau par d'anciennes sauvegardes « Données agences »
       let orphelins = pickRefCG(d);
@@ -4176,7 +4178,7 @@ const BLOCS_VERSION=[
   {id:'presence',label:'Présence & HS',detail:'absentéisme, congés, mois travaillés, CP des non-roulants, indemnités',cles:['sick','presence','cpEnveloppes','cpReliquat','cpOptimal','cpOptimalHSCost','cpNR','moisVerrouilles','hs50','hsImproductif','repasRoulant','repasNonRoulant','idjfRoulant','idjfNonRoulant']},
   {id:'charges',label:'Charges',detail:'postes de charges hors personnel (saisies REX et CG)',cles:['rex']}
 ];
-const VERSIONS_SUPPRIMABLES=['v2','v3'];
+const VERSIONS_SUPPRIMABLES=['v1','v2','v3'];
 // Copie dans l'agence cible les blocs choisis de l'agence source. Renvoie une nouvelle agence.
 function reprendreBlocs(cible,source,ids){
   let out=JSON.parse(JSON.stringify(cible||{}));
@@ -4197,22 +4199,26 @@ function alerteRepriseBlocs(cible,source,ids){
   if(n(cible)===n(source))return null;
   return 'La présence de la version source a été saisie pour '+n(source)+' salariés, la version active en compte '+n(cible)+'. Reprenez aussi l\'équipe pour garder des saisies cohérentes.';
 }
-// Une version peut être supprimée si : V2 ou V3, remplie, pas choisie pour la soumission, budget modifiable.
+function versionsRempliesDe(data){return ['v1','v2','v3'].filter(function(v){return !!(data&&data.versions&&data.versions[v]&&Object.keys(data.versions[v]).length);});}
+// Une version peut être supprimée si : remplie, pas la seule remplie, pas choisie pour la soumission, budget modifiable.
+// Une fois la V1 supprimée, « Dupliquer » recrée une V1 à partir de la version ouverte.
 function motifRefusSuppression(data,v,editable){
   if(!editable)return 'Budget en validation : les versions ne peuvent plus être modifiées.';
-  if(VERSIONS_SUPPRIMABLES.indexOf(v)<0)return 'La V1 est la version de référence : elle ne peut pas être supprimée.';
+  if(VERSIONS_SUPPRIMABLES.indexOf(v)<0)return 'Version inconnue.';
   if(!(data&&data.versions&&data.versions[v]&&Object.keys(data.versions[v]).length))return 'Cette version est déjà vide.';
+  if(versionsRempliesDe(data).length<2)return 'C\'est la seule version du budget : elle ne peut pas être supprimée.';
   if(data.meta&&data.meta.submittedVersion===v)return 'Cette version est choisie pour la soumission : choisissez-en une autre avant de la supprimer.';
   return null;
 }
-// Données du budget sans la version v (la version active repasse sur la V1 si c'était elle).
+// Données du budget sans la version v (si c'était la version active, on passe sur la première version restante).
 function donneesSansVersion(data,v){
   let out=JSON.parse(JSON.stringify(data||{}));
   out.versions=out.versions||{};
   delete out.versions[v];
   out.meta=out.meta||{};
   if(out.meta.descriptions)delete out.meta.descriptions[v];
-  if(out.meta.activeVersion===v)out.meta.activeVersion='v1';
+  if(out.meta.activeVersion===v||!out.meta.activeVersion)out.meta.activeVersion=versionsRempliesDe(out)[0]||'v1';
+  if(out.meta.submittedVersion===v)out.meta.submittedVersion=null;
   return out;
 }
 // ── Reprise de données d'une autre version / suppression de version (nov. 2026) — même logique que BudgetBar.jsx
@@ -4285,11 +4291,12 @@ async function supprimerVersion(v){
   BUDGET_META = out.meta;
   META_BASE = JSON.parse(JSON.stringify(out.meta));
   if(etaitActive){
-    ACTIVE_VERSION = 'v1';
+    let nv = out.meta.activeVersion;
+    ACTIVE_VERSION = nv;
     let a = A();
-    S.agencies[S.active] = Object.assign({}, agency(a.name), out.versions.v1 || {}, {name: a.name});
+    S.agencies[S.active] = Object.assign({}, agency(a.name), out.versions[nv] || {}, {name: a.name});
     migrateState();
-    BUDGET_BASE = out.versions.v1 ? JSON.parse(JSON.stringify(out.versions.v1)) : null;
+    BUDGET_BASE = out.versions[nv] ? JSON.parse(JSON.stringify(out.versions[nv])) : null;
     viderHistoriqueMono();
   }
   renderVersionBar();
@@ -5265,7 +5272,7 @@ function budgetData(d){
   if(d.versions){
     let meta = d.meta || {};
     let v = meta.submittedVersion || meta.activeVersion || 'v1';
-    return d.versions[v] || d.versions.v1 || {};
+    return d.versions[v] || premiereVersionRemplie(d.versions);
   }
   return d; // ancienne structure plate
 }
@@ -5487,7 +5494,8 @@ async function renderVersionBar(){
   if(q('btnRepriseVersion')){ q('btnRepriseVersion').style.display = autresRemplies.length ? '' : 'none'; q('btnRepriseVersion').disabled = !modif; }
   VERSIONS_REMPLIES_MONO = ['v1','v2','v3'].filter(function(v){ return versions[v] && Object.keys(versions[v]).length; });
   if(q('btnsSupprVersion')){
-    q('btnsSupprVersion').innerHTML = VERSIONS_SUPPRIMABLES.filter(function(v){ return versions[v] && Object.keys(versions[v]).length; }).map(function(v){
+    let nbRemplies = ['v1','v2','v3'].filter(function(v){ return versions[v] && Object.keys(versions[v]).length; }).length;
+    q('btnsSupprVersion').innerHTML = nbRemplies < 2 ? '' : VERSIONS_SUPPRIMABLES.filter(function(v){ return versions[v] && Object.keys(versions[v]).length; }).map(function(v){
       let soumise = meta.submittedVersion === v;
       return '<button data-testid="version-supprimer-'+v+'" onclick="supprimerVersion(\''+v+'\')"'+((!modif || soumise)?' disabled':'')+' title="'+(soumise?'Version choisie pour la soumission : choisissez-en une autre avant de la supprimer':'Supprimer définitivement la '+VERSION_LABELS[v])+'" style="width:auto;margin:0;font-size:12px;padding:7px 12px;background:transparent;color:var(--red);border:1px solid var(--red)">🗑 Supprimer la '+VERSION_LABELS[v]+'</button>';
     }).join('');
@@ -6232,6 +6240,8 @@ function setTriEquipe(t){TRI_EQUIPE=t;ETAT_TRI_EQUIPE=null;try{localStorage.setI
 function renderTeam(){
   if(!q('empTable'))return;
   let a=A();
+  // Import Excel de la liste du personnel : réservé au contrôle de gestion et à l'administration (pas aux REX)
+  if(q('btnImportEquipe'))q('btnImportEquipe').style.display=(PROFILE&&['cg','admin'].indexOf(PROFILE.role)>=0&&!SAISIE_DR)?'':'none';
   renderTeamKpis(a);
   // Version sans salarié alors qu'une autre version en a : proposer de reprendre son équipe
   if(q('equipeVide')){
@@ -8412,6 +8422,7 @@ function triggerImportExcel() {
 // au quart d'heure. Un temps plein noté 152 h (151,67 h arrondi) donne 35 h, et non 35,1 h.
 function heuresHebdoRegistre(mensuel){let h=(+mensuel||0)*12/52;return Math.round(h*4)/4;}
 function handleExcelImport(event) {
+  if(!PROFILE||['cg','admin'].indexOf(PROFILE.role)<0||SAISIE_DR) return;
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -10440,7 +10451,7 @@ const FAQ = {
     ['Mon budget a été refusé, que faire ?', 'Si un validateur refuse votre budget, il revient à l\'état brouillon et vous pouvez de nouveau le modifier. Un bandeau sur votre écran vous indique qui a refusé et pour quel motif. Corrigez ce qui est signalé, puis resoumettez : un nouveau cycle de validation démarre alors depuis le début.'],
     ['Comment ajuster le CA d\'un jour précis, par exemple le transport de personnes le mercredi ?', 'Dans l\'écran Calendrier, cliquez sur la case du jour. Saisissez le CA de l\'activité à ajuster (laissez vide pour garder la référence), puis choisissez la portée : ce jour seulement, tous les mêmes jours du mois, ou tous les mêmes jours de l\'année (même type de jour : semaine, vacances…). Les jours ajustés portent un ✎. « Revenir à la référence » efface l\'ajustement, et « Tout remettre aux références » efface tous les ajustements de l\'année. Les ajustements sont gardés quand vous modifiez les références CA.'],
     ['Comment revoir la visite guidée ?', 'La visite guidée s\'ouvre toute seule à votre première connexion : 16 bulles qui présentent les 8 étapes du budget écran par écran. Pour la revoir, ouvrez l\'écran Aide et cliquez sur « Revoir la visite guidée ». Dans la visite, « Suivant » ou la flèche → avance, « ← Précédent » ou la flèche ← revient, « Passer » ou Échap la ferme.'],
-    ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. « Reprendre d\'une autre version » recopie dans la version active les blocs choisis d\'une autre version (équipe, objectif et références CA, présence & HS, charges) : pratique pour remettre à jour l\'équipe d\'une V2 après des changements faits dans la V1. ↶ annule la reprise. « Supprimer la V2 » (ou la V3) efface définitivement cette version ; la V1 et la version choisie pour la soumission ne peuvent pas être supprimées. Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
+    ['Que sont les versions V1, V2, V3 ?', 'Une version est une variante complète de votre budget. « Dupliquer la version active » copie la version en cours dans une version libre, pour tester une hypothèse (par exemple deux embauches en juin) sans toucher à l\'autre. Décrivez chaque version dans le champ prévu, et « Comparer les versions » les met côte à côte. Avant de soumettre, « Choisir cette version pour la soumission » désigne celle qui deviendra le budget officiel : c\'est la seule que les valideurs examinent. Une version vide reprend le paramétrage salarial, les charges du contrôle de gestion et l\'équipe ; les charges que le contrôle de gestion saisit ensuite s\'appliquent à toutes les versions. « Reprendre d\'une autre version » recopie dans la version active les blocs choisis d\'une autre version (équipe, objectif et références CA, présence & HS, charges) : pratique pour remettre à jour l\'équipe d\'une V2 après des changements faits dans la V1. ↶ annule la reprise. « Supprimer la V1 », « la V2 » ou « la V3 » efface définitivement cette version, depuis n\'importe quelle version ouverte, tant qu\'il en reste au moins une autre ; la version choisie pour la soumission ne peut pas être supprimée. Une V1 supprimée se recrée avec « Dupliquer la version active ». Une fois le budget soumis, les versions sont figées et chacun ouvre la version officielle.'],
     ['Pourquoi certaines valeurs sont-elles en orange ?', 'Ce sont des valeurs saisies par votre directeur régional à votre place, par exemple pendant un accompagnement (la légende « saisie du DR » apparaît alors en haut de l\'écran). Elles comptent comme les vôtres. Dès que vous en modifiez une, elle reprend la couleur normale.'],
     ['Absences payées ou non payées : que saisir ?', 'Dans le détail d\'un mois (écran Présence & HS, bouton « Travailler »), deux colonnes reçoivent, en jours, les absences autres que les congés payés et la maladie. « Abs. payées » : formation, événements familiaux, récupération… Elles réduisent la capacité de la semaine et sont coûtées au taux horaire, comme les congés. « Abs. non payées » : congé sans solde… Elles réduisent la capacité sans coût salarial. La maladie et les accidents du travail ne se saisissent pas ici : ils passent par le taux mensuel de maladie et AT.'],
     ['Que signifient « San », « Sais » et « S53 » dans le calendrier ?', 'Ce sont les montants du jour pour l\'activité sanitaire (San), saisonnière (Sais) et, si elle est activée, de transport de personnes (TP). Le calendrier applique vos références CA à chaque jour selon son type : semaine, vacances scolaires de votre zone, samedi, dimanche ou férié. Le calendrier scolaire est le calendrier officiel de l\'Éducation nationale ; les jours de reprise des cours sont des jours de semaine normaux. « S53 » désigne les 1er, 2 et 3 janvier 2027, qui appartiennent à la dernière semaine de 2026. En haut de l\'écran, le récapitulatif donne pour le mois choisi le CA, sa part dans l\'année, le CA moyen par jour et le nombre de jours de chaque type, puis un tableau des 12 mois : jours de semaine hors vacances scolaires, jours de vacances, samedis, dimanches, fériés et CA par activité. Un clic sur un mois l\'affiche.'],
