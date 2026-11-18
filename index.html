@@ -1684,9 +1684,15 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <div class="card">
     <h2 style="margin-bottom:6px">Aide & questions fréquentes</h2>
     <p class="hint" style="margin-bottom:16px">Les réponses ci-dessous sont adaptées à votre profil. Cliquez sur une question pour dérouler la réponse.</p>
-    <div id="visiteAideZone" style="display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;border:1px solid var(--violet)">
-      <span style="flex:1;min-width:200px;font-size:13px">🧭 <b>Visite guidée</b> : les 8 étapes du budget expliquées écran par écran, en 2 minutes.</span>
-      <button data-testid="relancer-visite" onclick="visiteREXMono(true)" style="width:auto;margin:0">Revoir la visite guidée</button>
+    <div id="visiteAideZone" data-testid="supports-formation" style="display:none;margin-bottom:16px;padding:14px 16px;border:1px solid var(--violet)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:10px">🧭 Supports de formation</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+        <button data-testid="relancer-visite" id="btnRelancerVisite" onclick="visiteREXMono(true)" style="width:auto;margin:0">Revoir la visite guidée</button>
+        <button data-testid="visite-ecrans-rex" id="btnVisiteEcransREX" onclick="visiteREXMono(true, true)" style="display:none;width:auto;margin:0">Visite des écrans REX</button>
+        <a data-testid="support-pdf" id="lienSupportPDF" target="_blank" rel="noreferrer" style="font-size:13px">📄 Présentation de formation REX (PDF)</a>
+      </div>
+      <p class="hint" id="noteVisiteREXDR" style="display:none;font-size:12px;margin:0 0 10px">La visite des écrans REX est proposée ici quand vous ouvrez une agence avec « Saisir pour un REX ».</p>
+      <details data-testid="support-video"><summary style="cursor:pointer;font-size:13px">▶ Vidéo : le parcours du REX en 8 étapes (2 min 35)</summary><video id="videoSupport" controls preload="none" style="width:100%;max-width:760px;margin-top:10px;background:#000"></video></details>
     </div>
     <div id="faqContent"></div>
   </div>
@@ -1975,7 +1981,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 <section id="saisie" class="panel">
   <h2>Saisir pour un REX</h2>
   <p class="hint" style="max-width:760px">Ouvrez le budget d'une agence de votre région pour le saisir à la place du REX, par exemple pendant un accompagnement. Tout ce que vous saisissez s'affiche <span class="legendeDR" style="margin-left:0"><i></i> en orange</span> : le REX voit ce que vous avez modifié. Dès qu'il modifie une de ces valeurs, elle reprend la couleur normale. Un budget déjà soumis ne se saisit plus : il se valide dans « Budgets à valider ».</p>
-  <div id="saisieDRListe"><p class="hint">Chargement…</p></div>
+  <div id="saisieDRListe" data-visite="saisie-agences"><p class="hint">Chargement…</p></div>
 </section>
 <section id="validation" class="panel">
   <div class="card">
@@ -1983,7 +1989,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <h2 style="margin:0" id="validationTitle">Validation des budgets</h2>
       <p style="margin:4px 0 0;font-size:13px;color:var(--ink65)" id="validationRole"></p>
     </div>
-    <div class="kpis" id="validationKpis" style="margin-bottom:var(--sp-4)"></div>
+    <div class="kpis" id="validationKpis" data-visite="val-kpis" style="margin-bottom:var(--sp-4)"></div>
     <div class="objInsight" id="validationInsight" style="display:none">
       <span class="objInsightIcon">💬</span>
       <span class="objInsightText" id="validationInsightText"></span>
@@ -2431,8 +2437,35 @@ const ETAPES_VISITE_REX=[
   {ecran:'objectif',cible:'soumettre',titre:'Soumettre au DR',texte:'Quand tout est prêt, « Soumettre au DR ». Votre budget passe en lecture seule ; s\'il vous est renvoyé, le motif s\'affiche ici. Date limite : 27 novembre.'},
   {ecran:'objectif',cible:'nav-aide',titre:'Besoin d\'aide ?',texte:'L\'écran Aide contient la FAQ du REX et le bouton pour revoir cette visite. Bonne construction !'}
 ];
-function visiteDejaVue(uid){try{return localStorage.getItem(CLE_VISITE_REX+'.'+uid)==='1';}catch(e){return true;}}
-function marquerVisiteVue(uid){try{localStorage.setItem(CLE_VISITE_REX+'.'+uid,'1');}catch(e){}}
+// Visite du DR : ses trois écrans (validation, saisie pour un REX, consolidation de la région)
+const ETAPES_VISITE_DR=[
+  {ecran:'validation',cible:null,titre:'Bienvenue dans SOMA',texte:'Vous validez en premier les budgets des agences de votre région. Voici vos écrans en une minute. Vous pourrez revoir cette visite depuis l\'écran Aide.'},
+  {ecran:'validation',cible:'menu',titre:'Vos écrans',texte:'Budgets à valider, Saisir pour un REX, Consolidation région. L\'écran Aide contient votre FAQ et les supports de formation des REX.'},
+  {ecran:'validation',cible:'val-kpis',titre:'Budgets à valider',texte:'Les compteurs donnent les budgets qui attendent votre décision, ceux que vous avez validés et ceux que vous avez refusés.'},
+  {ecran:'validation',cible:'val-fiche',titre:'La fiche de décisions',texte:'Pour chaque budget soumis : CA, masse salariale / CA, résultat et choix de congés, avec un verdict. « Voir tous les écrans » ouvre le budget en lecture.'},
+  {ecran:'validation',cible:'val-decision',titre:'Valider ou refuser',texte:'Le commentaire est obligatoire. Validé, le budget passe au contrôle de gestion et au DF ; refusé, il revient au REX avec votre motif.'},
+  {ecran:'saisie',cible:'saisie-agences',titre:'Saisir pour un REX',texte:'Ouvrez le budget d\'une agence pour le saisir à la place du REX, pendant un accompagnement. Vos saisies s\'affichent en orange pour lui.'},
+  {ecran:'consolidation',cible:'conso-kpis',titre:'Consolidation région',texte:'L\'état de chaque agence de votre région : non commencé, brouillon, soumis, validé, et le CA consolidé.'},
+  {ecran:'consolidation',cible:'conso-table',titre:'Suivre et relancer',texte:'Le tableau donne l\'avancement de chaque budget. Relancez les agences qui n\'avancent plus : les REX doivent soumettre avant le 27 novembre.'},
+  {ecran:'consolidation',cible:'nav-aide',titre:'Besoin d\'aide ?',texte:'L\'écran Aide contient votre FAQ, la vidéo et la présentation de formation des REX, et le bouton pour revoir cette visite. Bonne validation !'}
+];
+// Visite des Directions (DF, DG, PDG) : validation après le DR et suivi du réseau
+const ETAPES_VISITE_DIRECTION=[
+  {ecran:'validation',cible:null,titre:'Bienvenue dans SOMA',texte:'Vous validez les budgets après le DR : le DF avec le contrôle de gestion, puis le DG et le PDG. Voici vos écrans en une minute.'},
+  {ecran:'validation',cible:'menu',titre:'Vos écrans',texte:'Budgets à valider et Consolidation réseau. L\'écran Aide contient votre FAQ et les supports de formation des REX.'},
+  {ecran:'validation',cible:'val-kpis',titre:'Budgets à valider',texte:'N\'apparaissent ici que les budgets validés par l\'étage précédent. Les compteurs donnent ceux qui attendent votre décision.'},
+  {ecran:'validation',cible:'val-fiche',titre:'La fiche de décisions',texte:'CA, masse salariale / CA, résultat et choix de congés de l\'agence, avec un verdict. « Voir tous les écrans » ouvre le budget en lecture.'},
+  {ecran:'validation',cible:'val-decision',titre:'Valider ou refuser',texte:'Le commentaire est obligatoire. Un refus renvoie le budget au REX et le circuit repart du DR. La validation du dernier étage rend le budget définitif.'},
+  {ecran:'consolidation',cible:'conso-kpis',titre:'Consolidation réseau',texte:'L\'état de chaque agence du réseau, le CA consolidé et l\'avancement des budgets. Date limite de soumission des REX : 27 novembre.'},
+  {ecran:'consolidation',cible:'conso-table',titre:'Suivre l\'avancement',texte:'Le tableau détaille chaque agence. Le seuil de masse salariale est de 62 % du CA sur l\'année.'},
+  {ecran:'consolidation',cible:'nav-aide',titre:'Besoin d\'aide ?',texte:'L\'écran Aide contient votre FAQ, la vidéo et la présentation de formation des REX, et le bouton pour revoir cette visite.'}
+];
+function etapesVisitePour(role){return role==='rex'?ETAPES_VISITE_REX:role==='dr'?ETAPES_VISITE_DR:(role==='df'||role==='dg'||role==='pdg')?ETAPES_VISITE_DIRECTION:null;}
+function cleVisite(uid,role){return (!role||role==='rex')?CLE_VISITE_REX+'.'+uid:'soma.visite.'+role+'.vue.'+uid;}
+function visiteDejaVue(uid,role){try{return localStorage.getItem(cleVisite(uid,role))==='1';}catch(e){return true;}}
+function marquerVisiteVue(uid,role){try{localStorage.setItem(cleVisite(uid,role),'1');}catch(e){}}
+// Supports de formation des REX, servis par l'application React (adresse absolue : le mono-fichier s'en sert aussi)
+const SUPPORTS_FORMATION={video:'https://vyv2027-react.netlify.app/formation/soma-formation-rex.mp4',pdf:'https://vyv2027-react.netlify.app/formation/soma-formation-rex.pdf'};
 // Position de la bulle : sous la cible si la place le permet, sinon au-dessus, sinon centrée.
 function positionBulle(r,vw,vh,bw,bh){
   let m=12;
@@ -2475,7 +2508,7 @@ function lancerVisite(etapes,aller,surFin){
     if(t!==jeton)return;
     let el=nom?document.querySelector('[data-visite="'+nom+'"]'):null;
     let visible=el&&el.getBoundingClientRect().width>0;
-    if(nom&&!visible&&essais>0){setTimeout(function(){trouver(nom,t,essais-1);},100);return;}
+    if(nom&&!visible&&essais>0){if(essais===30){cible=null;afficher();}setTimeout(function(){trouver(nom,t,essais-1);},100);return;}
     cible=visible?el:null;
     if(cible)cible.scrollIntoView({block:'center',behavior:'auto'});
     setTimeout(function(){if(t===jeton)afficher();},60);
@@ -2509,20 +2542,24 @@ function lancerVisite(etapes,aller,surFin){
 }
 // Lancement de la visite dans le mono-fichier : à la première connexion du REX (après la page vision,
 // une fois le budget chargé), ou à la demande depuis l'écran Aide.
-function visiteREXMono(force){
-  if(!PROFILE || PROFILE.role !== 'rex') return;
-  if(!force && visiteDejaVue(PROFILE.id)) return;
-  lancerVisite(ETAPES_VISITE_REX, function(id){ show(id); }, function(){ marquerVisiteVue(PROFILE.id); });
+function visiteREXMono(force, rex){
+  if(!PROFILE) return;
+  let role = PROFILE.role;
+  if(rex){ if(role === 'rex' || SAISIE_DR) lancerVisite(ETAPES_VISITE_REX, function(id){ show(id); }, role === 'rex' ? function(){ marquerVisiteVue(PROFILE.id, 'rex'); } : null); return; }
+  let etapes = etapesVisitePour(role);
+  if(!etapes) return;
+  if(!force && visiteDejaVue(PROFILE.id, role)) return;
+  lancerVisite(etapes, function(id){ show(id); }, function(){ marquerVisiteVue(PROFILE.id, role); });
 }
 let _planVisite = null;
 function planifierVisiteREX(){
-  if(!PROFILE || PROFILE.role !== 'rex' || visiteDejaVue(PROFILE.id)) return;
+  if(!PROFILE || !etapesVisitePour(PROFILE.role) || visiteDejaVue(PROFILE.id, PROFILE.role)) return;
   if(_planVisite) clearInterval(_planVisite);
-  let essais = 0;
+  let essais = 0, rex = PROFILE.role === 'rex';
   _planVisite = setInterval(function(){
     essais++;
     let ov = q('visionOverlay'), visionOuverte = ov && ov.style.display === 'flex';
-    let pret = A() && A().name !== 'Nouvelle agence' && BUDGET_ID;
+    let pret = !rex || (A() && A().name !== 'Nouvelle agence' && BUDGET_ID);
     if((pret && !visionOuverte) || essais > 60){ clearInterval(_planVisite); _planVisite = null; if(pret && !visionOuverte) setTimeout(function(){ visiteREXMono(false); }, 300); }
   }, 500);
 }
@@ -2617,7 +2654,7 @@ function buildNavValidateur() {
   panels.forEach(function(x){
     let isActive = x[0] === activeId;
     let icon = x[0]==='validation' ? '◆' : (x[0]==='aide' ? '?' : '·');
-    h += '<button class="navbtn navStep ' + (isActive?'current':'todo') + '" data-p="' + x[0] + '">'
+    h += '<button class="navbtn navStep ' + (isActive?'current':'todo') + '" data-p="' + x[0] + '" data-visite="nav-' + x[0] + '">'
       + '<span class="navStepIcon todo">' + icon + '</span>'
       + '<span class="navStepLabel">' + x[1] + '</span>'
       + '</button>';
@@ -2729,7 +2766,7 @@ function buildNav() {
 
 function buildNavDR() {
   let h = '<div class="navgroup">Directeur Régional</div>';
-  panelsDR.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`);
+  panelsDR.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}" data-visite="nav-${x[0]}">${i+1}. ${x[1]}</button>`);
   q('nav').innerHTML = h;
   document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => show(b.dataset.p));
 }
@@ -2737,7 +2774,7 @@ function buildNavDR() {
 function buildNavDFDG() {
   const label = PROFILE.role === 'df' ? 'Direction Financière' : PROFILE.role === 'dg' ? 'Direction Générale' : 'Présidence';
   let h = `<div class="navgroup">${label}</div>`;
-  panelsDFDG.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}">${i+1}. ${x[1]}</button>`);
+  panelsDFDG.forEach((x,i) => h += `<button class="navbtn ${i===0?'active':''}" data-p="${x[0]}" data-visite="nav-${x[0]}">${i+1}. ${x[1]}</button>`);
   q('nav').innerHTML = h;
   document.querySelectorAll('.navbtn').forEach(b => b.onclick = () => show(b.dataset.p));
 }
@@ -4930,7 +4967,7 @@ function validationCard(it, role){
     }
   }
 
-  return '<div class="valCard" id="valCard_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'">'
+  return '<div class="valCard" data-visite="val-fiche" id="valCard_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'">'
     + '<div class="valCardHead">'
     +   '<div class="valCardTitle">'+it.agence+' 2027</div>'
     +   '<button class="valCardDetail" onclick="consulterBudget(\''+safe+'\')">▸ Voir tous les écrans</button>'
@@ -4940,7 +4977,7 @@ function validationCard(it, role){
     + refusAnterieur
     + '<label class="valCardCommentLabel">Commentaire (obligatoire)</label>'
     + '<textarea class="valCardComment" id="valComment_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" rows="2" placeholder="Justifiez votre décision…" oninput="updateValButtons(\''+safe+'\')"></textarea>'
-    + '<div class="valCardActions">'
+    + '<div class="valCardActions" data-visite="val-decision">'
     +   '<button class="valBtnValider" id="valOk_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" disabled onclick="deciderBudget(\''+safe+'\',\'valide\')">✓ Valider</button>'
     +   '<button class="valBtnRefuser" id="valNo_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" disabled onclick="deciderBudget(\''+safe+'\',\'refuse\')">✗ Refuser</button>'
     + '</div>'
@@ -10293,6 +10330,7 @@ const FAQ = {
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
   valideur: [
+    ['Où trouver la visite guidée et les supports de formation ?', 'La visite guidée de vos écrans s\'ouvre à votre première connexion. Pour la revoir, ouvrez l\'écran Aide : le bloc « Supports de formation » la relance, et donne aussi la vidéo du parcours du REX (2 min 35) et la présentation de formation des REX en PDF. Le DR qui ouvre une agence avec « Saisir pour un REX » y trouve en plus la visite des écrans REX.'],
     ['Comment fonctionne le circuit de validation collégial ?', 'Le circuit comporte trois étapes successives. D\'abord le directeur régional de l\'agence. Puis le contrôleur de gestion et le directeur financier ensemble. Enfin la Direction (direction générale et directeurs opérationnels) ensemble. À chaque étape, tous les valideurs concernés doivent valider pour passer à la suivante. Un seul refus, à n\'importe quelle étape, renvoie le budget au responsable pour correction.'],
     ['Quels budgets dois-je valider ?', 'Votre écran de validation ne vous montre que les budgets qui attendent votre décision, à votre étape du circuit. Vous ne voyez pas ceux qui sont encore aux étapes précédentes ni ceux que vous avez déjà traités. Un badge vous indique combien de budgets vous attendent.'],
     ['Comment lire la fiche de décisions d\'un budget ?', 'Chaque budget se présente comme une fiche en trois temps : d\'où part l\'agence, les décisions prises par le responsable, et le résultat qui en découle. Vous ne validez pas des chiffres, vous validez des choix opérationnels : une ambition de chiffre d\'affaires, un mouvement d\'effectif, un taux d\'absentéisme, une charge d\'heures supplémentaires. La fiche vous permet de comprendre le budget en quelques secondes.'],
@@ -10331,7 +10369,13 @@ const FAQ = {
 };
 
 function renderAide(){
-  if(q('visiteAideZone')) q('visiteAideZone').style.display = (PROFILE && PROFILE.role === 'rex') ? 'flex' : 'none';
+  let roleAide = PROFILE ? PROFILE.role : '';
+  if(q('visiteAideZone')) q('visiteAideZone').style.display = ['rex','dr','df','dg','pdg'].indexOf(roleAide) >= 0 ? '' : 'none';
+  if(q('btnRelancerVisite')) q('btnRelancerVisite').textContent = roleAide === 'rex' ? 'Revoir la visite guidée' : 'Revoir la visite de vos écrans';
+  if(q('btnVisiteEcransREX')) q('btnVisiteEcransREX').style.display = (roleAide !== 'rex' && SAISIE_DR) ? '' : 'none';
+  if(q('noteVisiteREXDR')) q('noteVisiteREXDR').style.display = (roleAide === 'dr' && !SAISIE_DR) ? '' : 'none';
+  if(q('lienSupportPDF')) q('lienSupportPDF').href = SUPPORTS_FORMATION.pdf;
+  if(q('videoSupport') && !q('videoSupport').getAttribute('src')) q('videoSupport').setAttribute('src', SUPPORTS_FORMATION.video);
   let box = q('faqContent');
   if(!box) return;
   let role = PROFILE.role;
@@ -11012,7 +11056,7 @@ function renderConsolidation(){
       let nonDeposes=total-budgets.length;
       let caReseauTotal=0, agencesAtypiques=[], avBrouillons=[], aRelancer=[];
 
-      let html='<div class="kpis" style="margin-bottom:16px">'
+      let html='<div class="kpis" data-visite="conso-kpis" style="margin-bottom:16px">'
         +kpiHtml(estDR?'Agences de la région':'Agences réseau',total,'')
         +kpiHtml('Budgets déposés',deposes,Math.round(deposes/total*100)+'%')
         +kpiHtml('En brouillon',brouillons,'')
@@ -11022,7 +11066,7 @@ function renderConsolidation(){
         +'</div>';
 
       // Tableau détaillé avec alertes
-      html+='<div class="tablewrap"><table><tr>'
+      html+='<div class="tablewrap" data-visite="conso-table"><table><tr>'
         +'<th>Agence</th><th>Statut</th><th title="Construction du budget par le REX : objectif, références CA, équipe, absentéisme, mois validés. Survolez pour le détail.">Avancement</th><th>CA budgété</th>'
         +'<th>Capacité max</th><th>Taux charge</th>'
         +'<th>HS estimées</th><th title="Jours de congés générés restant à placer dans l\'année">CP à répartir</th>'
