@@ -1632,10 +1632,13 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <div id="cpEquilibre" style="margin-left:auto;font-size:13px;font-weight:700">—</div>
     </div>
     <div data-visite="conges" style="display:flex;gap:8px;margin-top:var(--sp-3);flex-wrap:wrap">
-      <button onclick="repartirCPAuto()" style="font-size:12px;padding:8px 14px;background:var(--violet);color:#fff;border:none">↗ Répartir les congés automatiquement</button>
+      <button onclick="relancerRepartitionCPMono()" style="font-size:12px;padding:8px 14px;background:var(--violet);color:#fff;border:none">↗ Répartir les congés automatiquement</button>
       <button onclick="resetCP()" class="secondary" style="font-size:12px;padding:8px 14px">Réinitialiser</button>
     </div>
-    <p class="hint" style="margin:8px 0 0;font-size:12px">La répartition automatique pose exactement les jours acquis, en lissant la charge et en respectant les enveloppes légales (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Vous pouvez ensuite déplacer des congés semaine par semaine : le compteur suit vos choix. Si les jours acquis changent (absentéisme, équipe, dates d'entrée ou de sortie, temps de travail, part roulante), SOMA refait automatiquement la répartition sur les mois non validés (les congés déplacés à la main sur ces mois sont recalculés). <span class="pourquoiPicto" onclick="ouvrirPourquoi(event,'conges')" title="Pourquoi cette règle ?">?</span></p>
+    <div id="cpBilanRH" style="margin-top:var(--sp-3)"></div>
+    <div id="cpEnveloppesRH"></div>
+    <p class="hint" style="margin:8px 0 0;font-size:12px"><b>Comment SOMA propose les congés.</b> Il pose exactement les jours acquis, en respectant les périodes (60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai). Dans chaque période, il les place d'abord sur les semaines où l'équipe est plus nombreuse que le besoin, sans créer d'heure supplémentaire, en les étalant ; s'il en reste, il les met là où les heures supplémentaires par personne sont les plus basses, pour garder une charge régulière. Si les jours acquis changent (absentéisme, équipe, dates d'entrée ou de sortie, temps de travail, part roulante), la répartition est refaite sur les mois non validés.</p>
+    <p class="hint" style="margin:6px 0 0;font-size:12px">💡 Ouvrez un mois, ajustez les congés et les absences semaine par semaine, puis <b>validez-le</b> : il est figé, et l'écart avec la proposition (jours en plus ou en moins) est reporté sur les mois non validés. Un bilan montre ensuite les mois qui ont bougé et l'effet sur le coût des heures supplémentaires.</p>
     <div style="font-family:Space Grotesk,sans-serif;font-weight:700;margin-top:var(--sp-4)">3. Mois par mois</div>
   </div>
 
@@ -2564,7 +2567,7 @@ const ETAPES_VISITE_REX=[
   {ecran:'cal',cible:'cal-totaux',titre:'3. Calendrier',texte:'SOMA applique vos références au calendrier 2027 de votre zone scolaire. Vérifiez les totaux du mois. Un jour particulier, comme le transport de personnes le mercredi, s\'ajuste d\'un clic sur sa case.'},
   {ecran:'team',cible:'equipe',titre:'4. Équipe',texte:'Contrôlez chaque salarié : qualification, contrat, heures, part roulante, dates d\'entrée et de sortie 2027. Ajoutez les postes prévus (CDD saisonniers).'},
   {ecran:'rh',cible:'absenteisme',titre:'5. Présence & HS — absentéisme',texte:'Commencez par l\'absentéisme mois par mois, en gardant la moyenne fixée par le contrôle de gestion. Les congés se recalculent tout seuls ensuite.'},
-  {ecran:'rh',cible:'conges',titre:'Congés payés',texte:'Un clic sur « Répartir les congés automatiquement » pose les jours acquis en lissant la charge (60 % juin-octobre, 20 % / 20 % sur le reste de l\'année).'},
+  {ecran:'rh',cible:'conges',titre:'Congés payés',texte:'Un clic sur « Répartir les congés automatiquement » pose les jours acquis (60 % juin-octobre, 20 % / 20 % le reste de l\'année), d\'abord là où l\'équipe a de la marge, puis là où les HS sont les plus basses.'},
   {ecran:'rh',cible:'mois',titre:'Mois par mois',texte:'Ouvrez chaque mois, ajustez les congés et absences semaine par semaine, regardez les heures supplémentaires, puis « Valider ce mois ».'},
   {ecran:'charges',cible:'charges',titre:'6. Charges',texte:'Six postes sont à vous : quatre en % du CA (matériel, carburant…), deux en montant fixe par mois. Les cases sont préremplies : ajustez-les.'},
   {ecran:'previsionnel',cible:'previsionnel',titre:'7. Prévisionnel',texte:'Le compte d\'exploitation de l\'agence se construit tout seul à partir de vos saisies, jusqu\'au résultat d\'exploitation.'},
@@ -4366,7 +4369,7 @@ async function dupliquerVersion(){
 const BLOCS_VERSION=[
   {id:'equipe',label:'Équipe',detail:'salariés, contrats, heures, % roulant, entrées et sorties',cles:['employees']},
   {id:'objectif',label:'Objectif et références CA',detail:'CA cible, TXR cible, activités, perspectives, CA moyen par type de jour, jours ajustés sur le calendrier',cles:['targetCA','targetTXR','perspectives','actSan','actSai','actTP','actFun','caFuneraire','refs','ajustJours']},
-  {id:'presence',label:'Présence & HS',detail:'absentéisme, congés, mois travaillés, CP des non-roulants, indemnités',cles:['sick','presence','cpEnveloppes','cpReliquat','cpOptimal','cpOptimalHSCost','cpNR','moisVerrouilles','hs50','hsImproductif','repasRoulant','repasNonRoulant','idjfRoulant','idjfNonRoulant']},
+  {id:'presence',label:'Présence & HS',detail:'absentéisme, congés, mois travaillés, CP des non-roulants, indemnités',cles:['sick','presence','cpEnveloppes','cpReliquat','cpDernierRecalcul','cpOptimal','cpOptimalHSCost','cpNR','moisVerrouilles','hs50','hsImproductif','repasRoulant','repasNonRoulant','idjfRoulant','idjfNonRoulant']},
   {id:'charges',label:'Charges',detail:'postes de charges hors personnel (saisies REX et CG)',cles:['rex']}
 ];
 const VERSIONS_SUPPRIMABLES=['v1','v2','v3'];
@@ -6824,6 +6827,7 @@ function renderRH(){
   if(q('cpCounter'))q('cpCounter').style.display=a.employees.length?'flex':'none';
   if(q('cpGeneres'))q('cpGeneres').textContent=gen.toFixed(1)+' J';
   if(q('cpPlanifies'))q('cpPlanifies').textContent=plan.toFixed(1)+' J';
+  renderCPRHMono(a);
   if(q('cpRestant')){q('cpRestant').textContent=rest.toFixed(1)+' J';q('cpRestant').style.color=Math.abs(rest)<1?'var(--green)':'var(--orange)';}
   if(q('cpEquilibre')){
     let seuils3=refAgenceSeuils(a);
@@ -7032,6 +7036,51 @@ function renderRH(){
 
 let _activeMonth = null;
 
+// Présence : bilan du dernier recalcul des congés et périodes 60 / 20 / 20 (refonte nov. 2026)
+function fmtJ(v){return (Math.round((+v||0)*10)/10).toLocaleString('fr-FR');}
+function renderCPRHMono(a){
+  let el=q('cpEnveloppesRH'),bl=q('cpBilanRH');
+  if(el){
+    let env=a.cpEnveloppes||[];
+    el.innerHTML=env.length?'<div data-testid="cp-enveloppes" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:var(--sp-3)">'+env.map(function(e){
+      let total=(e.verrouille||0)+(e.budget||0);
+      return '<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border);font-size:12px;line-height:1.5">'
+        +'<div style="color:var(--ink65)">'+e.nom+' <span style="color:var(--ink30)">· '+Math.round(e.pct*100)+' %</span></div>'
+        +'<div><b style="font-size:15px">'+fmtJ(total)+' J</b> <span style="color:var(--ink65)">pour une cible de '+fmtJ(e.cible)+' J</span></div>'
+        +(e.verrouille>0?'<div style="color:var(--ink65)">dont '+fmtJ(e.verrouille)+' J sur des mois validés</div>':'')
+        +(e.reporte>0.05?'<div style="color:var(--orange)">'+fmtJ(e.reporte)+' J reportés ailleurs : tous ses mois sont validés</div>':'')
+        +(e.recu>0.05?'<div style="color:var(--ink65)">+'+fmtJ(e.recu)+' J reçus d\'une période close</div>':'')
+        +'</div>';}).join('')+'</div>'
+      +(a.cpReliquat>0.05?'<div style="margin-top:8px;padding:8px 14px;background:rgba(196,83,0,.10);border:1px solid var(--orange);font-size:12px;color:var(--orange)">⚠ '+a.cpReliquat.toFixed(1)+' jours n\'ont pas pu être placés : il ne reste plus de semaine libre avec assez de salariés présents. Déverrouillez un mois ou posez-les à la main.</div>':''):'';
+  }
+  if(bl){
+    let b=a.cpDernierRecalcul;
+    if(!b||!budgetModifiable()){bl.innerHTML='';return;}
+    let dC=(b.coutApres||0)-(b.coutAvant||0);
+    let ecart=b.type==='validation'&&b.propose!=null?Math.round(((b.pose||0)-b.propose)*10)/10:null;
+    bl.innerHTML='<div data-testid="cp-bilan" style="padding:10px 14px;background:rgba(61,111,214,.08);border:1px solid var(--blue2,#3d6fd6);font-size:12.5px;line-height:1.6">'
+      +'<div style="display:flex;gap:8px;align-items:baseline"><b style="flex:1">'+(b.type==='validation'?MOIS_LONGS_CP[b.mois]+' validé : ce que la répartition a changé':'Répartition recalculée : ce qui a changé')+'</b><button onclick="fermerBilanCP()" aria-label="Masquer" class="secondary" style="font-size:11px;padding:0 8px;border:none">✕</button></div>'
+      +(ecart!==null?'<div>'+fmtJ(b.pose)+' J posés en '+MOIS_LONGS_CP[b.mois].toLowerCase()+' (proposition de SOMA : '+fmtJ(b.propose)+' J). '+(Math.abs(ecart)>=0.5?(ecart<0?'Les '+fmtJ(-ecart)+' J non posés ont été ajoutés sur les mois non validés.':'Les '+fmtJ(ecart)+' J posés en plus ont été retirés des mois non validés.'):'Pas d\'écart avec la proposition.')+'</div>':'')
+      +(b.deplacements&&b.deplacements.length?'<div style="display:flex;gap:4px 12px;flex-wrap:wrap;margin:4px 0">'+b.deplacements.map(function(d){return '<span>'+M[d.m]+' <b>'+(d.delta>0?'+':'')+fmtJ(d.delta)+' J</b></span>';}).join('')+'</div>':'<div style="color:var(--ink65)">Aucun mois n\'a changé.</div>')
+      +'<div>Coût des heures supplémentaires : '+euro(b.coutAvant)+' → <b>'+euro(b.coutApres)+'</b>'+(Math.abs(dC)>=1?' <span style="color:'+(dC>0?'var(--orange)':'var(--green)')+'">('+(dC>0?'+':'')+euro(dC)+')</span>':'')+'</div>'
+      +(b.report&&b.report.length?'<div style="color:var(--ink65)">'+b.report.map(function(r){return fmtJ(r.jours)+' J de la période '+r.nom.toLowerCase();}).join(', ')+' : tous ses mois sont validés, ces jours ont été placés sur les autres périodes.</div>':'')
+      +'</div>';
+  }
+}
+// Détail d'un mois non validé : proposition de SOMA, effet de la validation, autres mois modifiés
+function bandeauPropositionMono(a,m){
+  let propose=cpProposeMois(a,m);if(propose==null)return '';
+  let pose=cpParMois(a)[m],ecart=Math.round((pose-propose)*10)/10;
+  let msg=Math.abs(ecart)<0.5?'Vous suivez la proposition. En validant, les autres mois ne bougent pas.':(ecart>0?'En validant, les '+fmtJ(ecart)+' J posés en plus seront retirés des mois non validés.':'En validant, les '+fmtJ(-ecart)+' J non posés seront ajoutés sur les mois non validés.');
+  let h='<div data-testid="cp-proposition-mois" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5">'
+    +'<span>Proposition de SOMA : <b>'+fmtJ(propose)+' J</b> · posés : <b>'+fmtJ(pose)+' J</b></span>'
+    +'<span style="flex:1;min-width:220px;color:var(--ink65)">'+msg+'</span>'
+    +(Math.abs(ecart)>=0.5?'<button data-testid="reprendre-proposition" class="secondary" onclick="reprendrePropositionMono('+m+')" style="font-size:11px;padding:4px 10px">Reprendre la proposition</button>':'')+'</div>';
+  let autres=moisModifiesHorsPropo(a,m);
+  if(autres.length){let pl=autres.length>1;h+='<div data-testid="cp-autres-modifies" style="padding:6px 14px;font-size:12px;color:var(--orange);border-bottom:1px solid var(--border)">Vous avez aussi changé les congés de '+autres.map(function(i){return MOIS_LONGS_CP[i].toLowerCase();}).join(', ')+', qui ne '+(pl?'sont':'est')+' pas validé'+(pl?'s':'')+' : la validation de ce mois '+(pl?'les':'le')+' recalculera. Validez d\'abord '+(pl?'ces mois':'ce mois')+' pour garder vos choix.</div>';}
+  return h;
+}
+
 function showWeekDetail(m){
   let a = A();
   let estVerrouille = (a.moisVerrouilles||[]).indexOf(m) >= 0;
@@ -7147,7 +7196,7 @@ function showWeekDetail(m){
   let bd = document.getElementById('rhWeekBandeau');
   if(!bd){bd=document.createElement('div');bd.id='rhWeekBandeau';q('rhWeekDetail').insertBefore(bd,q('rhWeekDetail').firstChild);}
   let introDetail='<div style="padding:8px 14px;font-size:12px;color:var(--ink65);border-bottom:1px solid var(--border)">Pour chaque semaine, indiquez les <b style="color:var(--violet2)">congés (CP)</b>, les <b style="color:var(--violet2)">absences payées</b> (formation, événements familiaux, récupération…) et les <b style="color:var(--violet2)">absences non payées</b> (sans solde). SOMA en déduit les heures disponibles, les heures supplémentaires et leur coût. <span style="color:var(--ink30)">Seules les colonnes surlignées sont à saisir.</span></div>';
-  bd.innerHTML=introDetail+bandeauVerr+bandeauImpact;
+  bd.innerHTML=introDetail+bandeauVerr+bandeauImpact+(!estVerrouille&&budgetModifiable()?bandeauPropositionMono(a,m):'');
 
   if(q('rhWeekDetail')){
     q('rhWeekDetail').style.display='block';
@@ -7562,6 +7611,7 @@ function renderEnveloppesCP(a){
     if(Math.abs(ecart) >= 1 && env.verrouille > 0){
       alertes.push(def.nom + ' : les mois verrouillés portent ' + env.verrouille + ' j — la répartition automatique a compensé sur les autres périodes.');
     }
+    if(env.reporte > 0.05) alertes.push(def.nom + ' : tous les mois sont validés, les ' + env.reporte + ' j qui restaient à y poser ont été placés sur les autres périodes.');
     html += '<tr>'
       + '<td>' + def.nom + '</td>'
       + '<td class="num">' + cible + ' j</td>'
@@ -7578,7 +7628,7 @@ function renderEnveloppesCP(a){
   // Reliquat non placé
   if(a.cpReliquat && a.cpReliquat > 0){
     html += '<div class="envReliquat">⚠ <b>' + a.cpReliquat + ' jours de CP</b> n\'ont pas pu être répartis automatiquement '
-      + '(les semaines disponibles ont atteint leur niveau d\'équilibre). Déverrouillez un mois ou placez-les manuellement.</div>';
+      + '(plus de semaine libre avec assez de salariés présents). Déverrouillez un mois ou placez-les manuellement.</div>';
   }
 
   body.innerHTML = html;
@@ -9572,149 +9622,186 @@ function hsParPersonne(a, week){
   return {hs:hs, etp:p.etp, ratio:ratio};
 }
 
-// ═══════════════════════════════════════════════════════════
-// MOTEUR DE RÉPARTITION DES CP (v2)
-// Couche 1 : enveloppes légales (60% juin-oct, 20% nov-jan, 20% fév-mai)
-// Couche 2 : lisser les HS par personne présente dans chaque enveloppe
-//   → moins de CP sur les semaines de forte activité, plus sur les creuses.
-// ═══════════════════════════════════════════════════════════
-function repartirCPAuto(moissLibres){
-  let a = A();
-  if(!a.cal.length) genCal(a);
+// Répartition automatique des congés des roulants (refonte nov. 2026).
+// Le cœur du calcul (repartirCPAgence) est le même texte dans le mono-fichier ; ici, repartirCPAuto(a, moisLibres)
+// mute `a` (presence, cpEnveloppes, cpReliquat, cpReport, cpOptimal) et le renvoie.
 
-  // Mois libres (non verrouillés)
-  let libres = moissLibres || M.map(function(_,i){return i;}).filter(function(m){
-    return (a.moisVerrouilles||[]).indexOf(m) < 0;
+// Enveloppes de la règle de l'entreprise : 60 % de juin à octobre, 20 % de novembre à janvier, 20 % de février à mai.
+const ENVELOPPES_CP = [
+  { nom: 'Juin – octobre', pct: 0.60, months: [5, 6, 7, 8, 9] },
+  { nom: 'Novembre – janvier', pct: 0.20, months: [10, 11, 0] },
+  { nom: 'Février – mai', pct: 0.20, months: [1, 2, 3, 4] }
+];
+// Arrondi au dixième
+function r1(v) { return Math.round(v * 10) / 10; }
+
+// Répartition en deux temps, dans chaque enveloppe :
+// 1) capacité gratuite : les congés vont d'abord sur les semaines où l'équipe disponible dépasse le besoin, sans créer
+//    d'heure supplémentaire, en répartissant de façon égale (part de l'équipe en congé la plus basse d'abord) ;
+// 2) quand il n'y a plus de marge : chaque jour va sur la semaine où les HS par personne présente sont les plus basses,
+//    ce qui garde la charge aussi plate que possible.
+// Mois validés : ils ne bougent jamais. Une semaine à cheval sur un mois validé reste figée en entier.
+// Enveloppe sans semaine libre (tous ses mois validés) : ce qu'il reste à y poser est reporté sur les autres enveloppes.
+function repartirCPAgence(a, moisLibres) {
+  if (!a.cal || !a.cal.length) genCal(a);
+  let libres = moisLibres || M.map(function (_, i) { return i; }).filter(function (m) { return (a.moisVerrouilles || []).indexOf(m) < 0; });
+  let semaines = needWeeks(a);
+  let estLibre = function (w) { return moisDeSemaine(a, w.week).every(function (m) { return libres.indexOf(m) >= 0; }); };
+
+  // Vider les congés des semaines libres (les parts par mois des semaines à cheval sont recalculées au prorata)
+  semaines.forEach(function (w) {
+    if (estLibre(w) && a.presence[w.week]) { a.presence[w.week].cp = 0; delete a.presence[w.week].cpMois; }
   });
-
-  // Vider les CP des semaines des mois libres
-  needWeeks(a).forEach(function(w){
-    let mois = mainMonth(a, w.week);
-    if(libres.indexOf(mois) >= 0){
-      if(a.presence[w.week]){ a.presence[w.week].cp = 0; delete a.presence[w.week].cpMois; } // parts par mois (semaine à cheval) recalculées au prorata
-    }
-  });
-
-  // CP déjà posés sur les mois verrouillés
-  let cpVerrouilles = needWeeks(a).reduce(function(s, w){
-    let mois = mainMonth(a, w.week);
-    if((a.moisVerrouilles||[]).indexOf(mois) >= 0){
-      return s + (+((a.presence[w.week]||{}).cp) || 0);
-    }
-    return s;
-  }, 0);
 
   let generes = cpGeneres(a);
-  let restant = Math.round((generes - cpVerrouilles) * 10) / 10;
-  if(restant <= 0){ render(); return; }
-
-  // ── COUCHE 1 : enveloppes légales CONSCIENTES des mois verrouillés ──
-  // Cible de chaque enveloppe = pct × total généré.
-  // Budget des mois libres = cible − CP déjà posés sur les mois verrouillés de l'enveloppe.
-  // Si un mois verrouillé DÉPASSE la cible de son enveloppe, l'excédent est
-  // compensé en réduisant proportionnellement les autres enveloppes.
-  let envelopes = [
-    { nom: 'Juin – octobre',    pct: 0.60, months: [5,6,7,8,9]  },
-    { nom: 'Novembre – janvier', pct: 0.20, months: [10,11,0]    },
-    { nom: 'Février – mai',      pct: 0.20, months: [1,2,3,4]    }
-  ];
-
-  // CP verrouillés par enveloppe
-  envelopes.forEach(function(env){
-    env.cpVerrouilles = needWeeks(a).reduce(function(s, w){
-      let mois = mainMonth(a, w.week);
-      if(env.months.indexOf(mois) >= 0 && libres.indexOf(mois) < 0){
-        return s + (+((a.presence[w.week]||{}).cp) || 0);
-      }
-      return s;
-    }, 0);
-    env.cible = Math.round(generes * env.pct * 10) / 10;
-    // Budget brut des mois libres = cible − verrouillé (peut être négatif si dépassement)
-    env.budgetBrut = Math.round((env.cible - env.cpVerrouilles) * 10) / 10;
+  let envelopes = ENVELOPPES_CP.map(function (e) { return { nom: e.nom, pct: e.pct, months: e.months }; });
+  envelopes.forEach(function (env) {
+    let dans = function (w) { return env.months.indexOf(mainMonth(a, w.week)) >= 0; };
+    env.cpVerrouilles = r1(semaines.reduce(function (s, w) { return dans(w) && !estLibre(w) ? s + (+((a.presence[w.week] || {}).cp) || 0) : s; }, 0));
+    env.semaines = semaines.filter(function (w) { return dans(w) && estLibre(w); });
+    env.cible = r1(generes * env.pct);
+    env.budgetBrut = r1(env.cible - env.cpVerrouilles);
   });
 
-  // Compensation : les excédents (budgets négatifs) réduisent proportionnellement
-  // les enveloppes qui ont encore de la place.
-  let excedent = envelopes.reduce(function(s, env){ return s + (env.budgetBrut < 0 ? -env.budgetBrut : 0); }, 0);
-  let capaciteRestante = envelopes.reduce(function(s, env){ return s + (env.budgetBrut > 0 ? env.budgetBrut : 0); }, 0);
-  envelopes.forEach(function(env){
-    if(env.budgetBrut <= 0){ env.budget = 0; return; }
-    let reduction = capaciteRestante > 0 ? excedent * (env.budgetBrut / capaciteRestante) : 0;
-    env.budget = Math.max(0, Math.round((env.budgetBrut - reduction) * 10) / 10);
-  });
-  // Mémoriser le bilan des enveloppes pour l'affichage en synthèse
-  a.cpEnveloppes = envelopes.map(function(env){
-    return { nom: env.nom, pct: env.pct, cible: env.cible, verrouille: env.cpVerrouilles, budget: env.budget };
+  // Mois validés au-delà de la cible de leur enveloppe : l'excédent réduit les autres enveloppes au prorata de leur place
+  let excedent = envelopes.reduce(function (s, env) { return s + (env.budgetBrut < 0 ? -env.budgetBrut : 0); }, 0);
+  let capacite = envelopes.reduce(function (s, env) { return s + (env.budgetBrut > 0 ? env.budgetBrut : 0); }, 0);
+  envelopes.forEach(function (env) {
+    if (env.budgetBrut <= 0) { env.budget = 0; return; }
+    env.budget = Math.max(0, r1(env.budgetBrut - (capacite > 0 ? excedent * env.budgetBrut / capacite : 0)));
   });
 
-  // ── COUCHE 2 : dans chaque enveloppe, ÉGALISER les HS/personne ──
-  // Principe : on ne pose JAMAIS de CP sur une semaine structurellement forte.
-  // On remplit les creuses jusqu'à rejoindre le niveau des fortes → ligne plate.
-  let reliquatTotal = 0;
-  envelopes.forEach(function(env){
-    let semaines = needWeeks(a).filter(function(w){
-      let mois = mainMonth(a, w.week);
-      return env.months.indexOf(mois) >= 0 && libres.indexOf(mois) >= 0;
-    });
-    if(!semaines.length){ reliquatTotal += env.budget; return; }
+  // Report : une enveloppe dont tous les mois sont validés ne peut plus rien recevoir
+  let aReporter = 0;
+  envelopes.forEach(function (env) { env.recu = 0; env.reporte = 0; if (!env.semaines.length && env.budget > 0.05) { env.reporte = env.budget; aReporter += env.budget; env.budget = 0; } });
+  let receveurs = envelopes.filter(function (env) { return env.semaines.length; });
+  let poidsRec = receveurs.reduce(function (s, env) { return s + env.pct; }, 0);
+  if (aReporter > 0.05 && poidsRec > 0) receveurs.forEach(function (env) { env.recu = r1(aReporter * env.pct / poidsRec); env.budget = r1(env.budget + env.recu); });
 
-    let budgetEnv = env.budget;
-    if(budgetEnv <= 0) return;
-
-    // Remplissage itératif : à chaque pas, la semaine au plus BAS HS/personne
-    // reçoit du CP. On place la TOTALITÉ du budget de l'enveloppe (les congés
-    // générés doivent être posés), en gardant la charge aussi plate que possible :
-    // remplir toujours la semaine la plus creuse fait monter la ligne uniformément
-    // et ne charge les semaines fortes qu'en dernier recours.
-    // Pas ADAPTATIF : large au début (rapide), affiné en fin (précis).
-    let placeTotal = 0;
-    let secu = 0;
-    // Charge par semaine mise en cache : seule la semaine qui reçoit des CP change à chaque pas
-    // (même résultat, 50 fois moins de calculs ; ~2 s → ~0,05 s pour une agence de 160 salariés)
-    let cacheHP = {};
-    let hpDe = function(w){ if(!(w.week in cacheHP)) cacheHP[w.week] = hsParPersonne(a, w.week); return cacheHP[w.week]; };
-    while(budgetEnv - placeTotal > 0.05 && secu < 5000){
-      secu++;
-      // 1) ratio HS/personne minimal parmi les semaines éligibles
-      let minR = Infinity;
-      semaines.forEach(function(w){
-        let hp = hpDe(w);
-        if(hp.etp <= 0.5) return;
-        if(hp.ratio < minR) minR = hp.ratio;
-      });
-      if(minR === Infinity) break; // aucune semaine éligible (sécurité effectif)
-      // 2) parmi les semaines les plus creuses, celle qui porte le MOINS de CP
-      //    (densité CP/ETP) → répartition égale même sans écart d'HS.
-      let best = null, bestDens = Infinity;
-      semaines.forEach(function(w){
-        let hp = hpDe(w);
-        if(hp.etp <= 0.5) return;
-        if(hp.ratio > minR + 0.01) return; // uniquement les semaines au plus bas niveau
-        let cpNow = +((a.presence[w.week]||{}).cp) || 0;
-        let dens = hp.etp > 0 ? cpNow / hp.etp : cpNow;
-        if(dens < bestDens){ bestDens = dens; best = w; }
-      });
-      if(!best) break;
-      let restAPlacer = budgetEnv - placeTotal;
-      // Pas adaptatif : 2 jours tant qu'il reste beaucoup, 0.5 en finition
-      let pas = restAPlacer > 10 ? 2 : 0.5;
-      let ajout = Math.min(pas, restAPlacer);
-      if(!a.presence[best.week]) a.presence[best.week] = {cp:0, other:0};
-      a.presence[best.week].cp = Math.round(((+a.presence[best.week].cp||0) + ajout) * 10) / 10;
-      delete cacheHP[best.week];
-      placeTotal = Math.round((placeTotal + ajout) * 10) / 10;
+  // Placement
+  let reliquat = receveurs.length ? 0 : aReporter;
+  let cache = {};
+  let etat = function (w) {
+    if (!cache[w.week]) {
+      let p = pres(a, w.week);
+      cache[w.week] = { gap: w.hours - p.av, etp: p.etp, base: p.base, cpH: p.cpH };
     }
-    // Reliquat éventuel (uniquement si la sécurité effectif bloque toutes les semaines)
-    if(budgetEnv - placeTotal > 0.05) reliquatTotal += Math.round((budgetEnv - placeTotal) * 10) / 10;
+    return cache[w.week];
+  };
+  envelopes.forEach(function (env) {
+    let budget = env.budget, place = 0, secu = 0;
+    if (budget <= 0.05) return;
+    let elig = env.semaines.filter(function (w) { return etat(w).etp > 0.5; });
+    while (budget - place > 0.05 && secu < 20000 && elig.length) {
+      secu++;
+      let reste = r1(budget - place);
+      let pas = Math.min(reste > 10 ? 2 : 0.5, reste);
+      // 1) capacité gratuite : semaine qui peut recevoir sans créer d'HS, la moins chargée en congés
+      let best = null, ajout = 0, cle = Infinity;
+      elig.forEach(function (w) {
+        let e = etat(w);
+        let possible = Math.min(pas, Math.floor((-e.gap / CP_HEURES_JOUR) * 2) / 2);
+        if (possible <= 0) return;
+        let part = e.base > 0 ? e.cpH / e.base : 0;
+        if (part < cle) { cle = part; best = w; ajout = possible; }
+      });
+      // 2) plus de marge : HS par personne présente les plus basses, puis la semaine la moins chargée en congés
+      if (!best) {
+        let minR = Infinity;
+        elig.forEach(function (w) { let e = etat(w); let r = Math.max(0, e.gap) / e.etp; if (r < minR) minR = r; });
+        cle = Infinity;
+        elig.forEach(function (w) {
+          let e = etat(w);
+          if (Math.max(0, e.gap) / e.etp > minR + 0.01) return;
+          let part = e.base > 0 ? e.cpH / e.base : 0;
+          if (part < cle) { cle = part; best = w; }
+        });
+        ajout = pas;
+      }
+      if (!best) break;
+      if (!a.presence[best.week]) a.presence[best.week] = { cp: 0, other: 0 };
+      a.presence[best.week].cp = r1((+a.presence[best.week].cp || 0) + ajout);
+      delete cache[best.week];
+      if (etat(best).etp <= 0.5) elig = elig.filter(function (w) { return w !== best; });
+      place = r1(place + ajout);
+    }
+    if (budget - place > 0.05) reliquat += r1(budget - place);
   });
 
-  // Mémoriser le reliquat pour le signaler au REX (fil conducteur / synthèse)
-  a.cpReliquat = Math.round(reliquatTotal * 10) / 10;
-
-  // Mémoriser cette répartition optimale comme RÉFÉRENCE (pour le coût du choix REX)
+  a.cpEnveloppes = envelopes.map(function (env) {
+    return { nom: env.nom, pct: env.pct, cible: env.cible, verrouille: env.cpVerrouilles, budget: env.budget, recu: env.recu, reporte: env.reporte };
+  });
+  a.cpReliquat = r1(reliquat);
   memoriserRepartitionOptimale(a);
+  return a;
+}
+
+// Congés posés par mois (semaine à cheval : part du mois)
+function cpParMois(a) {
+  return M.map(function (_, m) {
+    return r1(needWeeks(a).reduce(function (s, w) { return s + absPartMois(a, w.week, 'cp', m); }, 0));
+  });
+}
+// Ce que la répartition a changé : congés par mois avant / après et coût des HS (affiché après une validation ou une relance)
+function bilanRecalculCP(avantMois, avantCout, a, contexte) {
+  let apres = cpParMois(a), coutApres = coutHSTotal(a);
+  let deplacements = [];
+  apres.forEach(function (v, m) { let d = r1(v - avantMois[m]); if (Math.abs(d) >= 0.5) deplacements.push({ m: m, delta: d }); });
+  return Object.assign({ deplacements: deplacements, coutAvant: Math.round(avantCout), coutApres: Math.round(coutApres), reliquat: a.cpReliquat || 0,
+    report: (a.cpEnveloppes || []).filter(function (e) { return e.reporte > 0.05; }).map(function (e) { return { nom: e.nom, jours: e.reporte }; }) }, contexte || {});
+}
+// Proposition de SOMA pour un mois (dernière répartition automatique) : somme des parts du mois
+// Semaine figée : elle touche un mois validé, la répartition ne la modifie pas
+function semaineFigee(a, w) {
+  let verr = a.moisVerrouilles || [];
+  return moisDeSemaine(a, w).some(function (m) { return verr.indexOf(m) >= 0; });
+}
+function cpProposeMois(a, m) {
+  if (!a.cpOptimal) return null;
+  let s = 0;
+  needWeeks(a).forEach(function (w) {
+    if (semaineFigee(a, w.week)) { s += absPartMois(a, w.week, 'cp', m); return; } // figée : ce qui est posé
+    let tot = +a.cpOptimal[w.week] || 0; if (!tot) return;
+    s += absPartMois({ cal: a.cal, presence: { [w.week]: { cp: tot } } }, w.week, 'cp', m);
+  });
+  return r1(s);
+}
+// Remettre la proposition de SOMA sur un mois non validé (semaines entièrement dans le mois ; à cheval : la part du mois)
+function reprendrePropositionMois(a, m) {
+  if (!a.cpOptimal) return a;
+  a.presence = Object.assign({}, a.presence);
+  needWeeks(a).forEach(function (w) {
+    let ms = moisDeSemaine(a, w.week); if (ms.indexOf(m) < 0 || semaineFigee(a, w.week)) return;
+    let tot = +a.cpOptimal[w.week] || 0;
+    let p = Object.assign({ cp: 0, other: 0 }, a.presence[w.week] || {});
+    if (ms.length < 2) { p.cp = tot; delete p.cpMois; }
+    else {
+      let parts = {};
+      ms.forEach(function (mm) { parts[mm] = mm === m ? absPartMois({ cal: a.cal, presence: { [w.week]: { cp: tot } } }, w.week, 'cp', mm) : absPartMois(a, w.week, 'cp', mm); });
+      p.cpMois = parts; p.cp = r1(ms.reduce(function (s, mm) { return s + parts[mm]; }, 0));
+    }
+    a.presence[w.week] = p;
+  });
+  return a;
+}
+// Mono : répartition sur l'agence active (bouton « Répartir », absentéisme, équipe…)
+function repartirCPAuto(moissLibres){ repartirCPAgence(A(), moissLibres); render(); }
+// Bouton « Répartir les congés automatiquement » : même bilan qu'après une validation
+function relancerRepartitionCPMono(){
+  let a=A(), avant=cpParMois(a), cout=coutHSTotal(a);
+  repartirCPAgence(a);
+  a.cpDernierRecalcul=bilanRecalculCP(avant,cout,a,{type:'relance'});
   render();
 }
+// Mois non validés (autres que m) modifiés à la main par rapport à la proposition
+function moisModifiesHorsPropo(a,m){
+  if(!a.cpOptimal)return [];
+  let verr=a.moisVerrouilles||[],parMois=cpParMois(a);
+  return M.map(function(_,i){return i;}).filter(function(i){return i!==m&&verr.indexOf(i)<0&&Math.abs(parMois[i]-(cpProposeMois(a,i)||0))>=0.5;});
+}
+function reprendrePropositionMono(m){ reprendrePropositionMois(A(),m); showToast('Proposition de SOMA remise sur '+MOIS_LONGS_CP[m].toLowerCase(),'info'); render(); showWeekDetail(m); }
+function fermerBilanCP(){ A().cpDernierRecalcul=null; render(); }
+const MOIS_LONGS_CP=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
 // Mémorise la répartition CP optimale du moteur (référence pour mesurer le coût des choix REX)
 function memoriserRepartitionOptimale(a){
@@ -9833,6 +9920,7 @@ function coutDuChoixREX(a){
 
 function verrouilerMois(m) {
   let a = A();
+  let proposeAvant = a.moisVerrouilles.indexOf(m) < 0 ? cpProposeMois(a, m) : null; // avant de figer le mois
   if (a.moisVerrouilles.indexOf(m) < 0) {
     a.moisVerrouilles.push(m);
   }
@@ -9848,10 +9936,14 @@ function verrouilerMois(m) {
   } else {
     showToast(M[m] + ' validé (' + nb + '/12 mois)', 'success');
   }
-  // Recalculer suggestion sur mois restants
+  // Recalculer sur les mois restants, avec le bilan de ce qui a changé
   let libres = M.map(function(_,i){return i;}).filter(function(mi){ return a.moisVerrouilles.indexOf(mi) < 0; });
-  if (libres.length > 0) repartirCPAuto(libres);
-  else render();
+  if (libres.length > 0) {
+    let avant = cpParMois(a), cout = coutHSTotal(a);
+    repartirCPAgence(a, libres);
+    a.cpDernierRecalcul = bilanRecalculCP(avant, cout, a, { type: 'validation', mois: m, pose: avant[m], propose: proposeAvant });
+  } else a.cpDernierRecalcul = null;
+  render();
 }
 
 function deverrouillerMois(m) {
@@ -9924,7 +10016,7 @@ function resetCP() {
     if (a.presence[w]) { a.presence[w].cp = 0; delete a.presence[w].cpMois; }
   });
   // Plus de répartition : la référence « optimale », le reliquat et les enveloppes affichées n'ont plus de sens
-  delete a.cpOptimal; delete a.cpOptimalHSCost; delete a.cpReliquat; delete a.cpEnveloppes;
+  delete a.cpOptimal; delete a.cpOptimalHSCost; delete a.cpReliquat; delete a.cpEnveloppes; delete a.cpDernierRecalcul;
   render();
 }
 
@@ -11550,7 +11642,7 @@ const FAQ = {
     ['Mon équipe est-elle déjà saisie ?', 'Oui. Le contrôle de gestion a chargé votre équipe à partir du registre du personnel : roulants (DEA, AA, taxi, TPMR), régulateurs, REX et facturières, avec leur contrat (CDI ou CDD), leurs heures hebdomadaires et leurs dates d\'entrée ou de sortie prévues en 2027. Les autres emplois (administratifs, apprentis, stagiaires) n\'y figurent pas. Vérifiez chaque ligne : « + Salarié » ajoute une personne, la croix en bout de ligne la retire, et « + Poste prévisionnel » ajoute un recrutement prévu (par défaut un CDD ambulancier de juin à septembre, à ajuster). « Importer depuis Excel » permet aussi de charger votre propre fichier : il remplace alors toute la liste, après confirmation. Les heures hebdomadaires viennent de l\'horaire mensuel du registre : un temps plein (151,67 h ou 152 h par mois) donne 35 h. « Trier par », au-dessus du tableau, classe la liste par nom (de A à Z ou de Z à A) ou par qualification, et un clic sur l\'en-tête « Nom » inverse l\'ordre. Le tri ne change que l\'affichage.'],
     ['Que signifient les qualifications (DEA, AA, TAXI, TPMR) ?', 'Ce sont les qualifications du personnel roulant : DEA (diplôme d\'ambulancier), AA (auxiliaire ambulancier), TAXI et TPMR (transport de personnes à mobilité réduite). SOMA les considère comme du personnel roulant, c\'est-à-dire qui produit du chiffre d\'affaires sur la route. Les autres qualifications sont comptées comme personnel improductif.'],
     ['Qu\'est-ce que le pourcentage roulant d\'un salarié ?', 'Certains salariés ne roulent pas à 100% de leur temps : ils partagent leur activité entre la route et la régulation, ou des tâches administratives. Le pourcentage roulant indique la part réellement passée à produire du chiffre d\'affaires. Par exemple, 50% pour une personne mi-roulant, mi-régulation. Le reste est compté comme improductif. Vaut aussi pour un régulateur ou un REX qui roule une partie de son temps (0 % = ne roule pas) : sa part roulante compte dans les heures et les ETP roulants.'],
-    ['Comment fonctionne la répartition automatique des congés ?', 'SOMA répartit vos congés sur l\'année selon deux principes. D\'abord les périodes légales : 60% des congés sur juin-octobre, 20% sur novembre-janvier, 20% sur février-mai. Ensuite le lissage : à l\'intérieur de chaque période, SOMA place les congés de façon à garder un recours aux heures supplémentaires le plus régulier possible, en évitant les semaines déjà tendues.'],
+    ['Comment fonctionne la répartition automatique des congés ?', 'SOMA pose exactement les jours acquis, en trois temps. 1. Les périodes : 60 % des congés sur juin-octobre, 20 % sur novembre-janvier, 20 % sur février-mai. 2. La marge : dans chaque période, les congés vont d\'abord sur les semaines où l\'équipe est plus nombreuse que le besoin, là où ils ne créent aucune heure supplémentaire, en les étalant pour ne pas vider une semaine. 3. Le lissage : s\'il en reste, chaque jour va sur la semaine où les heures supplémentaires par personne présente sont les plus basses, pour garder une charge régulière. Les mois validés ne bougent jamais ; si tous les mois d\'une période sont validés, ce qu\'il restait à y poser est reporté sur les autres périodes.'],
     ['Pourquoi SOMA ne cherche pas à supprimer toutes les heures supplémentaires ?', 'Parce qu\'un budget sans aucune heure supplémentaire est un budget rigide. L\'activité réelle ne sera jamais exactement celle prévue. Une réserve d\'environ 10% d\'heures supplémentaires permet d\'absorber une hausse d\'activité sans basculer dans les heures les plus chères, et une baisse sans dégrader la productivité. Zéro heure supplémentaire n\'est pas un objectif : c\'est une fragilité.'],
     ['Pourquoi distingue-t-on les heures à 25% et à 50% ?', 'Les huit premières heures supplémentaires par semaine et par salarié sont majorées à 25%, au-delà à 50%. Deux agences avec le même volume d\'heures supplémentaires peuvent donc avoir des coûts très différents selon la façon dont ces heures se répartissent. Indiquer la part de vos heures à 50% permet à SOMA de calculer le vrai coût de vos heures supplémentaires.'],
     ['Comment est calculé le coût d\'une heure supplémentaire ?', 'Une heure supplémentaire coûte le coût horaire chargé du mois multiplié par sa majoration : 1,25 pour une heure à 25%, 1,50 pour une heure à 50%. Sans précision de votre part, SOMA applique 1,25 à toutes les heures supplémentaires. Si vous déclarez une part d\'heures à 50% pour un mois, le coefficient du mois devient la moyenne des deux. Exemple : avec 30% d\'heures à 50%, le coefficient est 0,7 × 1,25 + 0,3 × 1,50 = 1,325. Les heures supplémentaires des improductifs suivent le même barème, valorisées à leur propre coût horaire.'],
@@ -11563,7 +11655,7 @@ const FAQ = {
     ['Dans quel ordre travailler l\'écran Présence & HS ?', 'Suivez les numéros de l\'écran. 1. L\'absentéisme maladie et AT, mois par mois, en gardant la moyenne proche de la référence : il fixe les congés acquis. 2. Les congés payés : « Répartir les congés automatiquement », puis contrôle du compteur. 3. Les mois un par un : ouvrez un mois, ajustez les congés et les autres absences, puis validez-le. Si vous revenez modifier l\'absentéisme ensuite, la répartition des mois non validés est refaite automatiquement.'],
     ['Comment sont calculés les congés acquis sur l\'année ?', 'Les congés se comptent en jours ouvrables : une semaine de congés = 6 jours (du lundi au samedi). Un salarié roulant à temps plein acquiert 30 jours par an (5 semaines, soit 175 h), 2,5 jours par mois de présence ; un jour de congé retire donc 35/6 ≈ 5,8 h à un temps plein. Un temps partiel ou un salarié partiellement roulant (régulateur, REX ou facturière avec un % roulant) en acquiert au prorata de ses heures et de sa part roulante. Pendant un arrêt maladie, les congés continuent de s\'acquérir (loi d\'avril 2024), à 2 jours ouvrables par mois au lieu de 2,5 : SOMA applique 80 % du rythme normal à la part d\'absentéisme saisie. Plus l\'absentéisme est élevé, un peu moins l\'équipe acquiert de congés. Les heures de congés sont payées (indemnité de congés payés) et comptées dans la masse salariale. C\'est ce total, affiché « Acquis sur l\'année », que la répartition automatique pose sur vos semaines.'],
     ['Le compteur des congés affiche « posés en trop » ou « encore à poser » : pourquoi ?', 'Le compteur compare les jours acquis sur l\'année aux jours posés. Juste après « Répartir les congés automatiquement », les deux sont égaux. Ils s\'écartent ensuite pour deux raisons : vous avez déplacé, ajouté ou retiré des congés à la main (c\'est votre choix, le compteur le montre), ou des mois déjà validés ne bougent plus. Quand vous modifiez l\'absentéisme ou l\'équipe (salarié ajouté ou retiré, dates, temps de travail, part roulante), les jours acquis changent et SOMA refait aussitôt la répartition des mois non validés : le compteur reste équilibré. Sinon, relancez la répartition ou ajustez les jours à la main. « Congés à poser sur les mois non validés » est le volume que la répartition place sur les mois encore ouverts : les jours acquis moins ceux déjà posés sur les mois validés.'],
-    ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Le compteur de mois validés suit votre avancement. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
+    ['Que veut dire « Valider ce mois » ?', 'Quand les congés et les autres absences d\'un mois sont posés et que l\'équilibre vous convient, « ✓ Valider ce mois » le fige en lecture seule : la répartition automatique des congés ne le modifie plus et travaille autour de lui. Avant de valider, le mois affiche la proposition de SOMA et vos jours posés : l\'écart (jours en plus ou en moins) est reporté sur les mois non validés, qui sont recalculés. Après la validation, un bilan montre les mois qui ont bougé et l\'effet sur le coût des heures supplémentaires. Si vous avez aussi modifié un autre mois non validé, validez-le d\'abord pour garder vos choix. C\'est réversible à tout moment : rouvrez le mois pour le modifier.'],
     ['Comment anticiper un CDD saisonnier ou un départ ?', 'Dans l\'équipe, renseignez les dates d\'entrée et de sortie de chaque salarié. SOMA tient compte de ces mouvements semaine par semaine : un CDD saisonnier n\'ajoute de la capacité que pendant sa période, un départ la retire à partir de sa date. Votre budget reflète ainsi la réalité de vos effectifs tout au long de l\'année.'],
     ['Comment sont pris en compte les régulateurs et responsables ?', 'Ce sont du personnel improductif : ils ne produisent pas de chiffre d\'affaires sur la route, mais ils ont un coût. SOMA les intègre dans la masse salariale sans les compter dans la capacité roulante. Leur coût est saisi en une seule ligne globale par le contrôleur de gestion : vous n\'avez pas de salaire à renseigner. Leur absentéisme suit le même taux que les roulants. Chaque agence en a, c\'est normal. Leurs jours de congés se saisissent dans le bloc « Personnel improductif » de l\'écran Présence & HS, mois par mois, avec un compteur acquis / posés et une répartition automatique 60/20/20. Ces congés n\'ont aucun coût dans le budget : leur salaire est déjà dans la ligne globale et ils ne sont pas remplacés.'],
     ['Comment saisir les indemnités repas et dimanche/jour férié ?', 'Sur l\'écran Présence, le bloc indemnités permet de renseigner, semaine par semaine, les montants pour le personnel roulant et non-roulant. Comme les congés, ce sont des saisies récurrentes qui alimentent votre masse salariale prévisionnelle.'],
