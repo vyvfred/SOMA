@@ -1299,6 +1299,8 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <span class="rolePill" id="userRolePill"></span>
     </div>
 
+    <!-- Profils multiples (nov. 2026) : sélecteur affiché seulement si l'utilisateur a plusieurs rôles -->
+    <label id="choixProfil" data-testid="choix-profil" style="display:none;align-items:center;gap:6px;font-size:12px;margin:0 6px 0 0" title="Vous avez plusieurs profils : choisissez celui avec lequel travailler"><span style="color:var(--ink65)">Profil</span><select id="choixProfilSelect" data-testid="choix-profil-select" onchange="changerRoleMono(this.value)" style="width:auto;margin:0;padding:4px 8px;font-size:12px"></select></label>
     <!-- Thème clair / sombre (nov. 2026) -->
     <button type="button" id="btnTheme" data-testid="btn-theme" onclick="basculerTheme()" style="width:auto;margin:0 6px 0 0;padding:6px 10px;font-size:15px;line-height:1" title="Passer au thème sombre" aria-label="Passer au thème sombre">☾</button>
     <!-- Menu des actions occasionnelles -->
@@ -2238,7 +2240,7 @@ const CG_GROUPS = [
   { label: null, items: ['cgdash'] },
   { label: 'Préparer', items: ['refagences','periodes','variablesdec','affectation','cg'] },
   { label: 'Suivre le réseau', items: ['comparative','consolidation','graphiques'] },
-  { label: 'Une agence', items: ['objectif','rex','finance','controle'] },
+  { label: 'Une agence', items: ['objectif','rex','finance','justif','controle'] },
   { label: 'Valider', items: ['validation'] },
   { label: null, items: ['aide'] }
 ];
@@ -2331,13 +2333,14 @@ async function afterLogin(user) {
   USER = user;
   const {data: prof} = await sb.from('profiles').select('*').eq('id', user.id).single();
   if (!prof) { q('authErr').textContent = 'Profil introuvable. Contactez l\'administrateur.'; return; }
-  PROFILE = prof;
+  PROFILE = profilEffectifMono(prof);
   // Journal des connexions (nov. 2026)
   if (!JOURNAL_MONO) JOURNAL_MONO = creerJournal(function(n, p){ return sb.rpc(n, p); });
   JOURNAL_MONO.demarrer();
   q('authScreen').style.display = 'none';
   q('appWrapper').style.display = '';
   q('userNom').textContent = prof.nom;
+  majChoixProfil();
   q('userRolePill').textContent = roleLabel(prof.role);
   setupUI();
   setTimeout(animateCounters, 500);
@@ -7520,6 +7523,29 @@ function renderFinance(){let a=A(),ca=ann(a,"Chiffre d'affaires"),ms=ann(a,"Char
 // ACTIONS UTILISATEUR
 // ═══════════════════════════════════════════════
 function setRef(act,m,t,v){A().refs[act][m][t]=v===''?null:+v;genCal(A());render()}
+// ── Profils multiples (nov. 2026) : rôle actif choisi parmi le rôle principal et les rôles supplémentaires ──
+const LIBELLES_ROLES = { rex:'REX', cg:'Contrôleur de gestion', dr:'Directeur régional', df:'Directeur financier', dg:'Direction', pdg:'Direction', admin:'Administrateur' };
+function profilEffectifMono(d){
+  if(!d) return d;
+  let supp = Array.isArray(d.roles_supp) ? d.roles_supp.filter(function(r){ return r && r !== d.role; }) : [];
+  let actif = d.role_actif && (d.role_actif === d.role || supp.indexOf(d.role_actif) >= 0) ? d.role_actif : d.role;
+  return Object.assign({}, d, { rolePrincipal: d.role, rolesDispo: [d.role].concat(supp), role: actif });
+}
+function majChoixProfil(){
+  let l = q('choixProfil'), s = q('choixProfilSelect'); if(!l || !s) return;
+  let p = (typeof _originalProfile !== 'undefined' && _originalProfile) ? _originalProfile : PROFILE;
+  let roles = p && p.rolesDispo || [];
+  if(roles.length < 2){ l.style.display = 'none'; return; }
+  l.style.display = 'flex';
+  s.innerHTML = roles.map(function(r){ return '<option value="' + r + '"' + (r === p.role ? ' selected' : '') + '>' + (LIBELLES_ROLES[r] || r) + '</option>'; }).join('');
+}
+async function changerRoleMono(r){
+  let s = q('choixProfilSelect'); if(s) s.disabled = true;
+  let res = await sb.rpc('choisir_role', { p_role: r });
+  if(res.error){ alert('Bascule impossible : ' + res.error.message); if(s) s.disabled = false; return; }
+  window.location.reload();
+}
+
 // ── Thème d'affichage (nov. 2026) : clair par défaut, sombre au choix, mémorisé sur l'appareil ──
 function majBoutonTheme(){ let b=q('btnTheme'); if(!b) return; let s=document.documentElement.getAttribute('data-theme')==='dark'; b.textContent=s?'☀':'☾'; b.title=s?'Passer au thème clair':'Passer au thème sombre'; b.setAttribute('aria-label',b.title); }
 function basculerTheme(){ let s=document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark'; document.documentElement.setAttribute('data-theme',s); try{localStorage.setItem('soma.theme',s);}catch(e){} majBoutonTheme(); }
