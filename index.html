@@ -1758,6 +1758,19 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 </section>
 
 <!-- PANEL PÉRIODES DE PAIE -->
+<section id="justif" class="panel">
+  <div class="card" data-testid="justif">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="justifTitre" style="margin:0">Détail des calculs</h2><span style="flex:1"></span><button class="secondary" data-testid="justif-export" style="font-size:12px" onclick="exporterJustif()">⬇ Tout exporter (Excel)</button></div>
+    <p class="hint" style="margin:6px 0 12px">Comment SOMA obtient chaque montant : masse salariale du mois poste par poste, variables de paie, stockage et déstockage des congés payés, heures. Les chiffres sont ceux de l'application, à l'euro près (arrondis).</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button id="justifOnglet_ms" data-testid="justif-onglet-ms" style="font-size:12px" onclick="ongletJustif('ms')">Masse salariale</button>
+      <button id="justifOnglet_var" data-testid="justif-onglet-var" class="secondary" style="font-size:12px" onclick="ongletJustif('var')">Variables de paie</button>
+      <button id="justifOnglet_cp" data-testid="justif-onglet-cp" class="secondary" style="font-size:12px" onclick="ongletJustif('cp')">Stock de congés payés</button>
+      <button id="justifOnglet_h" data-testid="justif-onglet-h" class="secondary" style="font-size:12px" onclick="ongletJustif('h')">Heures</button>
+    </div>
+    <div id="justifContenu"></div>
+  </div>
+</section>
 <section id="periodes" class="panel">
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
@@ -2218,7 +2231,7 @@ function resultatAffiche(a){return vueExploitation(a)?{lib:"Résultat d'exploita
 function lignesSIG(a,consolide){let l=T.filter(function(r){return (consolide||estSiege(a)||LIGNES_SIEGE.indexOf(r.label)<0)&&(consolide||!estStructure(a)||LIGNES_QUOTE_PART.indexOf(r.label)<0);});if(!consolide&&vueExploitation(a)){let i=l.findIndex(function(r){return r.label==="RESULTAT D'EXPLOITATION";});l=l.slice(0,i+1);}return l}
 function caStructure(a,m){let x=a.rex&&a.rex["Chiffre d'affaires"];if(!x)return 0;if(x.mode==='annual')return (+x.annual||0)/12;if(x.mode==='month')return x.values&&x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0;return 0}
 const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['charges','Charges'],['previsionnel','Prévisionnel'],['finance','Synthèse'],['aide','Aide']];
-const panelsCG=[['cgdash','Tableau de bord'],['refagences','Données agences'],['periodes','Périodes de paie'],['variablesdec','Variables déc. 2026'],['affectation','Affectation DR'],['comparative','Vue comparative'],['graphiques','Graphiques'],['consolidation','Consolidation'],['objectif','Ouvrir une agence'],['cg','Charges CG'],['rex','Prévisionnel'],['finance','Synthèse'],['controle','Contrôles'],['validation','Budgets à valider'],['aide','Aide']];
+const panelsCG=[['cgdash','Tableau de bord'],['refagences','Données agences'],['periodes','Périodes de paie'],['variablesdec','Variables déc. 2026'],['affectation','Affectation DR'],['comparative','Vue comparative'],['graphiques','Graphiques'],['consolidation','Consolidation'],['objectif','Ouvrir une agence'],['cg','Charges CG'],['rex','Prévisionnel'],['finance','Synthèse'],['justif','Détail des calculs'],['controle','Contrôles'],['validation','Budgets à valider'],['aide','Aide']];
 // Regroupement des onglets CG en sections thématiques (le travail du CG n'est pas séquentiel)
 const CG_GROUPS = [
   { label: null, items: ['cgdash'] },
@@ -2846,6 +2859,7 @@ function show(id) {
   if (id === 'refagences') renderRefAgences();
   if (id === 'comparative') renderComparative();
   if (id === 'periodes') renderPeriodes();
+  if (id === 'justif') renderJustif();
   if (id === 'variablesdec') renderVariablesDec();
   if (id === 'graphiques') renderGraphiques();
   if (id === 'aide') renderAide();
@@ -10120,23 +10134,23 @@ function feuillesDetailMS(a){
 // ── Détail du calcul de la masse salariale (écran Périodes de paie, nov. 2026) ──
 let DETAIL_MS_OUVERT = false, DETAIL_MS_MOIS = 0;
 function basculerDetailMS(v){ DETAIL_MS_OUVERT = v; renderDetailMSMono(); }
-function choisirMoisDetailMS(m){ DETAIL_MS_MOIS = m; renderDetailMSMono(); }
+function choisirMoisDetailMS(m){ DETAIL_MS_MOIS = m; renderDetailMSMono(); renderDetailMSMono('detailMSJustif', true); }
 function exporterDetailMS(){
   let a = A(), wb = XLSX.utils.book_new();
   feuillesDetailMS(a).forEach(function(f){ let ws = XLSX.utils.aoa_to_sheet(f.lignes); if(f.largeurs) ws['!cols'] = f.largeurs.map(function(w){ return {wch:w}; }); XLSX.utils.book_append_sheet(wb, ws, f.nom); });
   XLSX.writeFile(wb, 'SOMA_detail_masse_salariale_' + a.name.replace(/\s+/g, '_') + '_2027.xlsx');
 }
-function renderDetailMSMono(){
-  let el = q('detailMS'), a = A();
+function renderDetailMSMono(elId, toujoursOuvert){
+  let el = q(elId || 'detailMS'), a = A();
   if(!el) return;
   if(!(a && a.costHour && a.cal && a.cal.length)){ el.innerHTML = ''; return; }
-  if(!DETAIL_MS_OUVERT){ el.innerHTML = '<button class="secondary" data-testid="detail-ms-ouvrir" onclick="basculerDetailMS(true)" style="margin-top:14px;font-size:12px">▸ Détail du calcul de la masse salariale</button>'; return; }
+  if(!DETAIL_MS_OUVERT && !toujoursOuvert){ el.innerHTML = '<button class="secondary" data-testid="detail-ms-ouvrir" onclick="basculerDetailMS(true)" style="margin-top:14px;font-size:12px">▸ Détail du calcul de la masse salariale</button>'; return; }
   let d = avecCacheMoteur(function(){ return M.map(function(_, m){ return detailMSMois(a, m); }); });
   let mo = DETAIL_MS_MOIS, nb = function(v){ return Math.abs(v) >= 0.5 ? Math.round(v).toLocaleString('fr-FR') : ''; };
   let fond = function(m){ return m === mo ? 'background:rgba(139,127,255,.10);' : ''; };
   let h = '<div data-testid="detail-ms" style="margin-top:14px;padding:14px;border:1px solid var(--border)">'
     + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0;font-size:15px">Détail du calcul de la masse salariale</h3><span style="flex:1"></span>'
-    + '<button class="secondary" style="font-size:12px" onclick="exporterDetailMS()">⬇ Exporter (Excel)</button><button class="secondary" style="font-size:12px" onclick="basculerDetailMS(false)">Fermer</button></div>'
+    + '<button class="secondary" style="font-size:12px" onclick="exporterDetailMS()">⬇ Exporter (Excel)</button>' + (toujoursOuvert ? '' : '<button class="secondary" style="font-size:12px" onclick="basculerDetailMS(false)">Fermer</button>') + '</div>'
     + '<p class="hint" style="font-size:12px;margin:0 0 10px">Salaires de base mensualisés ; variables (HS, retenues) rattachées à la période de paie, au prorata des jours. Cliquez sur un mois pour afficher ses formules. Le total de chaque colonne est la masse salariale du mois.</p>'
     + '<div class="tablewrap"><table style="font-size:11px"><tr><th style="text-align:left">Poste</th>'
     + d.map(function(x, m){ return '<th style="cursor:pointer;' + fond(m) + '" onclick="choisirMoisDetailMS(' + m + ')">' + M[m] + '</th>'; }).join('') + '<th>Total</th></tr>';
@@ -10157,6 +10171,114 @@ function renderDetailMSMono(){
       + '<tr><td><b>Total</b></td><td class="num"><b>' + euro(Math.round(dm.total)) + '</b></td><td></td></tr></table>';
   }
   el.innerHTML = h + '</div>';
+}
+
+// Justification des calculs (écran « Détail des calculs », contrôleur de gestion et direction financière, nov. 2026).
+// Tous les montants viennent des mêmes fonctions que le reste de l'application : rien n'est recalculé autrement.
+
+// Congés payés des roulants, mois par mois : acquisition (stockage) et prise (déstockage), en jours ouvrables,
+// en heures (1 j = 35/6 h) et valorisés au coût horaire chargé du mois. Stock d'ouverture au 31/12/2026 : non saisi (0).
+function cpAcquisMois(a,m){
+  let tauxMal=a.sick&&a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]/100:0,ref='2027-'+String(m+1).padStart(2,'0')+'-15';
+  return (a.employees||[]).filter(estRoulantPart).reduce(function(s,e){
+    if(!empPresent(e,ref))return s;
+    return s+CP_JOURS_MOIS*(1-tauxMal*(1-CP_ACQUIS_MALADIE))*((+e.hours||0)/35)*partRoulant(e);
+  },0);
+}
+function cpPrisMois(a,m){
+  let s=0;
+  needWeeks(a).forEach(function(w){if(moisDeSemaine(a,w.week).indexOf(m)>=0)s+=absPartMois(a,w.week,'cp',m);});
+  return s;
+}
+function tableauCPStock(a){
+  let stockJ=0,stockE=0;
+  return M.map(function(lib,m){
+    let ch=chMois(a,m),acq=cpAcquisMois(a,m),pris=cpPrisMois(a,m);
+    let acqE=acq*CP_HEURES_JOUR*ch,prisE=pris*CP_HEURES_JOUR*ch;
+    stockJ+=acq-pris;stockE+=acqE-prisE;
+    let nrAcq=cpNRAcquisMois(a,m),nrPris=a.cpNR&&a.cpNR.jours?(+a.cpNR.jours[m]||0):0;
+    return {mois:m,lib:lib,taux:ch,acquisJ:acq,acquisH:acq*CP_HEURES_JOUR,acquisE:acqE,prisJ:pris,prisH:pris*CP_HEURES_JOUR,prisE:prisE,
+      variationJ:acq-pris,variationE:acqE-prisE,stockJ:stockJ,stockE:stockE,nrAcquisJ:nrAcq,nrPrisJ:nrPris};
+  });
+}
+// Heures du mois civil (semaines à cheval au prorata des jours) : besoin, capacité, congés, maladie, absences, HS
+function tableauHeures(a){
+  let rows=hsRows(a);
+  return M.map(function(lib,m){
+    let t={mois:m,lib:lib,besoin:0,base:0,cp:0,maladie:0,absPayees:0,absNonPayees:0,dispo:0,hs:0};
+    rows.forEach(function(r){
+      let k=partSemaineMois(a,r.week,m);if(!k)return;
+      let p=pres(a,r.week);
+      t.besoin+=(r.hours||0)*k;t.base+=p.base*k;t.maladie+=p.mal*k;t.dispo+=p.av*k;t.hs+=(r.hs||0)*k;
+      t.cp+=absPartMois(a,r.week,'cp',m)*CP_HEURES_JOUR;
+      t.absPayees+=absPartMois(a,r.week,'otherPaid',m)*7;t.absNonPayees+=absPartMois(a,r.week,'other',m)*7;
+    });
+    return t;
+  });
+}
+// Variables de paie par mois de paie (période de 4 ou 5 semaines) : extraites du détail de la masse salariale
+function tableauVariables(a){
+  return M.map(function(lib,m){
+    let d=detailMSMois(a,m),g=function(k){let l=d.lignes.find(function(x){return x.cle===k;});return l?l.montant:0;};
+    return {mois:m,lib:lib,periode:d.periode,hs:g('hs'),retMaladie:g('mal'),retAbsences:g('abs'),lissage:g('lissage'),dec2026:g('dec'),hsNR:g('hsnr'),repas:g('repas'),
+      total:g('hs')+g('mal')+g('abs')+g('lissage')+g('dec')+g('hsnr')+g('repas')};
+  });
+}
+// Classeur Excel complet : masse salariale (montants + formules), variables de paie, stock de congés, heures
+function feuillesJustif(a){
+  let r=function(v){return Math.round(v);},r1=function(v){return Math.round(v*10)/10;};
+  let f=feuillesDetailMS(a);
+  let v=tableauVariables(a);
+  f.push({nom:'Variables de paie',largeurs:[12,14,14,14,14,14,14,14,14],lignes:[['Mois de paie','HS majorées','Retenue maladie','Retenue absences','Lissage 5e sem.','Variables déc. 2026','HS non-roulants','Repas et IDJF','Total variables']].concat(v.map(function(x){return [x.lib,r(x.hs),r(x.retMaladie),r(x.retAbsences),r(x.lissage),r(x.dec2026),r(x.hsNR),r(x.repas),r(x.total)];}))});
+  let c=tableauCPStock(a);
+  f.push({nom:'Stock congés payés',largeurs:[12,12,12,14,12,12,14,14,12,14,12,12],lignes:[['Mois','Coût horaire','Acquis (j)','Stockage (€)','Pris (j)','Pris (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roulants acquis (j)','Non-roulants pris (j)']].concat(c.map(function(x){return [x.lib,Math.round(x.taux*100)/100,r1(x.acquisJ),r(x.acquisE),r1(x.prisJ),r1(x.prisH),r(x.prisE),r(x.variationE),r1(x.stockJ),r(x.stockE),r1(x.nrAcquisJ),r1(x.nrPrisJ)];}))});
+  let h=tableauHeures(a);
+  f.push({nom:'Heures par mois',largeurs:[12,12,12,12,12,12,12,12,12],lignes:[['Mois','Besoin','Heures contrat','Congés','Maladie','Abs. payées','Abs. non payées','Disponibles','HS']].concat(h.map(function(x){return [x.lib,r(x.besoin),r(x.base),r(x.cp),r(x.maladie),r(x.absPayees),r(x.absNonPayees),r(x.dispo),r(x.hs)];}))});
+  return f;
+}
+
+// ── Écran « Détail des calculs » (contrôleur de gestion, nov. 2026) ──
+let JUSTIF_ONGLET = 'ms';
+function ongletJustif(k){ JUSTIF_ONGLET = k; renderJustif(); }
+function exporterJustif(){
+  let a = A(), wb = XLSX.utils.book_new();
+  feuillesJustif(a).forEach(function(f){ let ws = XLSX.utils.aoa_to_sheet(f.lignes); if(f.largeurs) ws['!cols'] = f.largeurs.map(function(w){ return {wch:w}; }); XLSX.utils.book_append_sheet(wb, ws, f.nom); });
+  XLSX.writeFile(wb, 'SOMA_detail_calculs_' + a.name.replace(/\s+/g, '_') + '_2027.xlsx');
+}
+function renderJustif(){
+  let el = q('justifContenu'), a = A(); if(!el) return;
+  if(q('justifTitre')) q('justifTitre').textContent = 'Détail des calculs — ' + (a ? a.name : '');
+  ['ms','var','cp','h'].forEach(function(k){ let b = q('justifOnglet_' + k); if(b) b.className = JUSTIF_ONGLET === k ? '' : 'secondary'; });
+  if(!(a && a.costHour && a.cal && a.cal.length)){ el.innerHTML = '<p class="hint">Le coût horaire de l\'agence (Charges CG) et le calendrier doivent être renseignés pour afficher les calculs.</p>'; return; }
+  let n0 = function(v){ return Math.abs(v) >= 0.5 ? Math.round(v).toLocaleString('fr-FR') : ''; }, n1 = function(v){ return Math.abs(v) >= 0.05 ? (Math.round(v*10)/10).toLocaleString('fr-FR') : ''; };
+  let sum = function(tb, k){ return tb.reduce(function(s, x){ return s + x[k]; }, 0); };
+  let tab = function(id, ent, lignes, total){
+    return '<div class="tablewrap"><table data-testid="' + id + '" style="font-size:12px"><tr>' + ent.map(function(h, i){ return '<th' + (i ? ' class="num"' : '') + '>' + h + '</th>'; }).join('') + '</tr>'
+      + lignes.map(function(l){ return '<tr>' + l.map(function(v, j){ return '<td' + (j ? ' class="num"' + (String(v).charAt(0) === '-' ? ' style="color:var(--orange)"' : '') : '') + '>' + v + '</td>'; }).join('') + '</tr>'; }).join('')
+      + (total ? '<tr style="font-weight:700">' + total.map(function(v, j){ return '<td' + (j ? ' class="num"' : '') + '>' + v + '</td>'; }).join('') + '</tr>' : '') + '</table></div>';
+  };
+  if(JUSTIF_ONGLET === 'ms'){ el.innerHTML = '<div id="detailMSJustif"></div>'; renderDetailMSMono('detailMSJustif', true); return; }
+  if(JUSTIF_ONGLET === 'var'){
+    let v = avecCacheMoteur(function(){ return tableauVariables(a); });
+    el.innerHTML = '<p class="hint" style="font-size:12px">Variables payées sur la période de paie de chaque mois (4 ou 5 semaines) : heures supplémentaires majorées (25 / 50 %, précarité CDD comprise), retenues pour la part de maladie non maintenue et les absences non payées, lissage de la 5e semaine, variables de décembre 2026 sur janvier, heures supplémentaires des non-roulants, indemnités repas et IDJF. Le salaire de base, mensualisé, n\'en fait pas partie.</p>'
+      + tab('justif-var', ['Mois de paie','HS majorées','Retenue maladie','Retenue absences','Lissage 5e sem.','Variables déc. 2026','HS non-roulants','Repas et IDJF','Total variables'],
+        v.map(function(x){ return [x.lib, n0(x.hs), n0(x.retMaladie), n0(x.retAbsences), n0(x.lissage), n0(x.dec2026), n0(x.hsNR), n0(x.repas), n0(x.total)]; }),
+        ['Total', n0(sum(v,'hs')), n0(sum(v,'retMaladie')), n0(sum(v,'retAbsences')), n0(sum(v,'lissage')), n0(sum(v,'dec2026')), n0(sum(v,'hsNR')), n0(sum(v,'repas')), n0(sum(v,'total'))]);
+    return;
+  }
+  if(JUSTIF_ONGLET === 'cp'){
+    let c = avecCacheMoteur(function(){ return tableauCPStock(a); });
+    el.innerHTML = '<p class="hint" style="font-size:12px">Congés des roulants en jours ouvrables (6 par semaine de congés). <b>Stockage</b> : jours acquis dans le mois (2,5 j par mois pour un temps plein, 80 % pendant les arrêts maladie, au prorata des heures et de la part roulante). <b>Déstockage</b> : jours posés dans le mois. Valorisation : jours × 5,83 h × coût horaire chargé du mois. Le stock part de 0 au 1er janvier 2027 (reliquat 2026 non saisi). Les congés sont payés dans le salaire mensualisé : la variation de stock n\'ajoute pas de charge à la masse salariale de l\'application, elle sert au suivi de la provision.</p>'
+      + tab('justif-cp', ['Mois','Coût h.','Acquis (j)','Stockage (€)','Posés (j)','Posés (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roul. acquis (j)','Non-roul. posés (j)'],
+        c.map(function(x){ return [x.lib, x.taux.toFixed(2).replace('.', ','), n1(x.acquisJ), n0(x.acquisE), n1(x.prisJ), n1(x.prisH), n0(x.prisE), (x.variationE < 0 ? '-' : '') + n0(Math.abs(x.variationE)), (Math.round(x.stockJ*10)/10).toLocaleString('fr-FR'), Math.round(x.stockE).toLocaleString('fr-FR'), n1(x.nrAcquisJ), n1(x.nrPrisJ)]; }),
+        ['Année', '', n1(sum(c,'acquisJ')), n0(sum(c,'acquisE')), n1(sum(c,'prisJ')), n1(sum(c,'prisH')), n0(sum(c,'prisE')), n0(sum(c,'variationE')), n1(c[11].stockJ), n0(c[11].stockE), n1(sum(c,'nrAcquisJ')), n1(sum(c,'nrPrisJ'))]);
+    return;
+  }
+  let h = avecCacheMoteur(function(){ return tableauHeures(a); });
+  el.innerHTML = '<p class="hint" style="font-size:12px">Heures des roulants par mois civil (une semaine à cheval sur deux mois est répartie au prorata des jours). Besoin = CA des jours du calendrier ÷ TXR. Disponibles = heures du contrat − congés − maladie − absences. HS = besoin − disponibles, calculé semaine par semaine.</p>'
+    + tab('justif-h', ['Mois','Besoin','Heures contrat','Congés','Maladie','Abs. payées','Abs. non payées','Disponibles','HS'],
+      h.map(function(x){ return [x.lib, n0(x.besoin), n0(x.base), n0(x.cp), n0(x.maladie), n0(x.absPayees), n0(x.absNonPayees), n0(x.dispo), n0(x.hs)]; }),
+      ['Année', n0(sum(h,'besoin')), n0(sum(h,'base')), n0(sum(h,'cp')), n0(sum(h,'maladie')), n0(sum(h,'absPayees')), n0(sum(h,'absNonPayees')), n0(sum(h,'dispo')), n0(sum(h,'hs'))]);
 }
 
 function setPeriodeDate(idx, field, val) {
@@ -10690,7 +10812,7 @@ const FAQ_CG_SECTIONS = [
   ]},
   { t: 'Étape 2 — Périodes de paie', items: [
     ['Comment fonctionnent les périodes de paie ?', 'Chaque mois de paie collecte les variables d\'une période qui ne coïncide pas avec le mois civil (par défaut, la paie de janvier couvre du 7 décembre 2026 au 10 janvier 2027). Les salaires de base sont mensualisés (le même montant chaque mois, art. L3242-1 du Code du travail) : seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) sont rattachées à la période de paie. La paie de janvier comprend les variables de décembre 2026 saisies ; les variables du 6 au 31 décembre 2027 sont reportées sur la paie de janvier 2028. Chaque trimestre compte un mois de paie à 5 semaines (janvier, avril, juillet, octobre). On ne garde que 4 semaines de variables par mois : les heures supplémentaires de la 5e semaine sont lissées sur le trimestre (le mois à 5 semaines est diminué des 2/3 de cette semaine, chacun des deux mois suivants en reçoit 1/3). Les heures du 6 au 31 décembre 2027 passent sur la paie de janvier 2028 : leur montant est affiché à part, en charges à reporter.'],
-    ['Comment voir le détail du calcul de la masse salariale d\'un mois ?', 'Écran Périodes de paie, bouton « Détail du calcul de la masse salariale » sous le tableau. Une ligne par poste (salaire de base mensualisé des roulants, heures supplémentaires majorées, retenues pour maladie non maintenue et absences non payées, lissage de la 5e semaine, variables de décembre 2026, non-roulants, quote-part DR, heures supplémentaires des non-roulants, indemnités repas et IDJF), une colonne par mois de paie : le total de chaque colonne est la masse salariale du mois. Cliquez sur un mois pour afficher la formule chiffrée de chaque ligne. « Exporter (Excel) » produit deux feuilles : les montants et les formules des 12 mois. Le détail semaine par semaine (heures, heures supplémentaires, congés, absences, maladie) est dans Présence & HS, en vue « REX exploitation ».'],
+    ['Comment voir le détail du calcul de la masse salariale d\'un mois ?', 'Menu <b>Détail des calculs</b> (après avoir ouvert l\'agence) : quatre onglets. <b>Masse salariale</b> : une ligne par poste (salaire de base mensualisé des roulants, heures supplémentaires majorées, retenues pour maladie non maintenue et absences non payées, lissage de la 5e semaine, variables de décembre 2026, non-roulants, quote-part DR, HS des non-roulants, repas et IDJF) et une colonne par mois de paie ; cliquez sur un mois pour la formule chiffrée de chaque ligne. <b>Variables de paie</b> : les variables de chaque période de paie. <b>Stock de congés payés</b> : jours acquis (stockage) et posés (déstockage) chaque mois, valorisés au coût horaire chargé, variation et stock cumulé. <b>Heures</b> : besoin, heures du contrat, congés, maladie, absences, heures disponibles et HS par mois. « Tout exporter (Excel) » donne les cinq tableaux. Le détail de la masse salariale reste aussi accessible depuis Périodes de paie.'],
     ['Les dates s\'appliquent-elles à toutes les agences ?', 'Non : les périodes sont propres à chaque agence. Ouvrez l\'agence (« Ouvrir une agence »), puis revenez sur Périodes de paie pour vérifier ou corriger ses dates ; la modification est enregistrée automatiquement. Sans agence ouverte, l\'écran montre le calendrier standard, et une modification n\'est enregistrée nulle part. Si le calendrier standard correspond à votre paie, il n\'y a rien à faire. « Réinitialiser par défaut » remet le calendrier standard sur l\'agence ouverte.'],
     ['Pourquoi la masse salariale ne colle pas au temps travaillé du mois ?', 'Parce que la paie suit ses propres périodes, décalées par rapport aux mois civils, et qu\'elle intègre des éléments variables (heures supplémentaires, indemnités) rattachés à la période où ils sont payés, pas à celle où ils sont travaillés.'],
   ]},
