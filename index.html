@@ -1390,6 +1390,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <textarea id="perspectives" data-testid="contexte-texte" rows="5" style="width:100%" placeholder="Ex : renouvellement du contrat EHPAD en janvier (+8 % d'activité attendue), fin du contrat de la clinique X en juin, recrutement d'un CDD saisonnier en juillet, TXR attendu stable car mêmes tarifs…"></textarea>
       <div id="contexteManque" data-testid="contexte-manque" style="font-size:12px;color:var(--orange);margin-top:4px"></div>
     </div>
+    <div id="reperesREX"></div>
     <div style="font-size:15px;font-weight:700;margin:4px 0 0">2. Objectif de CA et TXR cible</div>
     <!-- 2 KPI éditables : les 2 décisions que le REX vient prendre -->
     <div class="objKpiRow" data-visite="objectif">
@@ -2045,6 +2046,20 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
   <p class="hint" style="max-width:760px">Ouvrez le budget d'une agence de votre région pour le saisir à la place du REX, par exemple pendant un accompagnement. Tout ce que vous saisissez s'affiche <span class="legendeDR" style="margin-left:0"><i></i> en orange</span> : le REX voit ce que vous avez modifié. Dès qu'il modifie une de ces valeurs, elle reprend la couleur normale. Un budget déjà soumis ne se saisit plus : il se valide dans « Budgets à valider ».</p>
   <div id="saisieDRListe" data-visite="saisie-agences"><p class="hint">Chargement…</p></div>
 </section>
+<section id="reperes" class="panel">
+  <div class="card">
+    <h2 style="margin-bottom:6px">Tableau de bord 2026</h2>
+    <p class="hint" style="font-size:13px;margin:0">Le budget 2027 de chaque agence face à son réalisé 2025 et à son atterrissage 2026 (réalisé des mois clos + estimation du contrôle de gestion pour les derniers mois). Ces repères éclairent la décision des valideurs ; ils ne modifient aucun budget. Seuils d'alerte : CA ±3 % face à l'atterrissage, ±1 point de CA sur les ratios, budget 2026 non tenu de plus d'1 point de CA.</p>
+    <div id="tdbImport" style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input id="tdbFichier" data-testid="tdb-fichier" type="file" accept=".xlsx,.xls" style="display:none" onchange="importerTDB(this.files[0])">
+      <button type="button" data-testid="tdb-importer" onclick="q('tdbFichier').click()" style="width:auto;margin:0;font-size:12px;padding:8px 14px">⇪ Importer le tableau de bord (Excel)</button>
+      <span class="hint" style="font-size:12px">Un onglet par agence (nom en A1, colonnes « B mm-26 » pour le budget) et l'onglet « 26 Vs 25 » pour 2025. Réimportez après chaque clôture : vos estimations sont conservées.</span>
+    </div>
+    <div id="tdbMessage" data-testid="tdb-message" style="margin-top:8px;font-size:12px;color:var(--ink65)"></div>
+  </div>
+  <div class="card" id="tdbListe"></div>
+  <div class="card" id="tdbDetail" data-testid="tdb-detail" style="display:none"></div>
+</section>
 <section id="suivi" class="panel"><div class="card"><div id="suiviContenu" data-testid="suivi-rex"><p class="hint">Chargement…</p></div></div></section>
 <section id="validation" class="panel">
   <div class="card">
@@ -2249,12 +2264,12 @@ function totalLigneAn(l){return (l&&l.valeurs?l.valeurs:[]).reduce(function(s,v)
 function ligneStructureVide(nom){return {id:'l'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),nom:nom||'',valeurs:Array(12).fill(null)};}
 function caStructure(a,m){if(lignesStructure(a,'lignesCA').length)return totalLignesMois(a,'lignesCA',m);let x=a.rex&&a.rex["Chiffre d'affaires"];if(!x)return 0;if(x.mode==='annual')return (+x.annual||0)/12;if(x.mode==='month')return x.values&&x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0;return 0}
 const panelsREX=[['objectif','Objectif'],['refs','Références CA'],['cal','Calendrier'],['team','Équipe'],['rh','Présence & HS'],['charges','Charges'],['previsionnel','Prévisionnel'],['finance','Synthèse'],['aide','Aide']];
-const panelsCG=[['cgdash','Tableau de bord'],['refagences','Données agences'],['periodes','Périodes de paie'],['variablesdec','Variables déc. 2026'],['affectation','Affectation DR'],['comparative','Vue comparative'],['graphiques','Graphiques'],['consolidation','Consolidation'],['objectif','Ouvrir une agence'],['cg','Charges CG'],['rex','Prévisionnel'],['finance','Synthèse'],['justif','Détail des calculs'],['controle','Contrôles'],['validation','Budgets à valider'],['aide','Aide']];
+const panelsCG=[['cgdash','Tableau de bord'],['refagences','Données agences'],['periodes','Périodes de paie'],['variablesdec','Variables déc. 2026'],['affectation','Affectation DR'],['comparative','Vue comparative'],['graphiques','Graphiques'],['consolidation','Consolidation'],['reperes','Tableau de bord 2026'],['objectif','Ouvrir une agence'],['cg','Charges CG'],['rex','Prévisionnel'],['finance','Synthèse'],['justif','Détail des calculs'],['controle','Contrôles'],['validation','Budgets à valider'],['aide','Aide']];
 // Regroupement des onglets CG en sections thématiques (le travail du CG n'est pas séquentiel)
 const CG_GROUPS = [
   { label: null, items: ['cgdash'] },
   { label: 'Préparer', items: ['refagences','periodes','variablesdec','affectation','cg'] },
-  { label: 'Suivre le réseau', items: ['comparative','consolidation','graphiques'] },
+  { label: 'Suivre le réseau', items: ['comparative','consolidation','reperes','graphiques'] },
   { label: 'Une agence', items: ['objectif','rex','finance','justif','controle'] },
   { label: 'Valider', items: ['validation'] },
   { label: null, items: ['aide'] }
@@ -2719,8 +2734,8 @@ function buildNavValidateur() {
   let role = PROFILE.role;
   let labels = { dr:'Directeur Régional', dg:'Direction (DG, directeurs opérationnels)', pdg:'Direction (DG, directeurs opérationnels)' };
   let panels = (role === 'dr')
-    ? [['validation','Budgets à valider'],['suivi','Suivi des REX'],['saisie','Saisir pour un REX'],['consolidation','Consolidation région'],['aide','Aide']]
-    : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['justif','Détail des calculs'],['aide','Aide']];
+    ? [['validation','Budgets à valider'],['suivi','Suivi des REX'],['reperes','Tableau de bord 2026'],['saisie','Saisir pour un REX'],['consolidation','Consolidation région'],['aide','Aide']]
+    : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['reperes','Tableau de bord 2026'],['justif','Détail des calculs'],['aide','Aide']];
   let h = '<div class="navgroup navGlobalLabel">' + (labels[role]||'Validation') + '</div>';
   let activeId = document.querySelector('.panel.active')?.id || 'validation';
   panels.forEach(function(x){
@@ -2885,6 +2900,7 @@ function show(id) {
   if (id === 'aide') renderAide();
   if (id === 'consolidation') renderConsolidation();
   if (id === 'suivi') renderSuiviREX();
+  if (id === 'reperes') renderReperes();
   if (id === 'affectation') renderAffectation();
   if (id === 'admin') renderAdmin();
   if (id === 'journal') renderJournal();
@@ -4195,6 +4211,7 @@ function bind(){
     });
   }
   majContexte2027(a);
+  majReperesREX(a);
   // Afficher le hint costHour (janvier / juin) et le coût de la ligne non-roulante
   majAffichageParamSalarial(a);
   if(q('agencySel')){
@@ -4850,6 +4867,7 @@ async function renderValidationCollegial(){
 
   // Charger tous les budgets soumis
   let {data:budgets} = await sb.from('budgets').select('agence,statut,data,updated_at').eq('annee',2027);
+  REPERES_CACHE = await chargerReperesMono(); // repères 2026 du tableau de bord (information pour la décision)
   if(loading) loading.style.display = 'none';
   budgets = budgets || [];
 
@@ -5107,7 +5125,8 @@ function ficheDecisionsHTML(d, agenceNom){
   let ctxTxt = String((d && d.perspectives) || '').trim();
   let contexte = '<div data-testid="fiche-contexte" style="margin:8px 0;padding:8px 10px;border-left:3px solid var(--violet);background:var(--card2);font-size:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--violet);margin-bottom:3px">Perspectives &amp; contexte 2027 du REX</div>'
     + (ctxTxt ? '<div style="white-space:pre-wrap">' + jEsc(d.perspectives) + '</div>' : '<i style="color:var(--ink65)">Non rédigé</i>') + '</div>';
-  return depart + contexte + '<div class="ficheLignes">' + lignes + '</div>' + conseq;
+  let reperes = reperesBlocHTML(d, REPERES_CACHE && REPERES_CACHE[agenceNom]);
+  return depart + contexte + reperes + '<div class="ficheLignes">' + lignes + '</div>' + conseq;
 }
 
 function validationCard(it, role){
@@ -8809,6 +8828,262 @@ function isFilled(v) { return v !== null && v !== undefined && v !== ''; }
 const CONTEXTE_MIN_CARACTERES = 80;
 function contexteRedige(a){return !!a&&String(a.perspectives||'').trim().length>=CONTEXTE_MIN_CARACTERES;}
 function contexteManque(a){return Math.max(0,CONTEXTE_MIN_CARACTERES-String((a&&a.perspectives)||'').trim().length);}
+// Repères 2026 issus du tableau de bord du contrôle de gestion (nov. 2026) : réalisé 2025, réalisé 2026 des mois clos,
+// estimation des derniers mois par le CG, budget 2026. Ils INFORMENT les valideurs (et le REX sur son agence) ;
+// ils ne pré-remplissent jamais le budget 2027.
+const INDICATEURS_REPERES=[
+  {cle:'ca',label:"Chiffre d'affaires",lib:"Chiffre d'affaires"},
+  {cle:'ext',label:'Autres Achats et charges externes',lib:'Charges externes'},
+  {cle:'perso',label:'Charges de personnel',lib:'Charges de personnel'},
+  {cle:'rex',label:"RESULTAT D'EXPLOITATION",lib:"Résultat d'exploitation"}
+];
+// Seuils d'alerte volontairement sensibles : écart de CA en %, ratios en points de CA
+const SEUILS_REPERES={ca:3,caErreur:30,ratio:1,fiabCA:3,fiabRex:1};
+const MOIS_TDB=['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
+function valRep(v){if(v===null||v===undefined||v==='')return null;let n=typeof v==='number'?v:+String(v).replace(/\s/g,'').replace(',','.');return isFinite(n)?n:null;}
+function normRep(x){return String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();}
+// Nom d'onglet ou de ligne du tableau de bord -> agence SOMA (« ST GILLES » -> SAINT GILLES CROIX DE VIE, « FORMATION (…) » -> CENTRE DE FORMATION)
+function agenceDuTDB(nom,agences){
+  let n=normRep(nom).replace(/^ST /,'SAINT ');
+  if(!n)return null;
+  if(/^FORMATION/.test(n))n='CENTRE DE FORMATION';
+  if(/^RESEAU ADH|^ADHERENT/.test(n))n='RESEAU ADHERENT';
+  if(/^EXCEPT/.test(n))n='EXCEPTIONNEL';
+  let t=agences.find(function(a){return normRep(a)===n;});
+  if(t)return t;
+  t=agences.find(function(a){let x=normRep(a);return x.indexOf(n)===0||n.indexOf(x)===0;});
+  return t||null;
+}
+// Lecture du classeur : feuilles = { nomOnglet: lignes[][] }. Onglet par agence : A1 = nom, colonnes « B mm-26 » = budget,
+// deux colonnes avant = réalisé du mois. Onglet « 26 Vs 25 » : CA, charges externes, charges de personnel et REX 2025.
+function lireTableauDeBord(feuilles,agences){
+  let parAgence={},inconnues=[];
+  Object.keys(feuilles).forEach(function(onglet){
+    let rows=feuilles[onglet]||[];if(!rows.length)return;
+    let tete=rows[0]||[];
+    let cols=[];tete.forEach(function(h,j){let mt=/^B\s*(\d{1,2})-26/.exec(String(h||'').trim());if(mt)cols[+mt[1]-1]=j;});
+    if(cols.filter(function(x){return x!==undefined;}).length<12)return;
+    let ag=agenceDuTDB(tete[0],agences);
+    if(!ag){let n=normRep(tete[0]);if(n&&!/VYV/.test(n))inconnues.push(String(tete[0]).trim());return;}
+    let reel={},budget={};
+    rows.slice(1).forEach(function(r){let lab=String(r[0]||'').trim();if(!lab)return;
+      reel[lab]=cols.map(function(j){return valRep(r[j-2]);});budget[lab]=cols.map(function(j){return valRep(r[j]);});});
+    // Mois clos : dernier mois avec un réalisé (CA, charges de personnel ou REX ; le Siège n'a pas de CA)
+    let mc=0;["Chiffre d'affaires",'Charges de personnel',"RESULTAT D'EXPLOITATION"].forEach(function(l){let s=reel[l]||[];for(let m=0;m<12;m++)if(s[m]!==null&&s[m]!==undefined&&s[m]!==0&&m+1>mc)mc=m+1;});
+    parAgence[ag]={nomTDB:String(tete[0]).trim(),moisClos:mc,reel:reel,budget:budget};
+  });
+  let comp=Object.keys(feuilles).find(function(o){return /26\s*VS\s*25/i.test(o);});
+  if(comp){
+    let rows=feuilles[comp],tete=rows[0]||[],col={};
+    tete.forEach(function(h,j){let i=MOIS_TDB.indexOf(normRep(h).toLowerCase());if(i>=0)col[i]=j+1;});
+    let cle={'CA':'ca','CHARGES EXTERNES':'ext','CHGES EXTERNES':'ext','CHARGES PERSO':'perso','CHGES PERSO':'perso','REX':'rex'},cour=null;
+    rows.slice(2).forEach(function(r){
+      if(String(r[0]||'').trim())cour=agenceDuTDB(r[0],agences);
+      let k=cle[normRep(r[1])];if(!cour||!k||!parAgence[cour])return;
+      if(!parAgence[cour].n1)parAgence[cour].n1={};
+      parAgence[cour].n1[k]=MOIS_TDB.map(function(_,m){return col[m]!==undefined?valRep(r[col[m]]):null;});
+    });
+  }
+  return {parAgence:parAgence,inconnues:inconnues};
+}
+function indRep(cle){return INDICATEURS_REPERES.find(function(i){return i.cle===cle;});}
+function serieRep(r,quoi,cle){let ind=indRep(cle);if(!r||!ind)return [];if(quoi==='n1')return (r.n1&&r.n1[cle])||[];let s=r[quoi]&&r[quoi][ind.label];return s||[];}
+function estimRep(r,cle,m){let e=r&&r.estim&&r.estim[cle];return e?valRep(e[m]):null;}
+function sommeRep(s,de,a){let t=0;for(let m=de;m<a;m++)t+=valRep(s[m])||0;return t;}
+// Atterrissage 2026 = réalisé des mois clos + estimation du CG pour les mois restants (à défaut : budget 2026, signalé)
+function atterrissage2026(r,cle){
+  let mc=(r&&r.moisClos)||0,re=serieRep(r,'reel',cle),bu=serieRep(r,'budget',cle),tot=sommeRep(re,0,mc),manquants=0;
+  for(let m=mc;m<12;m++){let e=estimRep(r,cle,m);if(e===null){manquants++;e=valRep(bu[m])||0;}tot+=e;}
+  return {val:tot,manquants:manquants,moisClos:mc};
+}
+function annuel2025(r,cle){let s=serieRep(r,'n1',cle);return s.length?sommeRep(s,0,12):null;}
+function budget2027Rep(a,cle){
+  if(!a)return 0;
+  if(cle==='ca'){let t=0;for(let m=0;m<12;m++)t+=monthCA(a,m);return t;}
+  return ann(a,indRep(cle).label);
+}
+function pctRep(v,ca){return ca?v/ca*100:null;}
+function fmtPts(v){return (v>0?'+':'')+(Math.round(v*10)/10).toLocaleString('fr-FR')+' pt';}
+function fmtPctRep(v){return (Math.round(v*10)/10).toLocaleString('fr-FR')+' %';}
+function fmtKRep(v){return Math.round(v/1000).toLocaleString('fr-FR')+' k€';}
+// Repères d'une agence pour la décision : tableau 2025 / atterrissage 2026 / budget 2027, fiabilité du budget 2026, alertes
+function reperesAgence(a,r){
+  if(!r)return null;
+  let lignes=INDICATEURS_REPERES.map(function(ind){
+    let at=atterrissage2026(r,ind.cle),v27=budget2027Rep(a,ind.cle);
+    return {cle:ind.cle,lib:ind.lib,v2025:annuel2025(r,ind.cle),v2026:at.val,v2027:v27,manquants:at.manquants};
+  });
+  let L={};lignes.forEach(function(l){L[l.cle]=l;});
+  let ca26=L.ca.v2026,ca27=L.ca.v2027,ca25=L.ca.v2025;
+  let ratios=['ext','perso','rex'].map(function(k){return {cle:k,lib:L[k].lib,r2025:ca25?pctRep(L[k].v2025||0,ca25):null,r2026:pctRep(L[k].v2026,ca26),r2027:pctRep(L[k].v2027,ca27)};});
+  let mc=r.moisClos||0,fiab=null;
+  if(mc>0){
+    let caR=sommeRep(serieRep(r,'reel','ca'),0,mc),caB=sommeRep(serieRep(r,'budget','ca'),0,mc),rxR=sommeRep(serieRep(r,'reel','rex'),0,mc),rxB=sommeRep(serieRep(r,'budget','rex'),0,mc);
+    fiab={mois:mc,caReel:caR,caBudget:caB,rexReel:rxR,rexBudget:rxB};
+  }
+  let al=[];
+  if(ca27>0&&ca26>0){
+    let d=(ca27/ca26-1)*100;
+    if(Math.abs(d)>=SEUILS_REPERES.caErreur)al.push({niveau:'alerte',texte:'CA 2027 ('+fmtKRep(ca27)+') très éloigné de l\'atterrissage 2026 ('+fmtKRep(ca26)+', '+(d>0?'+':'')+fmtPctRep(d)+') : erreur de saisie ?'});
+    else if(Math.abs(d)>SEUILS_REPERES.ca)al.push({niveau:'attention',texte:'CA 2027 '+(d>0?'+':'')+fmtPctRep(d)+' par rapport à l\'atterrissage 2026 : hypothèses à retrouver dans le contexte du REX'});
+  }
+  if(ca27>0&&ca26>0)ratios.forEach(function(x){
+    if(x.r2026===null||x.r2027===null)return;
+    let d=x.r2027-x.r2026,favorable=x.cle==='rex'?d>0:d<0;
+    if(Math.abs(d)>=SEUILS_REPERES.ratio)al.push({niveau:favorable?'attention':'alerte',texte:x.lib+' : '+fmtPctRep(x.r2027)+' du CA en 2027 contre '+fmtPctRep(x.r2026)+' en 2026 ('+fmtPts(d)+')'+(favorable?' : amélioration à justifier':' : dégradation')});
+  });
+  if(fiab){
+    let dCA=fiab.caBudget?(fiab.caReel/fiab.caBudget-1)*100:0,dRex=fiab.caBudget?(fiab.rexReel-fiab.rexBudget)/fiab.caBudget*100:0;
+    if(dRex<=-SEUILS_REPERES.fiabRex)al.push({niveau:'alerte',texte:'Budget 2026 non tenu : résultat d\'exploitation réalisé '+fmtKRep(fiab.rexReel)+' sur '+fiab.mois+' mois contre '+fmtKRep(fiab.rexBudget)+' budgétés ('+fmtPts(dRex)+' de CA)'});
+    if(Math.abs(dCA)>SEUILS_REPERES.fiabCA)al.push({niveau:'info',texte:'CA 2026 réalisé '+(dCA>0?'+':'')+fmtPctRep(dCA)+' par rapport au budget 2026 sur '+fiab.mois+' mois'});
+  }
+  if(L.ca.manquants)al.push({niveau:'info',texte:'Atterrissage provisoire : estimation des '+L.ca.manquants+' derniers mois non saisie par le contrôle de gestion (budget 2026 retenu)'});
+  let ordre={alerte:0,attention:1,info:2};al.sort(function(x,y){return ordre[x.niveau]-ordre[y.niveau];});
+  return {lignes:lignes,ratios:ratios,fiabilite:fiab,alertes:al,moisClos:mc};
+}
+
+// ── Repères 2026 : tableau de bord du contrôle de gestion (parité avec la version React, nov. 2026) ──
+let REPERES_CACHE=null,TDB_ETAT={reperes:{},lignes:[],choix:null};
+async function chargerReperesMono(agence){
+  let req=sb.from('reperes').select('agence,data,updated_at').eq('annee',2026);
+  if(agence)req=req.eq('agence',agence);
+  let res=await req;if(res.error)return {};
+  let map={};(res.data||[]).forEach(function(x){map[x.agence]=Object.assign({},x.data||{},{majLe:x.updated_at});});
+  return map;
+}
+async function ecrireRepereMono(agence,data){
+  let ex=(await sb.from('reperes').select('agence,data').eq('agence',agence).eq('annee',2026).maybeSingle()).data;
+  if(ex)return sb.from('reperes').update({data:Object.assign({},ex.data||{},data),updated_at:new Date().toISOString()}).eq('agence',agence).eq('annee',2026);
+  return sb.from('reperes').insert({agence:agence,annee:2026,data:data,updated_at:new Date().toISOString()});
+}
+function periodeReperes(r){
+  let mc=(r&&r.moisClos)||0;if(!mc)return 'aucun mois clos';
+  return 'réalisé '+(mc===1?M[0]:M[0]+'–'+M[mc-1])+(mc<12?' + estimation CG '+(mc===11?M[11]:M[mc]+'–'+M[11]):'');
+}
+function reperesBlocHTML(a,r,titre,sansBudget){
+  if(!r)return '';
+  let x=reperesAgence(a,r);if(!x)return '';
+  let k=function(v){return v===null||v===undefined?'—':Math.round(v/1000).toLocaleString('fr-FR')+' k€';};
+  let p1=function(v){return v===null||v===undefined||!isFinite(v)?'—':(Math.round(v*10)/10).toLocaleString('fr-FR')+' %';};
+  let cel='padding:3px 8px;text-align:right;white-space:nowrap',coul={alerte:'var(--red, #c0392b)',attention:'var(--orange, #c45300)',info:'var(--blue2, #3d6fd6)'},ic={alerte:'⚠',attention:'◆',info:'ℹ'};
+  let h='<div data-testid="reperes-2026" style="margin:8px 0;padding:10px 12px;border:1px solid var(--border);background:var(--card2);font-size:12px">'
+    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--blue2, #3d6fd6);margin-bottom:4px">'+(titre||'Repères 2026 — tableau de bord')+'</div>'
+    +'<div style="color:var(--ink65);margin-bottom:6px">Atterrissage 2026 : '+periodeReperes(r)+'. Pour information : ces chiffres ne modifient pas le budget.</div>'
+    +'<div class="tablewrap"><table style="border-collapse:collapse;font-size:12px"><tr><th style="'+cel+';text-align:left"></th><th style="'+cel+'">Réalisé 2025</th><th style="'+cel+'">Atterrissage 2026</th>'+(sansBudget?'':'<th style="'+cel+'">Budget 2027</th><th style="'+cel+'">2027 / 2026</th>')+'</tr>';
+  x.lignes.forEach(function(l){
+    let e=l.v2026&&l.v2027?(l.v2027/l.v2026-1)*100:null;
+    h+='<tr data-testid="reperes-'+l.cle+'"><td style="'+cel+';text-align:left">'+l.lib+'</td><td style="'+cel+'">'+k(l.v2025)+'</td><td style="'+cel+';font-weight:700">'+k(l.v2026)+'</td>'
+      +(sansBudget?'':'<td style="'+cel+'">'+k(l.v2027)+'</td><td style="'+cel+'">'+(e===null||l.cle==='rex'?'—':(e>0?'+':'')+p1(e))+'</td>')+'</tr>';
+  });
+  x.ratios.forEach(function(t){
+    let d=t.r2026!==null&&t.r2027!==null?t.r2027-t.r2026:null;
+    h+='<tr style="color:var(--ink65)"><td style="'+cel+';text-align:left">'+t.lib+' / CA</td><td style="'+cel+'">'+p1(t.r2025)+'</td><td style="'+cel+'">'+p1(t.r2026)+'</td>'
+      +(sansBudget?'':'<td style="'+cel+'">'+p1(t.r2027)+'</td><td style="'+cel+'">'+(d===null?'—':(d>0?'+':'')+(Math.round(d*10)/10).toLocaleString('fr-FR')+' pt')+'</td>')+'</tr>';
+  });
+  h+='</table></div>';
+  if(x.fiabilite)h+='<div data-testid="reperes-fiabilite" style="margin-top:6px">Budget 2026 sur '+x.fiabilite.mois+' mois : CA réalisé <b>'+k(x.fiabilite.caReel)+'</b> pour '+k(x.fiabilite.caBudget)+' budgétés · résultat d\'exploitation réalisé <b>'+k(x.fiabilite.rexReel)+'</b> pour '+k(x.fiabilite.rexBudget)+' budgétés.</div>';
+  let al=sansBudget?x.alertes.filter(function(z){return !/2027/.test(z.texte);}):x.alertes;
+  if(al.length)h+='<ul data-testid="reperes-alertes" style="margin:6px 0 0;padding-left:0;list-style:none">'+al.map(function(z){return '<li data-niveau="'+z.niveau+'" style="color:'+coul[z.niveau]+';margin:2px 0">'+ic[z.niveau]+' '+jEsc(z.texte)+'</li>';}).join('')+'</ul>';
+  return h+'</div>';
+}
+// Bloc du REX sur l'écran Objectif (son agence seulement)
+let REPERES_REX={nom:null,r:null};
+function majReperesREX(a){
+  let el=q('reperesREX');if(!el)return;
+  if(!a||!a.name||a.name==='Nouvelle agence'||estStructure(a)){el.innerHTML='';return;}
+  if(REPERES_REX.nom!==a.name){REPERES_REX={nom:a.name,r:null};chargerReperesMono(a.name).then(function(m){if(REPERES_REX.nom===a.name){REPERES_REX.r=m[a.name]||null;majReperesREX(A());}});}
+  el.innerHTML=REPERES_REX.r?reperesBlocHTML(a,REPERES_REX.r,'Vos repères 2026 (tableau de bord du contrôle de gestion)'):'';
+}
+// Écran « Tableau de bord 2026 »
+async function renderReperes(){
+  let cg=PROFILE&&['cg','admin'].indexOf(PROFILE.role)>=0;
+  if(q('tdbImport'))q('tdbImport').style.display=cg?'':'none';
+  let liste=q('tdbListe');if(!liste)return;
+  liste.innerHTML='<p class="hint">Chargement…</p>';
+  let reperes=await chargerReperesMono();
+  if(PROFILE.role==='dr'){let aff=await loadAffectationMap();Object.keys(reperes).forEach(function(n){let d=aff&&aff[n];if(!d||d.id!==PROFILE.id)delete reperes[n];});}
+  let bud=(await sb.from('budgets').select('agence,statut,data').eq('annee',2027)).data||[],bm={};bud.forEach(function(b){bm[b.agence]=b;});
+  let lignes=avecCacheMoteur(function(){return Object.keys(reperes).map(function(nom){
+    let a=agency(nom);try{if(bm[nom])a=Object.assign(agency(nom),JSON.parse(JSON.stringify(budgetData(bm[nom].data))),{name:nom});convertirCPOuvrables(a);}catch(e){a=agency(nom);}
+    let x=reperesAgence(a,reperes[nom]),L={};x.lignes.forEach(function(l){L[l.cle]=l;});
+    let n={alerte:0,attention:0,info:0};x.alertes.forEach(function(z){n[z.niveau]++;});
+    return {nom:nom,a:a,r:reperes[nom],x:x,L:L,n:n,rex26:L.ca.v2026?L.rex.v2026/L.ca.v2026*100:null,rex27:L.ca.v2027?L.rex.v2027/L.ca.v2027*100:null};
+  }).sort(function(u,v){return (v.n.alerte-u.n.alerte)||(v.n.attention-u.n.attention)||u.nom.localeCompare(v.nom);});});
+  TDB_ETAT.reperes=reperes;TDB_ETAT.lignes=lignes;
+  afficherTDB();
+}
+function afficherTDB(){
+  let liste=q('tdbListe'),lignes=TDB_ETAT.lignes,cg=PROFILE&&['cg','admin'].indexOf(PROFILE.role)>=0;
+  let k=function(v){return v===null||v===undefined?'—':Math.round(v/1000).toLocaleString('fr-FR')+' k€';};
+  let p1=function(v){return v===null||v===undefined||!isFinite(v)?'—':(Math.round(v*10)/10).toLocaleString('fr-FR')+' %';};
+  if(!lignes.length){liste.innerHTML='<p class="hint" data-testid="tdb-vide">Aucun tableau de bord importé pour l\'instant'+(cg?'':' : le contrôle de gestion doit l\'importer')+'.</p>';q('tdbDetail').style.display='none';return;}
+  let h='<div class="tablewrap"><table data-testid="tdb-table" style="border-collapse:collapse;font-size:12px;width:100%"><thead><tr><th style="text-align:left;padding:4px 6px">Agence</th><th>Atterrissage</th><th>CA 2026</th><th>CA 2027</th><th>Écart</th><th>REX/CA 2026</th><th>REX/CA 2027</th><th>Alertes</th></tr></thead><tbody>';
+  lignes.forEach(function(l){
+    let d=l.L.ca.v2026&&l.L.ca.v2027?(l.L.ca.v2027/l.L.ca.v2026-1)*100:null;
+    h+='<tr data-testid="tdb-ligne-'+l.nom+'" onclick="choisirTDB(\''+l.nom.replace(/'/g,"\\'")+'\')" style="cursor:pointer;border-top:1px solid var(--border)'+(l.nom===TDB_ETAT.choix?';background:var(--bg2)':'')+'">'
+      +'<td style="padding:5px 6px;font-weight:700">'+l.nom+'</td>'
+      +'<td style="text-align:center;color:'+(l.L.ca.manquants?'var(--orange)':'var(--green)')+'" title="'+periodeReperes(l.r)+'">'+(l.r.moisClos||0)+' mois'+(l.L.ca.manquants?' + à estimer':' + estimés')+'</td>'
+      +'<td class="num">'+k(l.L.ca.v2026)+'</td><td class="num">'+(l.L.ca.v2027?k(l.L.ca.v2027):'—')+'</td>'
+      +'<td class="num" style="'+(d!==null&&Math.abs(d)>3?'color:var(--orange)':'')+'">'+(d===null?'—':(d>0?'+':'')+p1(d))+'</td>'
+      +'<td class="num">'+p1(l.rex26)+'</td><td class="num">'+p1(l.rex27)+'</td>'
+      +'<td style="white-space:nowrap;text-align:center">'+(l.n.alerte?'<span style="color:var(--red, #c0392b);font-weight:700">⚠ '+l.n.alerte+' </span>':'')+(l.n.attention?'<span style="color:var(--orange);font-weight:700">◆ '+l.n.attention+'</span>':'')+(!l.n.alerte&&!l.n.attention?'<span style="color:var(--green)">✓</span>':'')+'</td></tr>';
+  });
+  liste.innerHTML=h+'</tbody></table></div>';
+  afficherDetailTDB();
+}
+function choisirTDB(nom){TDB_ETAT.choix=TDB_ETAT.choix===nom?null:nom;afficherTDB();}
+function afficherDetailTDB(){
+  let det=q('tdbDetail'),l=TDB_ETAT.lignes.find(function(x){return x.nom===TDB_ETAT.choix;});
+  if(!l){det.style.display='none';det.innerHTML='';return;}
+  det.style.display='';
+  let cg=PROFILE&&['cg','admin'].indexOf(PROFILE.role)>=0,r=l.r,mc=r.moisClos||0,h='<h3 style="margin-top:0">'+l.nom+'</h3>';
+  if(cg){
+    if(mc>=12)h+='<p class="hint" style="font-size:12px">Les 12 mois de 2026 sont clos : l\'atterrissage est le réalisé.</p>';
+    else{
+      let mois=[];for(let m=mc;m<12;m++)mois.push(m);
+      h+='<div data-testid="estimation-cg" style="margin-bottom:10px"><h4 style="margin:6px 0">Estimation des derniers mois (contrôle de gestion)</h4>'
+        +'<p class="hint" style="font-size:12px;margin:0 0 6px">L\'atterrissage 2026 = réalisé '+M[0]+'–'+M[mc-1]+' + votre estimation pour '+mois.map(function(m){return M[m];}).join(', ')+'. En gris : budget 2026 du mois, retenu tant que vous n\'avez rien saisi.</p>'
+        +'<table style="border-collapse:collapse;font-size:12px"><tr><th style="text-align:left;padding:3px 6px">Indicateur</th>'+mois.map(function(m){return '<th style="padding:3px 6px">'+M[m]+'</th>';}).join('')+'</tr>';
+      INDICATEURS_REPERES.forEach(function(ind){
+        h+='<tr><td style="padding:3px 6px">'+ind.lib+'</td>'+mois.map(function(m){let v=estimRep(r,ind.cle,m),b=Math.round(valRep(serieRep(r,'budget',ind.cle)[m])||0);
+          return '<td style="padding:2px 3px"><input type="number" data-testid="estim-'+ind.cle+'-'+m+'" data-cle="'+ind.cle+'" data-m="'+m+'" value="'+(v===null?'':v)+'" placeholder="'+b+'" style="width:110px;text-align:right;padding:6px 4px"></td>';}).join('')+'</tr>';
+      });
+      h+='</table><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center"><button type="button" data-testid="estim-enregistrer" onclick="enregistrerEstimTDB()" style="width:auto;margin:0;font-size:12px;padding:7px 14px">Enregistrer l\'estimation</button>'
+        +'<button type="button" class="secondary" onclick="reprendreBudgetTDB()" style="width:auto;margin:0;font-size:12px;padding:7px 14px">Reprendre le budget 2026 de ces mois</button><span id="tdbEstimMsg" style="font-size:12px;color:var(--ink65)"></span></div></div>';
+    }
+  }
+  h+=reperesBlocHTML(l.a,r,null,!l.L.ca.v2027);
+  det.innerHTML=h;
+}
+function reprendreBudgetTDB(){
+  let l=TDB_ETAT.lignes.find(function(x){return x.nom===TDB_ETAT.choix;});if(!l)return;
+  document.querySelectorAll('#tdbDetail input[data-cle]').forEach(function(i){i.value=Math.round(valRep(serieRep(l.r,'budget',i.dataset.cle)[+i.dataset.m])||0);});
+}
+async function enregistrerEstimTDB(){
+  let nom=TDB_ETAT.choix;if(!nom)return;
+  let estim={};INDICATEURS_REPERES.forEach(function(ind){estim[ind.cle]=Array(12).fill(null);});
+  document.querySelectorAll('#tdbDetail input[data-cle]').forEach(function(i){if(i.value!=='')estim[i.dataset.cle][+i.dataset.m]=+String(i.value).replace(/\s/g,'').replace(',','.');});
+  let res=await ecrireRepereMono(nom,{estim:estim,estimeLe:new Date().toISOString()});
+  await renderReperes();
+  if(q('tdbEstimMsg'))q('tdbEstimMsg').textContent=res&&res.error?'Échec de l\'enregistrement.':'Estimation enregistrée.';
+}
+async function importerTDB(f){
+  if(!f)return;
+  let msg=q('tdbMessage');msg.textContent='Import…';
+  try{
+    let wb=XLSX.read(new Uint8Array(await f.arrayBuffer()),{type:'array'}),feuilles={};
+    wb.SheetNames.forEach(function(n){feuilles[n]=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''});});
+    let res=lireTableauDeBord(feuilles,agences.map(function(x){return x.nom;}));
+    let noms=Object.keys(res.parAgence);
+    if(!noms.length){msg.textContent='Aucun onglet d\'agence reconnu dans ce fichier.';return;}
+    let ok=0,echecs=[];
+    for(let i=0;i<noms.length;i++){let r=await ecrireRepereMono(noms[i],Object.assign({},res.parAgence[noms[i]],{fichier:f.name,importeLe:new Date().toISOString()}));if(r&&r.error)echecs.push(noms[i]);else ok++;}
+    msg.textContent=ok+' agence(s) et structure(s) importée(s)'+(echecs.length?' ; échec : '+echecs.join(', '):'')+(res.inconnues.length?' ; onglets non reconnus : '+res.inconnues.join(', '):'')+'.';
+    await renderReperes();
+  }catch(e){msg.textContent='Lecture impossible : '+(e.message||e);}
+  if(q('tdbFichier'))q('tdbFichier').value='';
+}
+
 function avancementBudget(d, updatedAt){
   d = d || {};
   let refs = d.refs || {}, acts = ['san'];
@@ -10982,6 +11257,7 @@ const FAQ_CG_SECTIONS = [
     ['Mes saisies sont-elles enregistrées automatiquement ?', 'Cela dépend de l\'écran. <b>Données agences</b> et <b>Variables déc. 2026</b> : cliquez sur « Enregistrer » ; tant que ce n\'est pas fait, rien n\'est sauvegardé (les variables non enregistrées sont marquées « ● non enregistré »). <b>Charges CG</b> et <b>Périodes de paie</b>, sur une agence ouverte : enregistrement automatique 1,5 seconde après la dernière modification. <b>Affectation DR</b> : enregistrée dès que vous choisissez un DR.'],
   ]},
   { t: 'Étape 1 — Données agences et équipes', items: [
+    ['Comment importer le tableau de bord 2026 et estimer les derniers mois ?', 'Menu <b>Tableau de bord 2026</b>, bouton « Importer le tableau de bord (Excel) » : le classeur habituel, un onglet par agence et structure (nom en A1, réalisé et colonnes « B mm-26 » du budget) et l\'onglet « 26 Vs 25 » pour 2025. Cliquez ensuite sur une agence : saisissez votre <b>estimation des mois non clos</b> (CA, charges externes, charges de personnel, résultat d\'exploitation). L\'atterrissage 2026 = réalisé des mois clos + votre estimation ; tant qu\'elle manque, le budget 2026 du mois est retenu et l\'atterrissage est signalé « provisoire ». Réimportez après chaque clôture : vos estimations sont conservées. Ces chiffres n\'alimentent jamais le budget 2027 : ils informent les valideurs (fiche de validation, tableau de bord) et le REX sur son agence.'],
     ['Comment bien préparer les références des agences ?', 'Pour chaque agence : le CA 2025 et 2026, le TXR 2026 (CA par heure travaillée), le taux d\'absentéisme cible (maladie et accident du travail), le taux horaire brut au 1er janvier et au 1er juin, le taux de charges patronales des roulants, et la ligne de masse salariale non-roulante (salaire brut mensuel total et taux de charges). SOMA calcule le coût horaire chargé. Ces données servent de socle au REX et de point de comparaison entre agences : plus elles sont justes, plus les budgets seront réalistes et faciles à juger.'],
     ['Comment pré-remplir les données de toutes les agences ?', 'Avec « Importer données agences » : un fichier Excel, une ligne par agence. Colonnes reconnues par leur intitulé : Agence, CA 2025, CA 2026, TXR 2026, Absentéisme %, Taux brut 1er janvier, Taux brut 1er juin, Charges patronales %, MS non-roulante brut mensuel, Charges non-roulants %. L\'import écrit directement dans le budget de chaque agence, même si le REX l\'a déjà commencé. Vous pouvez ensuite ajuster agence par agence dans le tableau.'],
     ['Que se passe-t-il quand je clique sur « Enregistrer » ?', 'Seules les agences pour lesquelles vous avez saisi quelque chose sont enregistrées. Les valeurs vont dans le budget de l\'agence (toutes ses versions V1, V2, V3), le coût horaire est recalculé, et les champs de référence sont verrouillés côté REX. Le ratio de maintien de salaire est recopié dans toutes les agences. Un message vous indique le nombre d\'agences enregistrées, et le nom de celles qui auraient été refusées par le serveur.'],
@@ -11036,6 +11312,7 @@ const FAQ_CG_SECTIONS = [
 
 const FAQ = {
   rex: [
+    ['Que sont « Vos repères 2026 » sur l\'écran Objectif ?', 'Le réalisé 2025 et l\'atterrissage 2026 de votre agence (réalisé des mois clos et estimation du contrôle de gestion pour les derniers mois), issus du tableau de bord : CA, charges externes, charges de personnel, résultat d\'exploitation et leurs ratios au CA, à côté de votre budget 2027. C\'est une information pour fixer votre objectif et rédiger votre contexte : rien n\'est repris automatiquement dans votre budget. Votre DR et la direction voient les mêmes repères sur la fiche de validation.'],
     ['Pourquoi dois-je rédiger les « Perspectives & contexte 2027 » avant mon objectif ?', 'C\'est la première étape de l\'écran Objectif, et elle est obligatoire : décrivez ce qui change en 2027 (contrats gagnés ou perdus, évolution de l\'activité, gardes, effectifs, véhicules…). L\'objectif de CA et le TXR cible se débloquent une fois ce texte rédigé (80 caractères au minimum), et il est exigé pour soumettre le budget. Il s\'affiche sur la fiche de validation du DR, du contrôle de gestion et de la direction : c\'est lui qui justifie vos chiffres.'],
     ['Par où je commence ?', 'Suivez les étapes dans l\'ordre de la barre latérale : d\'abord votre objectif de chiffre d\'affaires, puis votre équipe, puis la présence et les heures supplémentaires, vos six postes de charges (étape « Charges »), et enfin le prévisionnel et la synthèse. À chaque écran, SOMA vous guide et calcule les conséquences de vos choix. Vous n\'avez jamais à tout remplir d\'un coup : vous avancez pas à pas.'],
     ['Comment saisir mes références CA journalières ?', 'Sur l\'écran Références CA, indiquez pour chaque mois le chiffre d\'affaires moyen d\'une journée selon son type : jour de semaine normal, jour de semaine pendant les vacances scolaires, samedi, dimanche, jour férié. Il y a un tableau par activité : sanitaire, et saisonnier ou transport de personnes si vous les avez cochés sur l\'écran Objectif. Partez de votre réalisé 2026 et de ce que vous savez de 2027. Le calendrier applique ensuite ces montants à chaque jour de 2027 (vacances de votre zone, jours fériés) : c\'est ce qui donne votre CA budgété, mois par mois. Votre objectif de CA se saisit à part, sur l\'écran Objectif ; la synthèse compare les deux.'],
@@ -11080,6 +11357,7 @@ const FAQ = {
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
   valideur: [
+    ['Que sont les « Repères 2026 » sur la fiche de validation ?', 'Le budget 2027 de l\'agence face à son réalisé 2025 et à son atterrissage 2026 (tableau de bord du contrôle de gestion) : CA, charges externes, charges de personnel, résultat d\'exploitation et ratios au CA, avec la fiabilité du budget 2026 (réalisé contre budget des mois clos). Les alertes sont volontairement sensibles : CA 2027 à plus de 3 % de l\'atterrissage (au-delà de 30 % : erreur de saisie probable), ratio qui bouge d\'1 point de CA ou plus, budget 2026 non tenu de plus d\'1 point de CA. Une alerte n\'est pas un refus : elle signale ce qu\'il faut retrouver dans le contexte du REX. Le menu <b>Tableau de bord 2026</b> classe les agences de votre périmètre par nombre d\'alertes.'],
     ['Comment suivre l\'avancement de mes REX ?', 'Écran « Suivi des REX » : pour chaque agence de votre région, le REX et sa dernière activité dans SOMA, le statut du budget, son avancement et ses six jalons (objectif, références CA, équipe, absentéisme, mois validés, charges), et la date de la dernière modification. Les agences à relancer sont en tête : budget non commencé, REX jamais connecté, ou aucune modification depuis 7 jours. « Voir le budget » ouvre tous les écrans de l\'agence en lecture seule, même en brouillon ; « Saisir » ouvre la saisie à la place du REX.'],
     ['Le DR peut-il voir les versions V1, V2, V3 d\'un budget ?', 'Oui. Quand vous ouvrez une agence avec « Saisir pour un REX », ou un budget avec « Voir tous les écrans », la barre des versions de l\'écran Objectif permet de passer d\'une version à l\'autre et de les comparer. En validation, la fiche de décisions porte toujours sur la version que le REX a choisie pour la soumission (★).'],
     ['Où trouver la visite guidée et les supports de formation ?', 'La visite guidée de vos écrans s\'ouvre à votre première connexion. Pour la revoir, ouvrez l\'écran Aide : le bloc « Supports de formation » la relance, et donne aussi la vidéo du parcours du REX (2 min 35) et la présentation de formation des REX en PDF. Le DR qui ouvre une agence avec « Saisir pour un REX » y trouve en plus la visite des écrans REX.'],
