@@ -1148,6 +1148,65 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 /* Synthèse écrite plus grande (nov. 2026) */
 .syntheseGrand{zoom:1.15;}
+
+/* Synthèse refondue (nov. 2026) */
+.sv-entete{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.sv-entete h2{margin:0}
+.sv-soustitre{font-size:13px;color:var(--ink65);margin-top:4px}
+.sv-bandeau{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;margin-bottom:16px;border:1px solid var(--border);border-left:4px solid var(--violet);background:var(--card2);border-radius:var(--radius-sm,8px);font-size:13px;line-height:1.55;color:var(--ink65)}
+.sv-bandeau b{color:var(--ink)}
+.sv-bandeau.ok{border-left-color:var(--green)}
+.sv-bandeau.attention{border-left-color:var(--amber)}
+.sv-grille-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.sv-kpi{border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--card);padding:14px 16px;box-shadow:var(--shadow-soft)}
+.sv-kpi-lib{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink65)}
+.sv-kpi-val{font-size:26px;font-weight:700;color:var(--ink);margin:6px 0 2px;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.sv-kpi-sous{font-size:12px;color:var(--ink65)}
+.sv-kpi-comps{display:flex;flex-direction:column;gap:3px;margin-top:10px;padding-top:8px;border-top:1px dashed var(--border);font-size:12px;color:var(--ink);font-variant-numeric:tabular-nums}
+.sv-comp-lib{color:var(--ink65)}
+.sv-ecart{color:var(--ink65)}
+.sv-fleche{color:var(--violet);font-size:10px}
+.sv-graphes{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:16px}
+.sv-carte{border:1px solid var(--border);border-radius:var(--radius-sm,8px);background:var(--card);padding:14px 16px;margin-bottom:16px}
+.sv-graphes .sv-carte{margin-bottom:0}
+.sv-titre{font-weight:700;font-size:14px;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sv-pct{margin-left:auto;font-size:13px;color:var(--violet)}
+.sv-svg{width:100%;height:auto;display:block}
+.sv-grille{stroke:var(--border);stroke-width:1}
+.sv-zero{stroke:var(--border2);stroke-width:1}
+.sv-axe{fill:var(--ink65);font-size:10px;font-family:inherit}
+.sv-val{fill:var(--ink);font-size:11px;font-weight:700;font-family:inherit}
+.sv-barre{fill:var(--violet);opacity:.78}
+.sv-c26{fill:none;stroke:var(--blue2);stroke-width:2.2}
+.sv-c26-pt{fill:var(--blue2)}
+.sv-c25{fill:none;stroke:var(--ink30);stroke-width:1.6}
+.sv-c25-pt{fill:var(--ink30)}
+.sv-pointille{stroke-dasharray:5 4}
+.sv-pont-total{fill:var(--violet)}
+.sv-pont-plus{fill:var(--blue2);opacity:.85}
+.sv-pont-moins{fill:var(--ink30);opacity:.75}
+.sv-lien{stroke:var(--ink30);stroke-dasharray:3 3}
+.sv-legende{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink65);margin-top:6px}
+.sv-legende i{display:inline-block;width:14px;height:8px;margin-right:6px;vertical-align:middle;border-radius:2px}
+.sv-l-barre{background:var(--violet);opacity:.78}.sv-l-c26{background:var(--blue2);height:3px!important}.sv-l-c25{background:var(--ink30);height:3px!important}
+.sv-l-plus{background:var(--blue2)}.sv-l-moins{background:var(--ink30)}
+.sv-vide p{font-size:13px;color:var(--ink65);margin:0}
+.sv-points{list-style:none;margin:0;padding:0}
+.sv-points li{display:flex;gap:10px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;color:var(--ink);line-height:1.5}
+.sv-points li:first-child{border-top:none}
+.sv-points li span{font-size:9px;line-height:20px}
+.sv-pt-alerte span{color:var(--orange)}.sv-pt-attention span{color:var(--amber)}.sv-pt-info span{color:var(--blue2)}
+.sv-note{font-size:11px;color:var(--ink65);margin-top:6px}
+.sv-barre-av{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.sv-barre-av i{display:block;height:100%;background:var(--violet)}
+.sv-jalons{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:6px 18px}
+.sv-jalons li{font-size:13px;color:var(--ink65);display:flex;gap:8px;align-items:baseline}
+.sv-jalons li.ok{color:var(--ink)}.sv-jalons li span{color:var(--ink30);font-weight:700}.sv-jalons li.ok span{color:var(--green)}
+.sv-jalons em{font-style:normal;color:var(--ink65);margin-left:auto;font-size:12px}
+.sv-section{margin-top:6px}
+.sv-section>summary{cursor:pointer;padding:10px 0;font-weight:700;font-size:14px;color:var(--ink)}
+@media (max-width:640px){.sv-grille-kpi{grid-template-columns:1fr 1fr;gap:8px}.sv-kpi{padding:10px 12px}.sv-kpi-lib{font-size:10px}.sv-kpi-val{font-size:20px}.sv-kpi-sous,.sv-comp{font-size:11.5px}.sv-graphes{grid-template-columns:1fr}.sv-legende{flex-wrap:wrap;gap:4px 14px}}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -1970,31 +2029,33 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
 <section id="finance" class="panel">
   <div class="card syntheseGrand">
-    <h2 style="margin-bottom:var(--sp-5)" id="synthTitle">Synthèse du budget</h2>
+    <div class="sv-entete"><div>
+      <h2 id="synthTitle">Synthèse 2027</h2>
+      <div class="sv-soustitre">L'essentiel du budget, comparé à 2026, à 2025 et à la moyenne du réseau. Aucune valeur n'est imposée : les écarts servent à expliquer les choix.</div>
+    </div></div>
 
-    <!-- VERDICT global : SOMA conclut (le plus important pour un décideur) -->
-    <div class="objBanner" id="synthVerdict" style="display:none">
-      <span class="objBannerIcon" id="synthVerdictIcon"></span>
-      <div class="objBannerBody">
-        <div class="objBannerTitle" id="synthVerdictTitle"></div>
-        <div class="objBannerDetail" id="synthVerdictDetail"></div>
-      </div>
-    </div>
+    <!-- Verdict et lecture (refonte nov. 2026) -->
+    <div id="synthVerdict" data-testid="synthese-verdict" class="sv-bandeau" style="display:none"><div>
+      <b id="synthVerdictTitle"></b>
+      <div id="synthInsightText" data-testid="synthese-lecture"></div>
+    </div></div>
 
-    <!-- 4 KPI de décision -->
-    <div class="kpis" id="synthKpis" style="margin-bottom:var(--sp-4)"></div>
+    <div id="synthAvancement"></div>
+    <div id="syntheseVue" data-testid="synthese-vue"></div>
 
-    <!-- Masse salariale / CA, mois par mois -->
-    <div id="ratioMSMensuel" data-testid="ratio-ms-mensuel" data-visite="ms-ca" style="margin-bottom:18px;border:1px solid var(--border);padding:12px 14px"></div>
-    <div id="comparaisonsSynthese"></div>
+    <details class="sv-section" open>
+      <summary>Masse salariale / CA, mois par mois</summary>
+      <div id="ratioMSMensuel" data-testid="ratio-ms-mensuel" data-visite="ms-ca" class="sv-carte"></div>
+    </details>
 
-    <!-- Lecture synthétique en langage naturel -->
-    <div class="objInsight" id="synthInsight" style="display:none">
-      <span class="objInsightIcon">💬</span>
-      <span class="objInsightText" id="synthInsightText"></span>
-    </div>
+    <details class="sv-section" id="synthSectionComparaisons">
+      <summary>Comparaisons par poste</summary>
+      <div id="comparaisonsSynthese"></div>
+    </details>
 
-    <!-- Coût du choix social du REX : élément clé de validation -->
+    <details class="sv-section" id="synthSectionDetails" data-testid="synthese-graphiques">
+      <summary>Congés, heures supplémentaires et calendrier du CA</summary>
+      <div style="padding-top:6px">
     <div id="synthCoutChoix" class="synthCoutChoix" style="display:none">
       <div class="synthCoutHead">
         <span class="synthCoutIcon" id="synthCoutIcon"></span>
@@ -2009,33 +2070,21 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       </details>
     </div>
 
-    <!-- Détails repliables : graphiques + tous les indicateurs -->
-    <details class="objCollapse" id="synthCollapseCharts">
-      <summary>Graphiques détaillés (CA, résultats, ratios)</summary>
-      <div class="objCollapseBody">
-        <div class="chartGrid">
-          <div class="chartBox"><div class="chartTitle">CA : 2026 vs Objectif vs Budget</div><div class="barChart" id="chartCA"></div><div class="legend"><span><div class="sw g"></div>2026</span><span><div class="sw o"></div>Objectif</span><span><div class="sw v"></div>Budget</span></div></div>
-          <div class="chartBox"><div class="chartTitle">Résultats</div><div class="barChart" id="chartResult"></div></div>
-          <div class="chartBox"><div class="chartTitle">Ratios clés</div><div id="chartRatios"></div></div>
-          <div class="chartBox" style="grid-column:1/-1" data-testid="ca-mensuel"><div class="chartTitle">CA mensuel budgété, jours de semaine hors vacances et jours de vacances scolaires</div><div id="chartMonthlyCA"></div></div>
-        </div>
-      </div>
-
-    <!-- Bilan des CP par enveloppe légale (mis en avant : cible vs réel) -->
     <div id="synthEnveloppes" class="synthEnveloppes" style="display:none">
       <div class="synthEnvTitle">Répartition des congés par période légale</div>
       <div id="synthEnvBody"></div>
     </div>
-    </details>
-
-    <details class="objCollapse" id="synthCollapseKpis" open>
-      <summary>Tous les indicateurs financiers</summary>
-      <div class="objCollapseBody">
-        <div class="kpis" id="dashKpis"></div>
-        <div style="height:var(--sp-3)"></div>
-        <div class="kpis" id="finKpis"></div>
+        <div class="chartGrid">
+          <div class="chartBox" style="grid-column:1/-1" data-testid="ca-mensuel"><div class="chartTitle">CA mensuel budgété, jours de semaine hors vacances et jours de vacances scolaires</div><div id="chartMonthlyCA"></div></div>
+        </div>
       </div>
     </details>
+
+    <!-- Anciens blocs (refonte nov. 2026) : conservés masqués pour les fonctions de rendu existantes -->
+    <div style="display:none" aria-hidden="true">
+      <div id="synthKpis"></div><div id="synthInsight"></div><span id="synthVerdictIcon"></span><span id="synthVerdictDetail"></span>
+      <div id="chartCA"></div><div id="chartResult"></div><div id="chartRatios"></div><div id="dashKpis"></div><div id="finKpis"></div>
+    </div>
   </div>
 
   <div class="stepnav" id="stepnav_finance"></div>
@@ -7538,8 +7587,126 @@ function renderEnveloppesCP(a){
 
 // Masse salariale / CA mois par mois (charges de personnel, quotes-parts comprises, comme l'indicateur annuel)
 // Sans seuil d'alerte (nov. 2026) : le ratio se lit face à 2026, 2025 et à la moyenne du réseau
+// Synthèse du budget (refonte nov. 2026), commune à tous les rôles : l'essentiel du budget 2027 face à 2026, 2025 et à la
+// moyenne du réseau, deux graphiques (CA mois par mois, passage du résultat 2026 au résultat 2027), les points à regarder.
+// Aucun seuil imposé ; couleurs neutres. Données (syntheseVue) et rendu HTML (syntheseVueHTML) identiques dans les deux versions.
+function svPct(v,b){return b&&v!==null&&v!==undefined&&isFinite(v)?v/b*100:null;}
+function svEvol(x,y){return x&&y?(x/y-1)*100:null;}
+function syntheseVue(a,r0,reseau,opts){
+  opts=opts||{};
+  let r=completerAtterrissageCA(r0,a&&a.histCA),res26=anneeRep(reseau,2026),struct=estStructure(a);
+  let ca=ann(a,"Chiffre d'affaires"),ms=ann(a,'Charges de personnel'),ext=ann(a,'Autres Achats et charges externes'),rex=ann(a,"RESULTAT D'EXPLOITATION");
+  let a26=function(cle){return anneeRep(r,2026)?atterrissage2026(r,cle).val:null;};
+  let ca26=a26('ca');if(ca26===null&&+a.histCA>0)ca26=+a.histCA;
+  let ca25=annuel2025(r,'ca'),ms26=a26('perso'),ext26=a26('ext'),rex26=a26('rex');
+  let resL=opts.libResultat||"Résultat d'exploitation",resV=opts.resultat!==undefined?opts.resultat:rex;
+  let obj=+a.targetCA||0;
+  let kpis=[
+    {cle:'ca',label:"Chiffre d'affaires 2027",valeur:ca,type:'euro',sous:obj&&!struct?'objectif '+svK(obj)+' ('+svSigne(svEvol(ca,obj),' %')+')':'',
+      comps:[{lib:'vs 2026',val:svEvol(ca,ca26),type:'evol'},{lib:'vs 2025',val:svEvol(ca,ca25),type:'evol'}]},
+    {cle:'res',label:resL,valeur:resV,type:'euro',sous:ca?svP(svPct(resV,ca))+' du CA':'',
+      comps:[{lib:'2026',val:svPct(rex26,ca26),type:'ratio',ref:svPct(rex,ca)},{lib:'réseau 2026',val:ratioLigneRep(res26,"RESULTAT D'EXPLOITATION"),type:'ratio',ref:svPct(rex,ca)}]},
+    {cle:'ms',label:'Masse salariale / CA',valeur:svPct(ms,ca),type:'ratio',sous:svK(ms)+' de charges de personnel',
+      comps:[{lib:'2026',val:svPct(ms26,ca26),type:'ratio',ref:svPct(ms,ca)},{lib:'réseau 2026',val:ratioLigneRep(res26,'Charges de personnel'),type:'ratio',ref:svPct(ms,ca)}]},
+    {cle:'ext',label:'Charges externes / CA',valeur:svPct(ext,ca),type:'ratio',sous:svK(ext)+' de charges externes',
+      comps:[{lib:'2026',val:svPct(ext26,ca26),type:'ratio',ref:svPct(ext,ca)},{lib:'réseau 2026',val:ratioLigneRep(res26,'Autres Achats et charges externes'),type:'ratio',ref:svPct(ext,ca)}]}
+  ];
+  if(!struct&&(a.employees||[]).length){
+    let t=hsTot(a),cout=coutHSTotal(a);
+    kpis.push({cle:'hs',label:'Heures supplémentaires',valeur:t.hs,type:'heures',sous:svK(cout)+' sur l\'année',comps:[{lib:'coût / CA',val:svPct(cout,ca),type:'ratioSimple'}]});
+  }
+  // CA mois par mois : budget 2027, 2026 (réalisé puis atterrissage), réalisé 2025
+  let r26=anneeRep(r,2026),r25=anneeRep(r,2025);
+  let s26=r26?M.map(function(_,m){let mc=r26.moisClos||0;if(m<mc)return valRep(serieRep(r26,'reel','ca')[m]);let e=r26.estim&&r26.estim.ca?valRep(r26.estim.ca[m]):null;return e!==null?e:valRep(serieRep(r26,'budget','ca')[m]);}):null;
+  let mensuel={ca27:M.map(function(_,m){return monthCA(a,m);}),ca26:s26,ca25:r25?M.map(function(_,m){return valRep(serieRep(r25,'reel','ca')[m]);}):null,moisClos26:r26?r26.moisClos||0:0,
+    ms27:M.map(function(_,m){let c=monthCA(a,m);return c?amount(a,'Charges de personnel',m)/c*100:null;}),msRes26:res26?M.map(function(_,m){return ratioMoisRep(res26,'perso',m);}):null};
+  // Passage du résultat 2026 au résultat 2027
+  let pont=null;
+  if(rex26!==null&&ca26&&ms26!==null&&ext26!==null&&ca){
+    let dCA=ca-ca26,dExt=-(ext-ext26),dMS=-(ms-ms26),autres=rex-(rex26+dCA+dExt+dMS);
+    pont=[{lib:'Résultat 2026',val:rex26,type:'total'},{lib:'Chiffre d\'affaires',val:dCA,type:'delta'},{lib:'Charges externes',val:dExt,type:'delta'},{lib:'Masse salariale',val:dMS,type:'delta'},{lib:'Autres postes',val:autres,type:'delta'},{lib:'Résultat 2027',val:rex,type:'total'}];
+  }
+  // Points à regarder : repères 2026 (sinon rien), sans doublon
+  let x=r0?reperesAgence(a,r0):null,points=x?x.alertes.slice():[];
+  if(resV<0)points.unshift({niveau:'attention',texte:resL+' 2027 négatif : '+svK(resV)+(ca?' ('+svP(svPct(resV,ca))+' du CA)':'')});
+  return {ca:ca,kpis:kpis,mensuel:mensuel,pont:pont,points:points,avecRepere:!!r26,nbReseau:reseau&&reseau.nbAgences||0};
+}
+// ── Rendu ──
+function svEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function svNb(v,d){return (Math.round(v*Math.pow(10,d||0))/Math.pow(10,d||0)).toLocaleString('fr-FR');}
+function svK(v){if(v===null||v===undefined||!isFinite(v))return '—';return Math.abs(v)>=1e6?svNb(v/1e6,2)+' M€':svNb(v/1000)+' k€';}
+function svP(v){return v===null||v===undefined||!isFinite(v)?'—':svNb(v,1)+' %';}
+function svSigne(v,u){return v===null||v===undefined||!isFinite(v)?'—':(v>0?'+':v<0?'−':'')+svNb(Math.abs(v),1)+u;}
+function svValeur(k){if(k.valeur===null||k.valeur===undefined||!isFinite(k.valeur))return '—';if(k.type==='euro')return svK(k.valeur);if(k.type==='heures')return svNb(k.valeur)+' h';return svP(k.valeur);}
+function svComp(c){
+  if(c.val===null||c.val===undefined||!isFinite(c.val))return '<span class="sv-comp"><span class="sv-comp-lib">'+svEsc(c.lib)+'</span> —</span>';
+  if(c.type==='evol')return '<span class="sv-comp"><span class="sv-fleche">'+(c.val>0.05?'▲':c.val<-0.05?'▼':'＝')+'</span> '+svSigne(c.val,' %')+' <span class="sv-comp-lib">'+svEsc(c.lib)+'</span></span>';
+  if(c.type==='ratioSimple')return '<span class="sv-comp">'+svP(c.val)+' <span class="sv-comp-lib">'+svEsc(c.lib)+'</span></span>';
+  let d=c.ref!==null&&c.ref!==undefined&&isFinite(c.ref)?c.ref-c.val:null;
+  return '<span class="sv-comp"><span class="sv-comp-lib">'+svEsc(c.lib)+'</span> '+svP(c.val)+(d!==null?' <span class="sv-ecart">('+svSigne(d,' pt')+')</span>':'')+'</span>';
+}
+function svCarte(k){return '<div class="sv-kpi" data-testid="sv-kpi-'+k.cle+'"><div class="sv-kpi-lib">'+svEsc(k.label)+'</div><div class="sv-kpi-val">'+svValeur(k)+'</div>'+(k.sous?'<div class="sv-kpi-sous">'+svEsc(k.sous)+'</div>':'')+'<div class="sv-kpi-comps">'+k.comps.map(svComp).join('')+'</div></div>';}
+// Graphique du CA mensuel : barres 2027, courbes 2026 et 2025
+function svGraphMensuel(m){
+  let W=640,H=230,g=44,d=12,b=28,h0=H-b,larg=(W-g-d)/12;
+  let toutes=m.ca27.concat(m.ca26||[]).concat(m.ca25||[]).filter(function(v){return v!==null&&isFinite(v);});
+  let max=Math.max(1,Math.max.apply(null,toutes))*1.08,y=function(v){return h0-(v/max)*(h0-10);};
+  let s='<svg viewBox="0 0 '+W+' '+H+'" class="sv-svg" role="img" aria-label="Chiffre d\'affaires mois par mois">';
+  for(let i=0;i<=4;i++){let v=max*i/4,yy=y(v);s+='<line x1="'+g+'" x2="'+(W-d)+'" y1="'+yy+'" y2="'+yy+'" class="sv-grille"/><text x="'+(g-6)+'" y="'+(yy+3)+'" class="sv-axe" text-anchor="end">'+svEsc(svK(v))+'</text>';}
+  m.ca27.forEach(function(v,i){let x=g+i*larg+larg*0.18,w=larg*0.64;s+='<rect x="'+x+'" y="'+y(v||0)+'" width="'+w+'" height="'+Math.max(0,h0-y(v||0))+'" class="sv-barre"><title>'+M[i]+' 2027 : '+svEsc(svK(v))+'</title></rect><text x="'+(g+i*larg+larg/2)+'" y="'+(H-10)+'" class="sv-axe" text-anchor="middle">'+M[i]+'</text>';});
+  let courbe=function(serie,cls,an,mc){if(!serie)return '';let pts=[],pts2=[];serie.forEach(function(v,i){if(v===null||!isFinite(v))return;let p=(g+i*larg+larg/2)+','+y(v);if(mc!==undefined&&i>=mc){if(!pts2.length&&pts.length)pts2.push(pts[pts.length-1]);pts2.push(p);}else pts.push(p);});
+    let out=pts.length>1?'<polyline points="'+pts.join(' ')+'" class="'+cls+'"/>':'';if(pts2.length>1)out+='<polyline points="'+pts2.join(' ')+'" class="'+cls+' sv-pointille"/>';
+    serie.forEach(function(v,i){if(v!==null&&isFinite(v))out+='<circle cx="'+(g+i*larg+larg/2)+'" cy="'+y(v)+'" r="2.6" class="'+cls+'-pt"><title>'+M[i]+' '+an+' : '+svEsc(svK(v))+'</title></circle>';});return out;};
+  s+=courbe(m.ca25,'sv-c25','2025')+courbe(m.ca26,'sv-c26','2026',m.moisClos26);
+  return s+'</svg>';
+}
+// Passage du résultat 2026 au résultat 2027 (cascade)
+function svGraphPont(p){
+  let W=640,H=230,g=8,d=8,h0=H-46,n=p.length,larg=(W-g-d)/n,cum=0,niv=[];
+  p.forEach(function(e){if(e.type==='total'){niv.push([0,e.val]);cum=e.val;}else{niv.push([cum,cum+e.val]);cum+=e.val;}});
+  let vals=[0];niv.forEach(function(x){vals.push(x[0],x[1]);});
+  let mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),et=(mx-mn)||1;mn-=et*0.08;mx+=et*0.12;
+  let y=function(v){return 14+(mx-v)/(mx-mn)*(h0-14);};
+  let s='<svg viewBox="0 0 '+W+' '+H+'" class="sv-svg" role="img" aria-label="Passage du résultat 2026 au résultat 2027">';
+  s+='<line x1="'+g+'" x2="'+(W-d)+'" y1="'+y(0)+'" y2="'+y(0)+'" class="sv-zero"/>';
+  p.forEach(function(e,i){
+    let a0=niv[i][0],a1=niv[i][1],top=y(Math.max(a0,a1)),hh=Math.max(1.5,Math.abs(y(a0)-y(a1))),x=g+i*larg+larg*0.16,w=larg*0.68;
+    let cls=e.type==='total'?'sv-pont-total':(e.val>=0?'sv-pont-plus':'sv-pont-moins');
+    s+='<rect x="'+x+'" y="'+top+'" width="'+w+'" height="'+hh+'" class="'+cls+'"><title>'+svEsc(e.lib)+' : '+svEsc(svK(e.val))+'</title></rect>';
+    if(i<n-1)s+='<line x1="'+(x+w)+'" x2="'+(g+(i+1)*larg+larg*0.16)+'" y1="'+y(a1)+'" y2="'+y(a1)+'" class="sv-lien"/>';
+    s+='<text x="'+(x+w/2)+'" y="'+(top-5)+'" class="sv-val" text-anchor="middle">'+(e.type==='delta'&&e.val>0?'+':'')+svEsc(svK(e.val))+'</text>';
+    let mots=e.lib.split(' '),l1=mots.slice(0,Math.ceil(mots.length/2)).join(' '),l2=mots.slice(Math.ceil(mots.length/2)).join(' ');
+    s+='<text x="'+(x+w/2)+'" y="'+(H-26)+'" class="sv-axe" text-anchor="middle">'+svEsc(l1)+'</text>'+(l2?'<text x="'+(x+w/2)+'" y="'+(H-13)+'" class="sv-axe" text-anchor="middle">'+svEsc(l2)+'</text>':'');
+  });
+  return s+'</svg>';
+}
+function syntheseVueHTML(v,opts){
+  opts=opts||{};
+  let h='<div class="sv-grille-kpi">'+v.kpis.map(svCarte).join('')+'</div><div class="sv-note sv-note-kpi">Entre parenthèses : écart du budget 2027 en points de CA. ▲▼ : évolution du chiffre d\'affaires.</div>';
+  h+='<div class="sv-graphes">';
+  h+='<div class="sv-carte" data-testid="sv-graphe-mensuel"><div class="sv-titre">Chiffre d\'affaires mois par mois</div>'+svGraphMensuel(v.mensuel)
+    +'<div class="sv-legende"><span><i class="sv-l-barre"></i>Budget 2027</span>'+(v.mensuel.ca26?'<span><i class="sv-l-c26"></i>2026'+(v.mensuel.moisClos26<12?' (pointillé : atterrissage)':'')+'</span>':'')+(v.mensuel.ca25?'<span><i class="sv-l-c25"></i>Réalisé 2025</span>':'')+'</div></div>';
+  if(v.pont)h+='<div class="sv-carte" data-testid="sv-graphe-pont"><div class="sv-titre">Du résultat 2026 au résultat 2027</div>'+svGraphPont(v.pont)
+    +'<div class="sv-legende"><span><i class="sv-l-plus"></i>améliore le résultat</span><span><i class="sv-l-moins"></i>le réduit</span></div></div>';
+  else h+='<div class="sv-carte sv-vide"><div class="sv-titre">Du résultat 2026 au résultat 2027</div><p>Disponible dès que le tableau de bord 2026 de l\'agence est importé par le contrôle de gestion.</p></div>';
+  h+='</div>';
+  if(v.points.length){
+    let ic={alerte:'●',attention:'●',info:'●'};
+    h+='<div class="sv-carte" data-testid="sv-points"><div class="sv-titre">'+(opts.valideur?'Points d\'attention pour votre décision':'À regarder')+'</div><ul class="sv-points">'
+      +v.points.map(function(p){return '<li class="sv-pt-'+p.niveau+'"><span>'+ic[p.niveau]+'</span>'+svEsc(p.texte)+'</li>';}).join('')+'</ul><div class="sv-note">Repères pour éclairer la décision, pas des blocages.</div></div>';
+  }
+  return h;
+}
+// Avancement du REX (six jalons) : affiché sur la Synthèse du REX
+function svAvancementHTML(av){
+  if(!av)return '';
+  let j=[['Objectif et contexte 2027',av.objectif,av.objectif?'fixés':'à compléter'],['Références de CA',av.refsPct>=100,av.refsPct+' %'],['Équipe',av.nbSalaries>0,av.nbSalaries+' salarié'+(av.nbSalaries>1?'s':'')],
+    ['Absentéisme',av.absSaisis>=12,av.absSaisis+' / 12 mois'],['Mois validés',av.moisValides>=12,av.moisValides+' / 12'],['Charges du REX',(av.chargesREX||0)>=6,(av.chargesREX||0)+' / 6 postes']];
+  return '<div class="sv-carte" data-testid="sv-avancement"><div class="sv-titre">Avancement de votre budget <span class="sv-pct">'+av.pct+' %</span></div><div class="sv-barre-av"><i style="width:'+Math.max(0,Math.min(100,av.pct))+'%"></i></div><ul class="sv-jalons">'
+    +j.map(function(x){return '<li class="'+(x[1]?'ok':'')+'"><span>'+(x[1]?'✓':'○')+'</span>'+svEsc(x[0])+' <em>'+svEsc(x[2])+'</em></li>';}).join('')+'</ul></div>';
+}
 let REPERES_SYN={nom:null,r:null,reseau:null};
-function chargerReperesSyn(a){if(!a||!a.name||a.name==='Nouvelle agence'||REPERES_SYN.nom===a.name)return;REPERES_SYN={nom:a.name,r:null,reseau:null};chargerReperesMono(a.name).then(function(m){if(REPERES_SYN.nom!==a.name)return;REPERES_SYN.r=m[a.name]||null;REPERES_SYN.reseau=m[AGENCE_RESEAU]||null;renderRatioMSMensuel();});}
+function chargerReperesSyn(a){if(!a||!a.name||a.name==='Nouvelle agence'||REPERES_SYN.nom===a.name)return;REPERES_SYN={nom:a.name,r:null,reseau:null};chargerReperesMono(a.name).then(function(m){if(REPERES_SYN.nom!==a.name)return;REPERES_SYN.r=m[a.name]||null;REPERES_SYN.reseau=m[AGENCE_RESEAU]||null;renderRatioMSMensuel();renderSyntheseVue();});}
 // Comparaisons de la Synthèse (nov. 2026) : budget 2027 face à 2025 (N-2), 2026 (N-1) et à la moyenne du réseau, sans alerte
 function comparaisonsHTML(a,r,reseau){
   if(!r&&!reseau)return '';
@@ -7549,7 +7716,7 @@ function comparaisonsHTML(a,r,reseau){
   let cel='padding:5px 8px;text-align:right;white-space:nowrap',gris=';color:var(--ink65)';
   let at=function(cle){return anneeRep(r,2026)?atterrissage2026(r,cle).val:null;},an25=function(cle){return annuel2025(r,cle);};
   let ca25=an25('ca'),ca26=at('ca'),nb=reseau&&reseau.nbAgences,r26=anneeRep(r,2026);
-  let h='<div data-testid="comparaisons" style="margin-bottom:18px;border:1px solid var(--border);padding:12px 14px"><div style="font-weight:700;margin-bottom:2px">Comparaisons : 2025, 2026 et moyenne du réseau</div>'
+  let h='<div data-testid="comparaisons" class="sv-carte">'
     +'<div style="font-size:12px;color:var(--ink65);margin-bottom:10px">Pour situer votre budget, sans valeur imposée : réalisé 2025, atterrissage 2026 (réalisé des mois clos + estimation du contrôle de gestion), budget 2027'+(nb?' et moyenne des '+nb+' agences du réseau (pondérée par le CA)':'')+'.</div>';
   if(r&&(ca25!==null||ca26!==null)){
     h+='<div class="tablewrap" style="margin-bottom:12px"><table data-testid="comparaisons-cles" style="border-collapse:collapse;font-size:13px"><tr style="color:var(--ink65)"><th style="'+cel+';text-align:left"></th><th style="'+cel+'">2025</th><th style="'+cel+'">2026</th><th style="'+cel+'">Budget 2027</th><th style="'+cel+'">2027 / 2026</th><th style="'+cel+'">2027 / 2025</th></tr>';
@@ -7570,6 +7737,12 @@ function comparaisonsHTML(a,r,reseau){
   h+='</table></div><div style="font-size:11px;color:var(--ink65);margin-top:6px">2026 en % du CA : sur les mois clos ('+(r26?M[0]+'–'+M[(r26.moisClos||1)-1]:'—')+'). Les écarts sont donnés à titre d\'information : une agence peut avoir de bonnes raisons de s\'écarter de la moyenne.</div></div>';
   return h;
 }
+function renderSyntheseVue(){
+  let el=q('syntheseVue'),a=A();if(!el)return;if(!a||a.name==='Nouvelle agence'){el.innerHTML='';return;}
+  let role=PROFILE?PROFILE.role:'rex',res=resultatAffiche(a);
+  let v=syntheseVue(a,REPERES_SYN.nom===a.name?REPERES_SYN.r:null,REPERES_SYN.nom===a.name?REPERES_SYN.reseau:null,{libResultat:res.lib,resultat:res.val});
+  el.innerHTML=syntheseVueHTML(v,{valideur:['dr','df','dg','pdg'].includes(role)});
+}
 function renderRatioMSMensuel(){
   let el=q('ratioMSMensuel');if(!el)return;let a=A();if(!a){el.innerHTML='';return;}
   let s=M.map((_,m)=>sig(a,m)),ca=s.map(x=>x["Chiffre d'affaires"]||0),ms=s.map(x=>x['Charges de personnel']||0);
@@ -7578,7 +7751,7 @@ function renderRatioMSMensuel(){
   chargerReperesSyn(a);
   let td=(r,extra)=>'<td class="num" style="'+cel+(extra||'')+'">'+fmtR(r)+'</td>';
   let histo=[['MS / CA 2026',anneeRep(completerAtterrissageCA(REPERES_SYN.r,a.histCA),2026)],['MS / CA 2025',anneeRep(REPERES_SYN.r,2025)],['Moyenne réseau 2026',anneeRep(REPERES_SYN.reseau,2026)]].filter(function(x){return x[1];}).map(function(x){let row=x[1],cat=atterrissage2026(row,'ca').val,mst=atterrissage2026(row,'perso').val;return '<tr data-testid="ratio-ms-histo" style="border-top:1px solid var(--border);color:var(--ink65)"><td style="'+cel+';text-align:left">'+x[0]+'</td>'+M.map(function(_,m){return '<td class="num" style="'+cel+'">'+fmtR(ratioMoisRep(row,'perso',m))+'</td>';}).join('')+'<td class="num" style="'+cel+'">'+fmtR(cat?mst/cat*100:null)+'</td></tr>';}).join('');
-  el.innerHTML='<div style="font-weight:700;margin-bottom:8px">Masse salariale / CA, mois par mois</div><div class="tablewrap"><table style="border-collapse:collapse;width:100%">'
+  el.innerHTML='<div class="tablewrap"><table style="border-collapse:collapse;width:100%">'
     +'<thead><tr style="color:var(--ink65)"><th style="'+cel+';text-align:left"></th>'+M.map(m=>'<th style="'+cel+'">'+m+'</th>').join('')+'<th style="'+cel+'">Année</th></tr></thead><tbody>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">CA</td>'+ca.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(caAn)+'</td></tr>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">Masse salariale</td>'+ms.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(msAn)+'</td></tr>'
@@ -7589,8 +7762,7 @@ function renderRatioMSMensuel(){
 function renderSynthese(){
   let a = A();
   if(!a || a.name === 'Nouvelle agence') return;
-  // Titre avec nom d'agence
-  if(q('synthTitle')){ q('synthTitle').textContent = 'Synthèse du budget — ' + a.name + ' 2027'; injecterPastillesAide(); }
+  if(q('synthTitle')){ q('synthTitle').textContent = 'Synthèse 2027 — ' + a.name; injecterPastillesAide(); }
 
   let ca = ann(a,"Chiffre d'affaires");
   let res = resultatAffiche(a), net = res.val;
@@ -7598,70 +7770,36 @@ function renderSynthese(){
   let caObj = +a.targetCA || 0;
   let ecart = ca - caFunAnnuel(a) - caObj; // l'objectif porte sur le transport (hors funéraire)
   let tauxMS = ca ? ms/ca*100 : 0;
-  let tensions = hsTot(a);
   let hsR = hsRows(a);
   let nbCritiques = hsR.filter(function(r){return r.t==='critique';}).length;
-
-  // 4 KPI de décision
-  if(q('synthKpis')){
-    q('synthKpis').innerHTML = [
-      ['CA budgété', euro(ca), ''],
-      [res.lib, euro(net), ca?pct(net/ca*100):''],
-      ['Masse salariale / CA', ca?pct(tauxMS):'—', !ca?'CA non calculé':'charges de personnel / CA'],
-      ['Écart à l\'objectif', (ecart>=0?'+':'')+euro(ecart), caObj?(ecart>=0?'objectif atteint':'sous l\'objectif'):'']
-    ].map(function(x){return '<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>';}).join('');
-  }
-
-  // ── VERDICT global (adapté au rôle) ──
-  let verdict = q('synthVerdict');
   let role = PROFILE ? PROFILE.role : 'rex';
   let estValideur = ['dr','df','dg','pdg'].includes(role);
-  // Évaluer la santé : équilibré si résultat >= 0 et MS/CA raisonnable
+
+  // ── Verdict et lecture (refonte nov. 2026) ──
   let problemes = [];
   if(net < 0) problemes.push(res.libMin + ' déficitaire');
   if(caObj && ecart < -caObj*0.03) problemes.push('objectif de CA non atteint');
-
-  if(verdict){
-    verdict.style.display = '';
-    if(problemes.length === 0){
-      verdict.className = 'objBanner ok';
-      q('synthVerdictIcon').textContent = '✓';
-      q('synthVerdictTitle').textContent = 'Budget équilibré et cohérent';
-      q('synthVerdictDetail').textContent = estValideur
-        ? 'Ce budget est sain sur ses grands équilibres — vous pouvez le valider.'
-        : 'Votre budget est prêt à être transmis pour validation.';
-    } else {
-      verdict.className = 'objBanner warn';
-      q('synthVerdictIcon').textContent = '⚠';
-      q('synthVerdictTitle').textContent = 'Points à examiner : ' + problemes.join(', ');
-      q('synthVerdictDetail').textContent = estValideur
-        ? 'Vérifiez ces points avant de valider ce budget.'
-        : 'Nous vous conseillons de revoir ces points avant de soumettre votre budget.';
-    }
-  }
-
-  // ── Phrase de lecture synthétique ──
-  let insight = q('synthInsight'), txt = q('synthInsightText');
-  if(insight && txt && ca){
-    insight.style.display = '';
-    let p = '';
-    // Objectif
-    if(caObj){
-      if(ecart >= -caObj*0.03) p += 'Ce budget atteint l\'objectif de chiffre d\'affaires (' + euro(ca) + '). ';
-      else p += 'Ce budget est en retrait de ' + euro(Math.abs(ecart)) + ' par rapport à l\'objectif. ';
-    }
-    // Résultat
+  let p = '';
+  if(ca){
+    if(caObj) p += ecart >= -caObj*0.03 ? 'Ce budget atteint l\'objectif de chiffre d\'affaires (' + euro(ca) + '). ' : 'Ce budget est en retrait de ' + euro(Math.abs(ecart)) + ' par rapport à l\'objectif. ';
     if(net > 0) p += 'Il dégage un ' + res.libMin + ' positif de <b>' + euro(net) + '</b>. ';
     else if(net < 0) p += 'Il présente un ' + res.libMin + ' déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
-    // MS
     if(tauxMS > 0) p += 'La masse salariale représente ' + pct(tauxMS) + ' du CA (à comparer avec 2025, 2026 et la moyenne du réseau ci-dessous). ';
-    // Tensions
-    if(nbCritiques > 0) p += nbCritiques + ' semaine' + (nbCritiques>1?'s':'') + ' de tension à surveiller.';
-    else p += 'Aucune semaine en tension critique.';
-    txt.innerHTML = p;
-  } else if(insight){
-    insight.style.display = 'none';
+    p += nbCritiques > 0 ? nbCritiques + ' semaine' + (nbCritiques>1?'s':'') + ' de tension à surveiller.' : 'Aucune semaine en tension critique.';
   }
+  let verdict = q('synthVerdict');
+  if(verdict){
+    verdict.style.display = '';
+    verdict.className = 'sv-bandeau ' + (problemes.length ? 'attention' : 'ok');
+    q('synthVerdictTitle').textContent = problemes.length ? 'À regarder : ' + problemes.join(', ') : 'Budget équilibré';
+    q('synthInsightText').innerHTML = p;
+    q('synthInsightText').style.display = p ? '' : 'none';
+  }
+  if(q('synthAvancement')) q('synthAvancement').innerHTML = role === 'rex' ? svAvancementHTML(avancementBudget(a)) : '';
+  if(q('synthSectionComparaisons')) q('synthSectionComparaisons').open = estValideur || role === 'cg' || role === 'df';
+  if(q('synthSectionDetails')) q('synthSectionDetails').style.display = estStructure(a) ? 'none' : '';
+  chargerReperesSyn(a);
+  renderSyntheseVue();
 
   renderCoutChoix(a);
   renderEnveloppesCP(a);
