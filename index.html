@@ -1379,6 +1379,17 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       </div>
     </div>
 
+    <!-- 1. Perspectives & contexte 2027 : obligatoire, à rédiger avant l'objectif (nov. 2026) -->
+    <div id="contexte2027" data-testid="contexte-2027" data-visite="contexte" style="margin:14px 0 18px;padding:14px 16px;border:1px solid var(--violet);background:var(--violet-light)">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <b style="font-size:15px">1. Perspectives &amp; contexte 2027</b>
+        <span id="contexteStatut" style="font-size:11px;font-weight:700;color:var(--orange)">obligatoire — à rédiger en premier</span>
+      </div>
+      <p class="hint" style="font-size:12px;margin:0 0 8px">Avant de fixer votre objectif de CA et votre TXR cible, décrivez ce qui va changer en 2027 : contrats gagnés ou perdus (EHPAD, cliniques, transports réguliers), évolution de l'activité et de la concurrence, gardes, effectifs (départs, recrutements, saisonniers), véhicules, locaux… C'est ce texte qui justifie vos chiffres auprès du DR et de la direction.</p>
+      <textarea id="perspectives" data-testid="contexte-texte" rows="5" style="width:100%" placeholder="Ex : renouvellement du contrat EHPAD en janvier (+8 % d'activité attendue), fin du contrat de la clinique X en juin, recrutement d'un CDD saisonnier en juillet, TXR attendu stable car mêmes tarifs…"></textarea>
+      <div id="contexteManque" data-testid="contexte-manque" style="font-size:12px;color:var(--orange);margin-top:4px"></div>
+    </div>
+    <div style="font-size:15px;font-weight:700;margin:4px 0 0">2. Objectif de CA et TXR cible</div>
     <!-- 2 KPI éditables : les 2 décisions que le REX vient prendre -->
     <div class="objKpiRow" data-visite="objectif">
       <label class="objKpi" for="targetCA">
@@ -1455,13 +1466,6 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       </div>
     </details>
 
-    <!-- Perspectives : texte libre occasionnel -->
-    <details class="objCollapse" id="objCollapsePerspectives">
-      <summary>Perspectives &amp; contexte 2027 <span style="color:var(--ink30);font-weight:400">(optionnel)</span></summary>
-      <div class="objCollapseBody">
-        <textarea id="perspectives" rows="5" placeholder="Ex : Renouvellement du contrat EHPAD en janvier, recrutement d'un CDD saisonnier prévu en juillet, travaux de locaux au T2..."></textarea>
-      </div>
-    </details>
 
     <!-- Détail technique de la cohérence : pour qui veut vérifier -->
     <details class="objCollapse" id="objCollapseCoherence" style="display:none">
@@ -1621,7 +1625,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <div id="tauxAbsImpInfo" style="font-size:12px;color:var(--ink65);margin-bottom:14px"></div>
       <div data-testid="repli-cp-nr" style="margin-bottom:18px">
         <h4 style="margin:10px 0 6px;font-size:13px;color:var(--ink65)">Congés payés : nombre de jours par mois</h4>
-        <p class="hint" style="margin-bottom:10px;font-size:12px">Nombre de jours de congés de l'équipe non roulante pour chaque mois, pour planifier toute l'équipe et vérifier que les jours acquis sont bien posés. Ces congés n'ont <b>aucun coût</b> dans le budget : leur salaire est déjà dans la ligne globale du contrôleur de gestion et ils ne sont pas remplacés. La part roulante d'un non-roulant (par exemple un régulateur à 20 % roulant) reste comptée avec les congés des roulants.</p>
+        <p class="hint" style="margin-bottom:10px;font-size:12px">Nombre de jours de congés de l'équipe non roulante pour chaque mois, pour planifier toute l'équipe et vérifier que les jours acquis sont bien posés. Ils ne sont pas remplacés. <span id="cpNRExplication"></span></p>
         <div id="cpNRBloc"></div>
       </div>
       <h4 style="margin:10px 0 8px;font-size:13px;color:var(--ink65)">Heures supplémentaires improductives par semaine</h4>
@@ -1887,6 +1891,10 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
       <div>
         <label>Taux de charges non-roulants (%)</label>
         <input id="msNRTauxCharges" type="text" placeholder="ex : 42">
+      </div>
+      <div>
+        <label>ETP non-roulants (stock de CP)</label>
+        <input id="etpNR" type="text" placeholder="ex : 4">
       </div>
       <div>
         <label>Coût mensuel chargé (€) <span style="font-size:10px;color:var(--ink65)">(calculé)</span></label>
@@ -2477,7 +2485,8 @@ const CLE_VISITE_REX='soma.visiteREX.vue';
 const ETAPES_VISITE_REX=[
   {ecran:'objectif',cible:null,titre:'Bienvenue dans SOMA',texte:'En 2 minutes, voici comment construire le budget 2027 de votre agence. Vous pourrez revoir cette visite à tout moment depuis l\'écran Aide.'},
   {ecran:'objectif',cible:'menu',titre:'8 étapes, dans l\'ordre du menu',texte:'Suivez le menu de haut en bas, de l\'Objectif à la Synthèse. Votre équipe, vos historiques et vos taux sont déjà chargés par le contrôle de gestion.'},
-  {ecran:'objectif',cible:'objectif',titre:'1. Objectif',texte:'Saisissez votre objectif de chiffre d\'affaires 2027 et votre TXR cible (CA par heure travaillée). SOMA vous dit aussitôt si votre effectif peut le tenir.'},
+  {ecran:'objectif',cible:'contexte',titre:'1. Objectif : d\'abord le contexte 2027',texte:'Commencez par décrire ce qui change en 2027 : contrats, activité, effectifs, gardes… C\'est obligatoire : l\'objectif de CA et le TXR cible se débloquent une fois ce texte rédigé, et il accompagne votre budget jusqu\'à la direction.'},
+  {ecran:'objectif',cible:'objectif',titre:'Objectif de CA et TXR cible',texte:'Saisissez ensuite votre objectif de chiffre d\'affaires 2027 et votre TXR cible (CA par heure travaillée). SOMA vous dit aussitôt si votre effectif peut le tenir.'},
   {ecran:'objectif',cible:'versions',titre:'Versions V1, V2, V3',texte:'Testez des hypothèses sans toucher à votre budget : dupliquez la version, reprenez l\'équipe d\'une autre version, comparez-les, puis choisissez celle à soumettre (★).'},
   {ecran:'refs',cible:'refs',titre:'2. Références CA',texte:'Pour chaque mois, le CA moyen d\'une journée selon son type : semaine, vacances scolaires, samedi, dimanche, férié. C\'est la base de tout le calcul.'},
   {ecran:'cal',cible:'cal-totaux',titre:'3. Calendrier',texte:'SOMA applique vos références au calendrier 2027 de votre zone scolaire. Vérifiez les totaux du mois. Un jour particulier, comme le transport de personnes le mercredi, s\'ajuste d\'un clic sur sa case.'},
@@ -3059,6 +3068,8 @@ async function soumettreBudget() {
   let vLabel = VERSION_LABELS[ACTIVE_VERSION] || 'V1';
   // Alerte douce : moyenne d'absentéisme éloignée de la cible du CG
   let _a = A();
+  // Perspectives & contexte 2027 : obligatoire pour soumettre
+  if (!contexteRedige(_a)) { alert('Rédigez d\'abord les « Perspectives & contexte 2027 » (écran Objectif) : c\'est ce texte qui justifie votre budget auprès du DR et de la direction.'); return; }
   if(_a && _a.sick && _a.targetAbsRate!==null && _a.targetAbsRate!==undefined){
     let _filled = _a.sick.filter(function(v){return v!==null&&v!==undefined;});
     if(_filled.length){
@@ -3944,7 +3955,7 @@ function payrollMonthCivil(a,m){
   });
   // Quote-part DR : incluse dans la ligne globale non-roulante quand elle est saisie
   let msDR = msNRMensuel(a)!==null ? 0 : (+a.drCostAnnual||0)*(+a.drPct||0)/100/12;
-  return msRoulant+msImproductif+msHSImproductif+repasMois+msDR+variationStockCPMois(a,m); // + variation du stock de congés payés
+  return msRoulant+msImproductif+msHSImproductif+repasMois+msDR+variationStockCPMois(a,m)+variationStockCPNRMois(a,m); // + variation du stock de congés payés
 }
 
 // Coût horaire moyen des improductifs.
@@ -3953,8 +3964,7 @@ function payrollMonthCivil(a,m){
 function coutHoraireImproductif(a){
   let cm = msNRMensuel(a);
   if(cm!==null){
-    let hHebdo = a.employees.filter(e=>!isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0)*(1-partRoulant(e)),0);
-    cm=Math.max(0, cm-transfertRoulantNR(a));
+    let hHebdo = a.employees.filter(e=>!isRoulant(e.qual)).reduce((s,e)=>s+(+e.hours||0),0);
     return hHebdo>0 ? cm/(hHebdo*52/12) : (+a.costHour||0);
   }
   let imp = a.employees.filter(e=>!isRoulant(e.qual)&&e.qual!=='FACTURIERE'&&(+e.coutJour||0)>0);
@@ -4037,12 +4047,15 @@ function msNRMensuel(a){
 // Facturière : son coût n'est pas dans la ligne non-roulants (intégré à part) ; sa part roulante compte, rien n'est déduit.
 function heuresRoulantesNR(a,m){let ref=m===undefined?null:'2027-'+String(m+1).padStart(2,'0')+'-15';return (a.employees||[]).reduce(function(s,e){if(isRoulant(e.qual)||String(e.qual||'').toUpperCase()==='FACTURIERE'||!estRoulantPart(e))return s;if(ref&&!empPresent(e,ref))return s;return s+(+e.hours||0)*partRoulant(e);},0)}
 function transfertRoulantNR(a,m){return heuresRoulantesNR(a,m)*52/12*chMois(a,m===undefined?0:m)}
+// MS non roulante (nov. 2026, demande du contrôle de gestion) : exactement la ligne saisie dans Données agences,
+// brut mensuel × (1 + charges), sans lien avec l'équipe, les % roulants ni la maladie.
 function msNRMois(a, m){
   let cm=msNRMensuel(a);
-  if(cm===null) return 0;
-  cm=Math.max(0, cm-transfertRoulantNR(a,m));
-  return cm*(1 - tauxAbsMois(a,m)*(1-ratioMaintien(a)));
+  return cm===null ? 0 : cm;
 }
+// Salarié de qualification non roulante déjà payé dans la ligne MS non roulante : sa part roulante
+// compte dans la capacité en heures mais n'est pas coûtée une 2e fois dans la MS roulante.
+function couvertParLigneNR(a,e){return msNRMensuel(a)!==null&&!isRoulant(e.qual)&&String(e.qual||'').toUpperCase()!=='FACTURIERE';}
 function annualCAWeight(a,m){let total=annualCA(a);return total?monthCA(a,m)/total:1/12}
 function manual(a,l,m){let x=a.rex[l];if(!x)return 0;if(x.mode==='pct')return monthCA(a,m)*(+x.pct||0)/100;if(x.mode==='pctMois')return monthCA(a,m)*(+(x.pcts&&x.pcts[m])||0)/100;if(x.mode==='annual'){let annual=+x.annual||0;if(x.allocationKey==='ca')return annual*annualCAWeight(a,m);return annual/12}return x.values[m]!==null&&x.values[m]!==undefined?+x.values[m]:0}
 // Postes de charges saisis par le REX (nov. 2026) : 4 en % du CA différent chaque mois, 2 en montant fixe par mois.
@@ -4133,14 +4146,25 @@ function maxAbs(vals){return Math.max(1,...vals.map(v=>Math.abs(+v||0)))}
 function makeTripleBars(values,labels){let max=maxAbs(values.map(v=>v.value));return values.map((v,i)=>`<div class="barGroup"><div class="bar ${v.cls}" style="height:${Math.max(2,Math.abs(v.value)/max*180)}px" title="${labels[i]} : ${euro(v.value)}"></div><div class="barLabel">${labels[i]}</div></div>`).join('')}
 function gaugeRow(label,value){let v=Math.max(0,Math.min(100,Number(value)||0));return `<div class="ratioRow"><b>${label}</b><div class="gauge"><div class="gaugeFill" style="width:${v}%"></div></div><span>${pct(v)}</span></div>`}
 
+// Perspectives & contexte 2027 obligatoires : objectif de CA et TXR cible verrouillés tant que le texte n'est pas rédigé
+function majContexte2027(a){
+  let box=q('contexte2027');if(!box)return;
+  let ok=contexteRedige(a),n=contexteManque(a);
+  box.style.borderColor=ok?'var(--border)':'var(--violet)';box.style.background=ok?'var(--card2)':'var(--violet-light)';
+  let st=q('contexteStatut');if(st){st.textContent=ok?'✓ rédigé':'obligatoire — à rédiger en premier';st.style.color=ok?'var(--green)':'var(--orange)';}
+  let mq=q('contexteManque');if(mq){mq.style.display=ok?'none':'';mq.textContent=ok?'':'Encore '+n+' caractère'+(n>1?'s':'')+' au minimum pour débloquer l\'objectif de CA et le TXR cible.';}
+  ['targetCA','targetTXR'].forEach(function(id){let e=q(id);if(!e)return;
+    if(!ok){e.disabled=true;e.dataset.ctxLock='1';e.title='Rédigez d\'abord les perspectives et le contexte 2027';}
+    else if(e.dataset.ctxLock){e.disabled=false;delete e.dataset.ctxLock;e.title='';}});
+}
 function bind(){
   let a=A();
-  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','actSan','actSai','actTP','actFun'].forEach(id=>{
+  ['histCA2025','histCA','histTXR','targetAbsRate','perspectives','targetCA','targetTXR','schoolZone','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','etpNR','actSan','actSai','actTP','actFun'].forEach(id=>{
     let e=q(id);if(!e)return;
     if(e.type==='checkbox'){e.checked=!!a[id];}else if(document.activeElement!==e){e.value=a[id]!==null&&a[id]!==undefined?a[id]:'';}
     e.oninput=ev=>{
     // Vérifier si le champ est verrouillé par le CG
-    let cgLockedFields=['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges'];
+    let cgLockedFields=['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','etpNR'];
     if(a.cgLocked && cgLockedFields.includes(id) && PROFILE && PROFILE.role==='rex'){
       ev.target.value=a[id]!==null&&a[id]!==undefined?a[id]:'';
       return; // annuler la modification
@@ -4153,16 +4177,17 @@ function bind(){
   }
   });
   // Attacher formatage milliers sur les champs montants
-  ['histCA2025','histCA','targetCA','histTXR','targetTXR','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges'].forEach(attachFmt);
+  ['histCA2025','histCA','targetCA','histTXR','targetTXR','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','etpNR'].forEach(attachFmt);
   // Afficher badge CG locked + griser les champs verrouillés
   if(q('cgLockedBadge')){
     let locked=a.cgLocked&&PROFILE&&PROFILE.role==='rex';
     q('cgLockedBadge').style.display=locked?'':'none';
-    ['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges'].forEach(function(fid){
+    ['histCA2025','histCA','histTXR','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin','tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','etpNR'].forEach(function(fid){
       let el=q(fid);
       if(el){el.readOnly=locked;el.style.background=locked?'var(--bg2)':'';el.style.color=locked?'var(--ink65)':'';el.title=locked?'Verrouillé par le contrôleur de gestion':'';}
     });
   }
+  majContexte2027(a);
   // Afficher le hint costHour (janvier / juin) et le coût de la ligne non-roulante
   majAffichageParamSalarial(a);
   if(q('agencySel')){
@@ -5072,7 +5097,10 @@ function ficheDecisionsHTML(d, agenceNom){
     + 'MS/CA : <b>'+f.tauxMS+'%</b>'
     + '</div>';
 
-  return depart + '<div class="ficheLignes">' + lignes + '</div>' + conseq;
+  let ctxTxt = String((d && d.perspectives) || '').trim();
+  let contexte = '<div data-testid="fiche-contexte" style="margin:8px 0;padding:8px 10px;border-left:3px solid var(--violet);background:var(--card2);font-size:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--violet);margin-bottom:3px">Perspectives &amp; contexte 2027 du REX</div>'
+    + (ctxTxt ? '<div style="white-space:pre-wrap">' + jEsc(d.perspectives) + '</div>' : '<i style="color:var(--ink65)">Non rédigé</i>') + '</div>';
+  return depart + contexte + '<div class="ficheLignes">' + lignes + '</div>' + conseq;
 }
 
 function validationCard(it, role){
@@ -5395,6 +5423,7 @@ function collectAnomalies(){
   let tauxMS = ca ? ms/ca*100 : 0;
   let nbRoulants = a.employees ? a.employees.filter(function(e){return isRoulant(e.qual);}).length : 0;
 
+  if(!contexteRedige(a)) anomalies.push({panel:'objectif', level:'todo', text:'Perspectives & contexte 2027 à rédiger (obligatoire, avant l\'objectif)'});
   if(!caObj || !txr){
     anomalies.push({panel:'objectif', level:'todo', text:'Objectif de CA ou TXR non renseigné'});
   }
@@ -7724,15 +7753,16 @@ function renderIndemnites(){
   }
 }
 
-// ── Congés des non-roulants : jours par mois et compteur acquis / posés (aucun coût, pas de remplacement) ──
+// ── Congés des non-roulants : jours par mois et compteur acquis / posés (pas de remplacement ; provision si ETP saisis) ──
 function setCPNRJour(m,v){let a=A();if(!a.cpNR)a.cpNR=cpNRVide();a.cpNR.auto=false;if(!a.cpNR.jours)a.cpNR.jours=Array(12).fill(null);a.cpNR.jours[m]=v===''?null:+String(v).replace(',','.');render();}
 function repartirCPNR(){repartirCPNRAuto(A());render();}
 function renderCPNR(){
   let el=q('cpNRBloc');if(!el)return;
-  let a=A(),c=a.cpNR||cpNRVide(),nb=salariesNR(a).length,acquis=cpNRAcquis(a),saisis=cpNRSaisis(a),reste=Math.round((acquis-saisis)*10)/10;
+  let a=A(),c=a.cpNR||cpNRVide(),nb=salariesNR(a).length,acquis=cpNRAcquis(a),saisis=cpNRSaisis(a),reste=Math.round((acquis-saisis)*10)/10,etp=etpNR(a);
+  if(q('cpNRExplication'))q('cpNRExplication').innerHTML=etp!==null?'Les jours acquis viennent du nombre d\'ETP non roulants saisi par le contrôleur de gestion ('+String(etp).replace('.',',')+' ETP × 2,5 j par mois) ; la <b>variation du stock</b> (acquis − posés) entre dans la masse salariale du mois : calez vos jours posés sur les jours acquis.':'Leur salaire est dans la ligne globale du contrôleur de gestion.';
   let cel='padding:4px 6px';
   el.innerHTML='<div data-testid="cp-nr-compteur" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);font-size:13px;margin-bottom:10px">'
-    +'<span title="30 jours ouvrables par an (6 par semaine de congés) au prorata du temps de travail et de la part non roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)">Acquis par '+nb+' non-roulant'+(nb>1?'s':'')+' : <b>'+acquis.toFixed(1)+' J</b></span>'
+    +'<span title="'+(etp!==null?'ETP non roulants (Données agences) × 2,5 jours ouvrables par mois':'30 jours ouvrables par an (6 par semaine de congés) au prorata du temps de travail et de la part non roulante ; pendant les arrêts maladie, 80 % du rythme normal (loi 2024)')+'">Acquis '+(etp!==null?'('+String(etp).replace('.',',')+' ETP)':'par '+nb+' non-roulant'+(nb>1?'s':''))+' : <b>'+acquis.toFixed(1)+' J</b></span>'
     +'<span>Posés : <b>'+saisis.toFixed(1)+' J</b></span>'
     +'<span>Reste à poser : <b style="color:'+(Math.abs(reste)<1?'var(--green)':'var(--orange)')+'">'+reste.toFixed(1)+' J</b></span>'
     +'<button type="button" data-testid="cp-nr-repartir" onclick="repartirCPNR()" style="margin-left:auto;font-size:12px">↗ Répartir les jours acquis (60/20/20)</button></div>'
@@ -7954,6 +7984,7 @@ function migrateState(){S.agencies.forEach(a=>{
   if(a.tauxHoraireBrutJuin===undefined)a.tauxHoraireBrutJuin=null;
   if(a.msNRBrutMensuel===undefined)a.msNRBrutMensuel=null;
   if(a.msNRTauxCharges===undefined)a.msNRTauxCharges=null;
+  if(a.etpNR===undefined)a.etpNR=null;
   if(a.ratioMaintien===undefined)a.ratioMaintien=null;
   // Recalculer costHour si les deux composantes sont renseignées
   if(a.tauxHoraireBrut!==null&&a.tauxChargePatronal!==null&&a.costHour===null){
@@ -8009,9 +8040,9 @@ function majAffichageParamSalarial(a){
   }
   let cm=msNRMensuel(a);
   if(q('msNRCout'))q('msNRCout').value = cm!==null ? Math.round(cm).toLocaleString('fr-FR') : '';
-  let tr=transfertRoulantNR(a);
-  if(q('msNRHint'))q('msNRHint').innerHTML = (cm!==null ? 'Soit '+euro(Math.round(cm*12))+' sur l\'année avant absences. ' : '')
-    + (cm!==null&&tr>0 ? 'Part roulante des non-roulants (écran Équipe, '+heuresRoulantesNR(a).toLocaleString('fr-FR')+' h/sem.) : <b>'+euro(Math.round(tr))+' / mois</b> déduits automatiquement, déjà comptés en roulant. ' : '')
+  let etp=etpNR(a);
+  if(q('msNRHint'))q('msNRHint').innerHTML = (cm!==null ? 'Soit '+euro(Math.round(cm*12))+' sur l\'année, prise telle quelle chaque mois, sans lien avec l\'écran Équipe ni les % roulants. ' : '')
+    + (cm!==null&&etp ? 'Stock de CP non roulants : '+String(etp).replace('.',',')+' ETP × 2,5 j par mois, valorisés <b>'+euro(Math.round(coutJourCPNR(a)))+' / jour</b> (ligne / ETP / 26). ' : '')
     + 'Ratio de maintien de salaire : <b>'+Math.round(ratioMaintien(a)*100)+' %</b> (paramètre réseau, écran Données agences).';
 }
 
@@ -8369,7 +8400,7 @@ async function renderRefAgences() {
   }
   // ── KPI d'avancement + interprétation (copilote CG) ──
   renderRefAgencesInsight(map);
-  let html = '<tr><th>Agence</th><th>Zone</th><th>CA 2025</th><th>CA 2026</th><th>TXR 2026 (€/h)</th><th>Absent. cible %</th><th>Taux brut 1er janv. (€/h)</th><th>Taux brut 1er juin (€/h)</th><th>Charges pat. %</th><th>Coût horaire (€/h)</th><th>MS non-roulante brut/mois (€)</th><th>Charges non-roul. %</th></tr>';
+  let html = '<tr><th>Agence</th><th>Zone</th><th>CA 2025</th><th>CA 2026</th><th>TXR 2026 (€/h)</th><th>Absent. cible %</th><th>Taux brut 1er janv. (€/h)</th><th>Taux brut 1er juin (€/h)</th><th>Charges pat. %</th><th>Coût horaire (€/h)</th><th>MS non-roulante brut/mois (€)</th><th>Charges non-roul. %</th><th>ETP non-roulants (CP)</th></tr>';
   agences.forEach(ag => {
     const d = Object.assign({}, map[ag.nom] || {}, REF_AGENCES[ag.nom] || {});
     const cout = (d.tauxHoraireBrut && d.tauxChargePatronal)
@@ -8390,6 +8421,7 @@ async function renderRefAgences() {
       + '<td style="font-weight:700;color:var(--violet2);font-family:DM Mono,monospace;padding:0 8px">'+(cout?cout+' €/h':'—')+(coutJuin?'<br><span style="font-weight:400;font-size:11px">juin : '+coutJuin+' €/h</span>':'')+'</td>'
       + '<td><input type="number" value="'+(d.msNRBrutMensuel||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'msNRBrutMensuel\',this.value)" data-n="'+n+'" style="width:110px"></td>'
       + '<td><input type="number" value="'+(d.msNRTauxCharges||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'msNRTauxCharges\',this.value)" data-n="'+n+'" style="width:80px"></td>'
+      + '<td><input type="number" value="'+(d.etpNR||'')+'" placeholder="—" onchange="setRefAgence(this.dataset.n,\'etpNR\',this.value)" data-n="'+n+'" style="width:80px"></td>'
       + '</tr>';
     // Mettre en cache les seules saisies réelles. Avant : des valeurs par défaut (TXR 40,
     // absentéisme 5 %) étaient enregistrées pour toutes les agences au premier « Enregistrer »,
@@ -8418,7 +8450,7 @@ function setRefAgence(nom, field, value) {
 
 // Champs de référence posés par le contrôleur de gestion (Données agences)
 const CG_REF_KEYS = ['histCA2025','histCA','histTXR2026','targetAbsRate','tauxHoraireBrut','tauxHoraireBrutJuin',
-  'tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','ratioMaintien','cgLocked',
+  'tauxChargePatronal','costHour','msNRBrutMensuel','msNRTauxCharges','etpNR','ratioMaintien','cgLocked',
   'variablesDec2026','variablesDec2026Detail','stockCP2026'];
 const CG_KEYS_SANS_VERROU = ['ratioMaintien','cgLocked','variablesDec2026','variablesDec2026Detail','stockCP2026'];
 
@@ -8715,6 +8747,11 @@ function isFilled(v) { return v !== null && v !== undefined && v !== ''; }
 // Avancement de la construction d'un budget d'agence (vu par la chaîne de validation).
 // Cinq jalons du REX, pondérés à parts égales : objectif fixé, références CA, équipe,
 // absentéisme mensuel, mois validés, postes de charges du REX (6e jalon). Les charges CG sont suivies à part.
+// Perspectives & contexte 2027 (nov. 2026) : première étape OBLIGATOIRE de l'Objectif, rédigée par le REX
+// avant de fixer son TXR cible et son objectif de CA ; exigée pour soumettre le budget.
+const CONTEXTE_MIN_CARACTERES = 80;
+function contexteRedige(a){return !!a&&String(a.perspectives||'').trim().length>=CONTEXTE_MIN_CARACTERES;}
+function contexteManque(a){return Math.max(0,CONTEXTE_MIN_CARACTERES-String((a&&a.perspectives)||'').trim().length);}
 function avancementBudget(d, updatedAt){
   d = d || {};
   let refs = d.refs || {}, acts = ['san'];
@@ -8722,7 +8759,7 @@ function avancementBudget(d, updatedAt){
   let refTot = 0, refOk = 0;
   acts.forEach(function(act){ for(let m=0;m<12;m++){ ['semaine','vacances','samedi','dimanche','ferie'].forEach(function(t){
     refTot++; let mo = refs[act] && refs[act][m]; if(mo && isFilled(mo[t])) refOk++; }); } });
-  let objectif = isFilled(d.targetCA) && isFilled(d.targetTXR);
+  let objectif = isFilled(d.targetCA) && isFilled(d.targetTXR) && contexteRedige(d); // contexte 2027 rédigé, objectif et TXR fixés
   let refsPct = refTot ? Math.round(refOk/refTot*100) : 0;
   let nbSalaries = (d.employees||[]).length;
   let absSaisis = (d.sick||[]).filter(isFilled).length;
@@ -8888,7 +8925,16 @@ function cpGeneres(a) {
 // suivis avec un compteur acquis / posés. Aucun coût : leur salaire est déjà dans la ligne non-roulants
 // du CG (un congé est payé) et ils ne sont pas remplacés (décision de la direction des opérations).
 function salariesNR(a){return (a.employees||[]).filter(function(e){return !isRoulant(e.qual)&&(1-partRoulant(e))>0;});}
-function cpNRAcquisMois(a,m){let ref='2027-'+String(m+1).padStart(2,'0')+'-15',mal=tauxAbsMois(a,m);return salariesNR(a).reduce(function(s,e){if(!empPresent(e,ref))return s;return s+CP_JOURS_MOIS*(1-mal*(1-CP_ACQUIS_MALADIE))*((+e.hours||0)/35)*(1-partRoulant(e));},0);}
+// CP des non-roulants (nov. 2026, contrôle de gestion) : si le CG saisit le nombre d'ETP non roulants dans Données agences,
+// l'acquisition est ETP × 2,5 j ouvrables par mois (sans lien avec l'écran Équipe) ; l'agence saisit les jours posés (déstockage).
+function etpNR(a){let v=a&&a.etpNR;return (v===null||v===undefined||v==='')?null:Math.max(0,+v||0);}
+function cpNRAcquisMois(a,m){let etp=etpNR(a);if(etp!==null)return etp*CP_JOURS_MOIS;let ref='2027-'+String(m+1).padStart(2,'0')+'-15',mal=tauxAbsMois(a,m);return salariesNR(a).reduce(function(s,e){if(!empPresent(e,ref))return s;return s+CP_JOURS_MOIS*(1-mal*(1-CP_ACQUIS_MALADIE))*((+e.hours||0)/35)*(1-partRoulant(e));},0);}
+// Coût d'un jour ouvrable de non-roulant : MS non roulante mensuelle / ETP / 26 jours ouvrables par mois
+function coutJourCPNR(a){let cm=msNRMensuel(a),e=etpNR(a);return cm!==null&&e>0?cm/e/26:0;}
+function cpNRPrisMois(a,m){return a&&a.cpNR&&a.cpNR.jours?(+a.cpNR.jours[m]||0):0;}
+// Variation du stock de CP des non-roulants : (jours acquis − jours posés) × coût d'un jour ; dotation les mois où l'équipe
+// acquiert plus qu'elle ne pose, reprise (baisse de la MS) les mois de congés. Nulle sans ligne MS non roulante ni ETP saisis.
+function variationStockCPNRMois(a,m){if(!a||estStructure(a))return 0;let c=coutJourCPNR(a);return c?(cpNRAcquisMois(a,m)-cpNRPrisMois(a,m))*c:0;}
 function cpNRAcquis(a){return Math.round(M.reduce(function(s,_,m){return s+cpNRAcquisMois(a,m);},0)*10)/10;}
 function cpNRSaisis(a){let j=a.cpNR&&a.cpNR.jours;return j?Math.round(j.reduce(function(s,v){return s+(+v||0);},0)*10)/10:0;}
 function cpNRVide(){return {jours:Array(12).fill(null)};}
@@ -9678,7 +9724,8 @@ async function handleRefAgencesImport(event){
         charges:headers.findIndex(function(h){return h.includes('charge')&&h.includes('patron')&&!nr(h);}),
         cout:headers.findIndex(function(h){return (h.includes('cout')||h.includes('coût'))&&!nr(h);}),
         caObj:headers.findIndex(function(h){return h.includes('objectif')||h.includes('obj');}),
-        nrBrut:headers.findIndex(function(h){return nr(h)&&!h.includes('charge');}),
+        nrBrut:headers.findIndex(function(h){return nr(h)&&!h.includes('charge')&&!h.includes('etp');}),
+        etpNR:headers.findIndex(function(h){return h.includes('etp')&&nr(h);}),
         nrCharges:headers.findIndex(function(h){return nr(h)&&h.includes('charge');}),
       };
       let count=0,errors=[];
@@ -9703,6 +9750,7 @@ async function handleRefAgencesImport(event){
         if(idx.brutJuin>=0&&row[idx.brutJuin])d.tauxHoraireBrutJuin=+row[idx.brutJuin]||null;
         if(idx.nrBrut>=0&&row[idx.nrBrut])d.msNRBrutMensuel=+row[idx.nrBrut]||null;
         if(idx.nrCharges>=0&&row[idx.nrCharges])d.msNRTauxCharges=+row[idx.nrCharges]||null;
+        if(idx.etpNR>=0&&row[idx.etpNR])d.etpNR=+row[idx.etpNR]||null;
         // Upsert dans Supabase, dans la version lue par le REX si le budget est versionné
         let existing=await sb.from('budgets').select('id,data').eq('agence',ag.nom).eq('annee',2027).single();
         let res;
@@ -9907,7 +9955,7 @@ function payrollPayMonth(a, moisIdx) {
 
   // Lissage de la 5e semaine de variables sur le trimestre (voir lissage5eSemaine)
   // + variation du stock de congés payés du mois (provision : dotation des jours acquis, reprise des jours posés)
-  return ms + msNonRoulants + msHSImp + repasPeriode + msDR + lissage5eSemaine(a, moisIdx) + variationStockCPMois(a, moisIdx);
+  return ms + msNonRoulants + msHSImp + repasPeriode + msDR + lissage5eSemaine(a, moisIdx) + variationStockCPMois(a, moisIdx) + variationStockCPNRMois(a, moisIdx);
 }
 
 // ── Lissage de la 5e semaine de variables (règle du contrôle de gestion, nov. 2026) ──
@@ -9981,7 +10029,7 @@ function lissage5eSemaine(a, moisIdx){
 // payées sont dans ce salaire (maintien) ; HS et retenues sont des variables (variablesRoulantSemaine).
 function msRoulantBaseMois(a,m){
   let nbj=new Date(2027,m+1,0).getDate(),ch=chMois(a,m);
-  return (a.employees||[]).filter(estRoulantPart).reduce(function(s,e){
+  return (a.employees||[]).filter(function(e){return estRoulantPart(e)&&!couvertParLigneNR(a,e);}).reduce(function(s,e){
     let f=1;
     if(e.dateEntree||e.dateSortie){let p=0;for(let d=1;d<=nbj;d++)if(empPresent(e,cleJour(m,d)))p++;f=p/nbj;}
     return s+(+e.hours||0)*partRoulant(e)*52/12*ch*f*(1+(isCDD(e)?TAUX_PRECARITE_CDD:0));
@@ -10116,6 +10164,7 @@ const LIGNES_DETAIL_MS = [
   ['cpvar', 'Variation du stock de congés payés (provision)'],
   ['dec', 'Variables de décembre 2026'],
   ['nr', 'Non-roulants'],
+  ['cpnrvar', 'Variation du stock de CP des non-roulants'],
   ['dr', 'Quote-part DR'],
   ['hsnr', 'Heures supplémentaires des non-roulants'],
   ['repas', 'Indemnités repas et IDJF']
@@ -10141,7 +10190,7 @@ function detailMSMois(a,m){
   });
   // Salaire de base : heures mensualisées de l'équipe roulante présente, taux du mois civil
   let nbj=new Date(2027,m+1,0).getDate(),hBase=0,hCDD=0,nbSal=0;
-  (a.employees||[]).filter(estRoulantPart).forEach(function(e){
+  (a.employees||[]).filter(function(e){return estRoulantPart(e)&&!couvertParLigneNR(a,e);}).forEach(function(e){
     let f=1;
     if(e.dateEntree||e.dateSortie){let n=0;for(let d=1;d<=nbj;d++)if(empPresent(e,cleJour(m,d)))n++;f=n/nbj;}
     if(f>0)nbSal++;
@@ -10153,6 +10202,7 @@ function detailMSMois(a,m){
     .reduce(function(s,e){return s+(+e.coutJour||0)*(1-partRoulant(e))*(+e.joursSem||5)*52/12;},0);
   let dr=nrLigne?0:(+a.drCostAnnual||0)*(+a.drPct||0)/100/12;
   let lis=lissage5eSemaine(a,m),dec=m===0?varDec2026Total(a):0;
+  let nrA=cpNRAcquisMois(a,m),nrP=cpNRPrisMois(a,m),nrV=variationStockCPNRMois(a,m),nrC=coutJourCPNR(a),j1=function(v){return (Math.round(v*10)/10).toLocaleString('fr-FR')+' j';};
   let cpA=cpAcquisMois(a,m),cpP=cpPrisMois(a,m),cpV=variationStockCPMois(a,m);
   let det={
     base:[base,nbSal+' roulant(s) présent(s) : '+fmtH(hBase)+' (heures du contrat × part roulante × 52/12, au prorata des jours de présence) × '+ch.toFixed(2).replace('.',',')+' €/h'+(hCDD>0?' + précarité CDD 10 % sur '+fmtH(hCDD):'')],
@@ -10162,7 +10212,8 @@ function detailMSMois(a,m){
     lissage:[lis,lis===0?'Pas de lissage ce mois-ci':(lis<0?'Mois à 5 semaines : − 2/3 d\'une semaine moyenne de HS de la période':'+ 1/3 de la semaine de HS lissée du mois à 5 semaines du trimestre')],
     cpvar:[cpV,'Jours acquis dans le mois '+(Math.round(cpA*10)/10).toLocaleString('fr-FR')+' j − jours posés '+(Math.round(cpP*10)/10).toLocaleString('fr-FR')+' j = '+(Math.round((cpA-cpP)*10)/10).toLocaleString('fr-FR')+' j × '+(Math.round(CP_HEURES_JOUR*100)/100).toLocaleString('fr-FR')+' h × '+ch.toFixed(2).replace('.',',')+' €/h (dotation quand l\'équipe acquiert plus qu\'elle ne pose, reprise les mois de congés)'],
     dec:[dec,m===0?'Variables de décembre 2026 saisies (chargées), payées sur la paie de janvier':'Janvier seulement'],
-    nr:[nr,nrLigne?'Ligne du contrôle de gestion : brut mensuel × (1 + charges), moins la part roulante des non-roulants, moins la maladie non maintenue du mois':'Coût journalier × jours par semaine × 52/12 × part non roulante'],
+    nr:[nr,nrLigne?'Ligne Données agences : brut mensuel '+Math.round(+a.msNRBrutMensuel||0).toLocaleString('fr-FR')+' € × (1 + '+String(+a.msNRTauxCharges||0).replace('.',',')+' % de charges), sans lien avec l\'équipe ni les % roulants':'Coût journalier × jours par semaine × 52/12 × part non roulante'],
+    cpnrvar:[nrV,nrC?'Jours acquis '+j1(nrA)+' ('+String(etpNR(a)).replace('.',',')+' ETP × 2,5 j) − jours posés '+j1(nrP)+' = '+j1(nrA-nrP)+' × '+(Math.round(nrC*100)/100).toLocaleString('fr-FR')+' € par jour (MS non roulante mensuelle / ETP / 26 jours ouvrables)':'Sans objet : ETP non roulants ou MS non roulante non saisis dans Données agences'],
     dr:[dr,nrLigne?'Incluse dans la ligne non-roulants':'Coût annuel du DR × quote-part / 12'],
     hsnr:[hiE,fmtH(hiH)+' saisies × coût horaire des non-roulants × majoration du mois'],
     repas:[repas,'Indemnités repas et IDJF saisies par semaine, au prorata des jours de la période']
@@ -10238,9 +10289,9 @@ function tableauCPStock(a){
     let ch=chMois(a,m),acq=cpAcquisMois(a,m),pris=cpPrisMois(a,m);
     let acqE=acq*CP_HEURES_JOUR*ch,prisE=pris*CP_HEURES_JOUR*ch;
     stockJ+=acq-pris;stockE+=acqE-prisE;
-    let nrAcq=cpNRAcquisMois(a,m),nrPris=a.cpNR&&a.cpNR.jours?(+a.cpNR.jours[m]||0):0;
+    let nrAcq=cpNRAcquisMois(a,m),nrPris=a.cpNR&&a.cpNR.jours?(+a.cpNR.jours[m]||0):0,nrVar=variationStockCPNRMois(a,m);
     return {mois:m,lib:lib,taux:ch,acquisJ:acq,acquisH:acq*CP_HEURES_JOUR,acquisE:acqE,prisJ:pris,prisH:pris*CP_HEURES_JOUR,prisE:prisE,
-      variationJ:acq-pris,variationE:acqE-prisE,stockJ:stockJ,stockE:stockE,nrAcquisJ:nrAcq,nrPrisJ:nrPris};
+      variationJ:acq-pris,variationE:acqE-prisE,stockJ:stockJ,stockE:stockE,nrAcquisJ:nrAcq,nrPrisJ:nrPris,nrVariationE:nrVar};
   });
 }
 // Heures du mois civil (semaines à cheval au prorata des jours) : besoin, capacité, congés, maladie, absences, HS
@@ -10273,7 +10324,7 @@ function feuillesJustif(a){
   let v=tableauVariables(a);
   f.push({nom:'Variables de paie',largeurs:[12,14,14,14,14,14,14,14,14],lignes:[['Mois de paie','HS majorées','Retenue maladie','Retenue absences','Lissage 5e sem.','Variables déc. 2026','HS non-roulants','Repas et IDJF','Total variables']].concat(v.map(function(x){return [x.lib,r(x.hs),r(x.retMaladie),r(x.retAbsences),r(x.lissage),r(x.dec2026),r(x.hsNR),r(x.repas),r(x.total)];}))});
   let c=tableauCPStock(a);
-  f.push({nom:'Stock congés payés',largeurs:[12,12,12,14,12,12,14,14,12,14,12,12],lignes:[['Mois','Coût horaire','Acquis (j)','Stockage (€)','Pris (j)','Pris (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roulants acquis (j)','Non-roulants pris (j)']].concat(stockCPOuverture(a)!==null?[['Stock au 31/12/2026','','','','','','','',r1(stockCPOuverture(a)),r(stockCPOuverture(a)*CP_HEURES_JOUR*chMois(a,0)),'','']]:[]).concat(c.map(function(x){return [x.lib,Math.round(x.taux*100)/100,r1(x.acquisJ),r(x.acquisE),r1(x.prisJ),r1(x.prisH),r(x.prisE),r(x.variationE),r1(x.stockJ),r(x.stockE),r1(x.nrAcquisJ),r1(x.nrPrisJ)];}))});
+  f.push({nom:'Stock congés payés',largeurs:[12,12,12,14,12,12,14,14,12,14,12,12,14],lignes:[['Mois','Coût horaire','Acquis (j)','Stockage (€)','Pris (j)','Pris (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roulants acquis (j)','Non-roulants pris (j)','Non-roulants variation (€)']].concat(stockCPOuverture(a)!==null?[['Stock au 31/12/2026','','','','','','','',r1(stockCPOuverture(a)),r(stockCPOuverture(a)*CP_HEURES_JOUR*chMois(a,0)),'','','']]:[]).concat(c.map(function(x){return [x.lib,Math.round(x.taux*100)/100,r1(x.acquisJ),r(x.acquisE),r1(x.prisJ),r1(x.prisH),r(x.prisE),r(x.variationE),r1(x.stockJ),r(x.stockE),r1(x.nrAcquisJ),r1(x.nrPrisJ),r(x.nrVariationE)];}))});
   let h=tableauHeures(a);
   f.push({nom:'Heures par mois',largeurs:[12,12,12,12,12,12,12,12,12],lignes:[['Mois','Besoin','Heures contrat','Congés','Maladie','Abs. payées','Abs. non payées','Disponibles','HS']].concat(h.map(function(x){return [x.lib,r(x.besoin),r(x.base),r(x.cp),r(x.maladie),r(x.absPayees),r(x.absNonPayees),r(x.dispo),r(x.hs)];}))});
   return f;
@@ -10341,11 +10392,11 @@ function renderJustif(){
       + (peut ? '<input id="stockCPInput" data-testid="stock-cp-input" type="number" min="0" step="0.5" value="' + (ouv === null ? '' : ouv) + '" placeholder="non saisi" style="width:100px"><button class="secondary" data-testid="stock-cp-enregistrer" style="font-size:12px" onclick="enregistrerStockCP()">Enregistrer</button><span id="stockCPMsg" style="font-size:12px;color:var(--green)"></span>'
         : '<b>' + (ouv === null ? 'non saisi (le stock part de 0)' : ouv.toLocaleString('fr-FR') + ' j') + '</b>')
       + '<span class="hint" style="font-size:11px;flex-basis:100%;margin:0">Reliquat des droits acquis et non pris à la fin de 2026, issu de la paie. Sans saisie, le stock part de 0 et peut devenir négatif quand les congés posés en 2027 puisent dans les droits acquis avant.</span></div>';
-    let ligneOuv = ouv !== null ? [['Stock au 31/12/2026','','','','','','','',ouv.toLocaleString('fr-FR'),n0(ouv*CP_HEURES_JOUR*(c[0]?c[0].taux:0)),'','']] : [];
+    let ligneOuv = ouv !== null ? [['Stock au 31/12/2026','','','','','','','',ouv.toLocaleString('fr-FR'),n0(ouv*CP_HEURES_JOUR*(c[0]?c[0].taux:0)),'','','']] : [];
     el.innerHTML = '<p class="hint" style="font-size:12px">Congés des roulants en jours ouvrables (6 par semaine de congés). <b>Stockage</b> : jours acquis dans le mois (2,5 j par mois pour un temps plein, 80 % pendant les arrêts maladie, au prorata des heures et de la part roulante). <b>Déstockage</b> : jours posés dans le mois. Valorisation : jours × 5,83 h × coût horaire chargé du mois. Le stock part du stock au 31/12/2026 s\'il est saisi (valorisé au coût horaire de janvier), sinon de 0. La variation du stock est comptée dans la masse salariale du mois (provision pour congés payés) : dotation quand l\'équipe acquiert plus de jours qu\'elle n\'en pose, reprise les mois de congés, qui allège la masse salariale de ces mois souvent faibles en CA.</p>' + saisie
-      + tab('justif-cp', ['Mois','Coût h.','Acquis (j)','Stockage (€)','Posés (j)','Posés (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roul. acquis (j)','Non-roul. posés (j)'],
-        ligneOuv.concat(c.map(function(x){ return [x.lib, x.taux.toFixed(2).replace('.', ','), n1(x.acquisJ), n0(x.acquisE), n1(x.prisJ), n1(x.prisH), n0(x.prisE), (x.variationE < 0 ? '-' : '') + n0(Math.abs(x.variationE)), (Math.round(x.stockJ*10)/10).toLocaleString('fr-FR'), Math.round(x.stockE).toLocaleString('fr-FR'), n1(x.nrAcquisJ), n1(x.nrPrisJ)]; })),
-        ['Année', '', n1(sum(c,'acquisJ')), n0(sum(c,'acquisE')), n1(sum(c,'prisJ')), n1(sum(c,'prisH')), n0(sum(c,'prisE')), n0(sum(c,'variationE')), n1(c[11].stockJ), n0(c[11].stockE), n1(sum(c,'nrAcquisJ')), n1(sum(c,'nrPrisJ'))]);
+      + tab('justif-cp', ['Mois','Coût h.','Acquis (j)','Stockage (€)','Posés (j)','Posés (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roul. acquis (j)','Non-roul. posés (j)','Non-roul. variation (€)'],
+        ligneOuv.concat(c.map(function(x){ return [x.lib, x.taux.toFixed(2).replace('.', ','), n1(x.acquisJ), n0(x.acquisE), n1(x.prisJ), n1(x.prisH), n0(x.prisE), (x.variationE < 0 ? '-' : '') + n0(Math.abs(x.variationE)), (Math.round(x.stockJ*10)/10).toLocaleString('fr-FR'), Math.round(x.stockE).toLocaleString('fr-FR'), n1(x.nrAcquisJ), n1(x.nrPrisJ), (x.nrVariationE < 0 ? '-' : '') + n0(Math.abs(x.nrVariationE))]; })),
+        ['Année', '', n1(sum(c,'acquisJ')), n0(sum(c,'acquisE')), n1(sum(c,'prisJ')), n1(sum(c,'prisH')), n0(sum(c,'prisE')), n0(sum(c,'variationE')), n1(c[11].stockJ), n0(c[11].stockE), n1(sum(c,'nrAcquisJ')), n1(sum(c,'nrPrisJ')), n0(sum(c,'nrVariationE'))]);
     return;
   }
   let h = avecCacheMoteur(function(){ return tableauHeures(a); });
@@ -10876,7 +10927,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment bien préparer les références des agences ?', 'Pour chaque agence : le CA 2025 et 2026, le TXR 2026 (CA par heure travaillée), le taux d\'absentéisme cible (maladie et accident du travail), le taux horaire brut au 1er janvier et au 1er juin, le taux de charges patronales des roulants, et la ligne de masse salariale non-roulante (salaire brut mensuel total et taux de charges). SOMA calcule le coût horaire chargé. Ces données servent de socle au REX et de point de comparaison entre agences : plus elles sont justes, plus les budgets seront réalistes et faciles à juger.'],
     ['Comment pré-remplir les données de toutes les agences ?', 'Avec « Importer données agences » : un fichier Excel, une ligne par agence. Colonnes reconnues par leur intitulé : Agence, CA 2025, CA 2026, TXR 2026, Absentéisme %, Taux brut 1er janvier, Taux brut 1er juin, Charges patronales %, MS non-roulante brut mensuel, Charges non-roulants %. L\'import écrit directement dans le budget de chaque agence, même si le REX l\'a déjà commencé. Vous pouvez ensuite ajuster agence par agence dans le tableau.'],
     ['Que se passe-t-il quand je clique sur « Enregistrer » ?', 'Seules les agences pour lesquelles vous avez saisi quelque chose sont enregistrées. Les valeurs vont dans le budget de l\'agence (toutes ses versions V1, V2, V3), le coût horaire est recalculé, et les champs de référence sont verrouillés côté REX. Le ratio de maintien de salaire est recopié dans toutes les agences. Un message vous indique le nombre d\'agences enregistrées, et le nom de celles qui auraient été refusées par le serveur.'],
-    ['Comment saisir la masse salariale non-roulante ?', 'Une seule ligne par agence : le salaire brut mensuel total des non-roulants (régulateurs, responsables, administratifs et quote-part du DR) et leur taux de charges. SOMA en déduit le coût mensuel chargé. Cette ligne unique évite qu\'un REX puisse déduire le salaire de son DR en consultant le budget. Elle se saisit dans Données agences ou sur l\'écran Charges CG de l\'agence. Sur les paies par période, elle compte pour un salaire mensuel par mois de paie, diminué de la part non maintenue des absences. Saisissez la ligne complète : si un régulateur ou un responsable a une part roulante dans l\'écran Équipe (par exemple 30 %), SOMA la compte en masse salariale roulante et la retire automatiquement de la ligne non-roulants (heures roulantes × coût horaire chargé), pour ne pas la compter deux fois. Le montant déduit est affiché sous la ligne. Une facturière avec une part roulante compte aussi en roulant (ETP, heures, masse salariale), mais rien n\'est déduit pour elle : son coût n\'est pas dans la ligne non-roulants.'],
+    ['Comment saisir la masse salariale non-roulante ?', 'Une seule ligne par agence : le salaire brut mensuel total des non-roulants (régulateurs, responsables, administratifs et quote-part du DR) et leur taux de charges. SOMA en déduit le coût mensuel chargé. Cette ligne unique évite qu\'un REX puisse déduire le salaire de son DR en consultant le budget. Elle se saisit dans Données agences ou sur l\'écran Charges CG de l\'agence. La masse salariale non roulante du mois est <b>exactement</b> cette ligne (brut × (1 + charges), par exemple 11 430 € × 1,3669 = 15 624 €), sans lien avec l\'écran Équipe, les % roulants ni la maladie. Saisissez la ligne complète : si un régulateur ou un responsable a une part roulante dans l\'écran Équipe (par exemple 30 %), elle compte dans les heures disponibles mais n\'est pas payée une seconde fois en masse salariale roulante. Une facturière avec une part roulante compte en roulant (ETP, heures, masse salariale) : son coût n\'est pas dans la ligne non-roulants. Saisissez aussi le <b>nombre d\'ETP non roulants</b> : chaque ETP acquiert 2,5 jours de congés par mois, l\'agence saisit les jours posés, et la variation du stock (acquis − posés) × coût d\'un jour (ligne / ETP / 26) entre dans la masse salariale du mois.'],
     ['Où régler le ratio de maintien de salaire ?', 'En haut de l\'écran Données agences. C\'est un paramètre unique pour tout le réseau : la part du salaire que l\'entreprise continue de payer pendant un arrêt maladie ou AT. Il est recopié dans toutes les agences à l\'enregistrement, et repris automatiquement par une agence dont le budget est créé plus tard. Tant qu\'il est vide, SOMA déduit les absences à 100%, ce qui sous-estime la masse salariale des agences à fort absentéisme.'],
     ['Pourquoi deux taux horaires ?', 'Le Smic est revalorisé en général au 1er janvier, et parfois en cours d\'année. Le taux du 1er janvier s\'applique aux heures de janvier à mai, celui du 1er juin aux heures de juin à décembre. Laissez le taux de juin vide s\'il n\'y a pas de revalorisation : celui de janvier s\'applique alors toute l\'année.'],
     ['Comment importer le registre RH ?', 'Avec « Importer registre RH », depuis l\'écran Données agences. Fichier Excel issu de la paie, première feuille, en-têtes sur la première ligne, une ligne par salarié. Colonnes utilisées : Agence (une fois par groupe suffit, elle est recopiée sur les lignes suivantes), Nom, Prenom, Date_entree, Date_sortie, Type Contrat, Libelle_emploi, Horaire_Mensuel. SOMA déduit la qualification de l\'emploi, le statut roulant ou non, les heures hebdomadaires, et le type de contrat (CDI, CDD, apprenti, intérim) : c\'est lui qui déclenche la provision de 10% de prime de précarité sur les CDD.'],
@@ -10903,7 +10954,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment saisir les charges d\'une agence ?', 'Ouvrez l\'agence avec « Ouvrir une agence » : SOMA affiche directement l\'écran Charges CG. En haut, vérifiez les taux horaires et la ligne non-roulante, repris des Données agences et modifiables ici. Puis, pour chaque poste, choisissez le <b>mode</b> : saisie par mois, montant annuel (réparti en douze mois égaux ou au prorata du CA mensuel, selon la clé), ou pourcentage du CA ; et le <b>type</b>, fixe ou variable. Le compteur « Postes saisis » suit votre avancement. La saisie est enregistrée automatiquement. Les lignes CA et Charges de personnel sont calculées par SOMA. Six postes sont construits par le REX dans son étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du CA de chaque mois, sous-traitance et entretiens véhicules - bâtiment en montant par mois. Vos valeurs lui servent de point de départ ; vous pouvez toujours les corriger ici.'],
     ['Que fait « Pré-remplir standards » ?', 'Il pose des valeurs types, calculées sur le CA de l\'agence, sur 8 postes : carburant 5,2% du CA, crédit-bail et location de véhicules 5%, locations immobilières 2,8%, assurance 1,8%, impôts et taxes 4,8%, honoraires 2,6%, péages 1,3%, charges financières 0,2%. Attention : ces valeurs remplacent ce qui était déjà saisi sur ces 8 postes. Ajustez-les ensuite à la réalité de l\'agence.'],
     ['Fixe ou variable : à quoi ça sert ?', 'Ce classement ne change pas le résultat. Il sert à l\'analyse : l\'écran Contrôles et la synthèse séparent les charges fixes des charges variables, pour juger la sensibilité du résultat à l\'activité.'],
-    ['Que comprend exactement la masse salariale du prévisionnel ?', 'Pour les roulants : les heures travaillées au coût horaire chargé du mois (taux du 1er janvier, puis du 1er juin), les heures supplémentaires selon leur majoration réelle (25% ou 50%), la part de salaire maintenue pendant les arrêts maladie et AT, et la provision de 10% de prime de précarité sur les heures en CDD. Pour les non-roulants : la ligne globale mensuelle, diminuée de la part non maintenue des absences. S\'y ajoutent les heures supplémentaires des improductifs, les indemnités et, sur la paie de janvier, les variables de décembre 2026. C\'est le coût complet du personnel, charges patronales comprises. Le seuil de référence du ratio masse salariale / CA est de 62 % sur l\'année.'],
+    ['Que comprend exactement la masse salariale du prévisionnel ?', 'Pour les roulants : les heures travaillées au coût horaire chargé du mois (taux du 1er janvier, puis du 1er juin), les heures supplémentaires selon leur majoration réelle (25% ou 50%), la part de salaire maintenue pendant les arrêts maladie et AT, et la provision de 10% de prime de précarité sur les heures en CDD. Pour les non-roulants : la ligne globale mensuelle telle que saisie, plus la variation du stock de leurs congés si le nombre d\'ETP non roulants est saisi. S\'y ajoutent les heures supplémentaires des improductifs, les indemnités et, sur la paie de janvier, les variables de décembre 2026. C\'est le coût complet du personnel, charges patronales comprises. Le seuil de référence du ratio masse salariale / CA est de 62 % sur l\'année.'],
     ['À quoi sert l\'écran Contrôles ?', 'Sur l\'agence ouverte, il récapitule charges fixes, charges variables, charges de personnel, heures supplémentaires et résultat, et liste les contrôles de cohérence. Ces contrôles ne bloquent rien. Quand vous ouvrez un budget soumis, SOMA affiche aussi ses anomalies : coût horaire manquant, CA supérieur à la capacité, congés non équilibrés, TXR manquant, ligne non-roulante absente, ratio de maintien vide, taux de juin absent.'],
     ['Comment saisir Formation, Exceptionnel, Réseau adhérent et Siège ?', 'Ces quatre structures se gèrent comme une agence que vous complétez entièrement : ouvrez-la avec « Ouvrir une agence » (elles sont en fin de liste), puis saisissez dans « Charges CG » tout son compte de résultat, chiffre d\'affaires et charges de personnel compris, mois par mois ou en montant annuel. Elles n\'ont ni équipe, ni calendrier, ni REX. Elles entrent dans le compte de résultat consolidé du réseau (écran Consolidation).'],
     ['Où saisir l\'impôt sur les sociétés et la participation ?', 'Sur le Siège uniquement : ouvrez SIEGE, écran « Charges CG », lignes « Impôt sur les sociétés » et « Participation aux bénéfices ». Le résultat net = résultat courant avant impôt + résultat exceptionnel − impôt sur les sociétés − participation. Ces lignes n\'existent pas pour les agences et apparaissent dans le consolidé réseau.'],
@@ -10927,6 +10978,7 @@ const FAQ_CG_SECTIONS = [
 
 const FAQ = {
   rex: [
+    ['Pourquoi dois-je rédiger les « Perspectives & contexte 2027 » avant mon objectif ?', 'C\'est la première étape de l\'écran Objectif, et elle est obligatoire : décrivez ce qui change en 2027 (contrats gagnés ou perdus, évolution de l\'activité, gardes, effectifs, véhicules…). L\'objectif de CA et le TXR cible se débloquent une fois ce texte rédigé (80 caractères au minimum), et il est exigé pour soumettre le budget. Il s\'affiche sur la fiche de validation du DR, du contrôle de gestion et de la direction : c\'est lui qui justifie vos chiffres.'],
     ['Par où je commence ?', 'Suivez les étapes dans l\'ordre de la barre latérale : d\'abord votre objectif de chiffre d\'affaires, puis votre équipe, puis la présence et les heures supplémentaires, vos six postes de charges (étape « Charges »), et enfin le prévisionnel et la synthèse. À chaque écran, SOMA vous guide et calcule les conséquences de vos choix. Vous n\'avez jamais à tout remplir d\'un coup : vous avancez pas à pas.'],
     ['Comment saisir mes références CA journalières ?', 'Sur l\'écran Références CA, indiquez pour chaque mois le chiffre d\'affaires moyen d\'une journée selon son type : jour de semaine normal, jour de semaine pendant les vacances scolaires, samedi, dimanche, jour férié. Il y a un tableau par activité : sanitaire, et saisonnier ou transport de personnes si vous les avez cochés sur l\'écran Objectif. Partez de votre réalisé 2026 et de ce que vous savez de 2027. Le calendrier applique ensuite ces montants à chaque jour de 2027 (vacances de votre zone, jours fériés) : c\'est ce qui donne votre CA budgété, mois par mois. Votre objectif de CA se saisit à part, sur l\'écran Objectif ; la synthèse compare les deux.'],
     ['Mon équipe est-elle déjà saisie ?', 'Oui. Le contrôle de gestion a chargé votre équipe à partir du registre du personnel : roulants (DEA, AA, taxi, TPMR), régulateurs, REX et facturières, avec leur contrat (CDI ou CDD), leurs heures hebdomadaires et leurs dates d\'entrée ou de sortie prévues en 2027. Les autres emplois (administratifs, apprentis, stagiaires) n\'y figurent pas. Vérifiez chaque ligne : « + Salarié » ajoute une personne, la croix en bout de ligne la retire, et « + Poste prévisionnel » ajoute un recrutement prévu (par défaut un CDD ambulancier de juin à septembre, à ajuster). « Importer depuis Excel » permet aussi de charger votre propre fichier : il remplace alors toute la liste, après confirmation. Les heures hebdomadaires viennent de l\'horaire mensuel du registre : un temps plein (151,67 h ou 152 h par mois) donne 35 h. « Trier par », au-dessus du tableau, classe la liste par nom (de A à Z ou de Z à A) ou par qualification, et un clic sur l\'en-tête « Nom » inverse l\'ordre. Le tri ne change que l\'affichage.'],
