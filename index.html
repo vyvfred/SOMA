@@ -7577,14 +7577,14 @@ function renderRatioMSMensuel(){
   let ratio=(c,v)=>c>0?v/c*100:null,fmtR=r=>r===null?'—':pct(r),cel='padding:6px 8px;text-align:right;white-space:nowrap';
   chargerReperesSyn(a);
   let td=(r,extra)=>'<td class="num" style="'+cel+(extra||'')+'">'+fmtR(r)+'</td>';
-  let histo=[['MS / CA 2026',anneeRep(REPERES_SYN.r,2026)],['MS / CA 2025',anneeRep(REPERES_SYN.r,2025)],['Moyenne réseau 2026',anneeRep(REPERES_SYN.reseau,2026)]].filter(function(x){return x[1];}).map(function(x){let row=x[1],cat=atterrissage2026(row,'ca').val,mst=atterrissage2026(row,'perso').val;return '<tr data-testid="ratio-ms-histo" style="border-top:1px solid var(--border);color:var(--ink65)"><td style="'+cel+';text-align:left">'+x[0]+'</td>'+M.map(function(_,m){return '<td class="num" style="'+cel+'">'+fmtR(ratioMoisRep(row,'perso',m))+'</td>';}).join('')+'<td class="num" style="'+cel+'">'+fmtR(cat?mst/cat*100:null)+'</td></tr>';}).join('');
+  let histo=[['MS / CA 2026',anneeRep(completerAtterrissageCA(REPERES_SYN.r,a.histCA),2026)],['MS / CA 2025',anneeRep(REPERES_SYN.r,2025)],['Moyenne réseau 2026',anneeRep(REPERES_SYN.reseau,2026)]].filter(function(x){return x[1];}).map(function(x){let row=x[1],cat=atterrissage2026(row,'ca').val,mst=atterrissage2026(row,'perso').val;return '<tr data-testid="ratio-ms-histo" style="border-top:1px solid var(--border);color:var(--ink65)"><td style="'+cel+';text-align:left">'+x[0]+'</td>'+M.map(function(_,m){return '<td class="num" style="'+cel+'">'+fmtR(ratioMoisRep(row,'perso',m))+'</td>';}).join('')+'<td class="num" style="'+cel+'">'+fmtR(cat?mst/cat*100:null)+'</td></tr>';}).join('');
   el.innerHTML='<div style="font-weight:700;margin-bottom:8px">Masse salariale / CA, mois par mois</div><div class="tablewrap"><table style="border-collapse:collapse;width:100%">'
     +'<thead><tr style="color:var(--ink65)"><th style="'+cel+';text-align:left"></th>'+M.map(m=>'<th style="'+cel+'">'+m+'</th>').join('')+'<th style="'+cel+'">Année</th></tr></thead><tbody>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">CA</td>'+ca.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(caAn)+'</td></tr>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">Masse salariale</td>'+ms.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(msAn)+'</td></tr>'
     +'<tr style="border-top:1px solid var(--border);font-weight:700"><td style="'+cel+';text-align:left">MS / CA</td>'+M.map((_,m)=>td(ratio(ca[m],ms[m])).replace('<td ','<td data-testid="ratio-ms-'+m+'" ')).join('')+td(ratio(caAn,msAn))+'</tr>'+histo
     +'</tbody></table></div><div style="font-size:.85em;color:var(--ink65);margin-top:6px">Masse salariale = charges de personnel du mois (quotes-parts comprises). Les lignes grisées situent le budget face au réalisé 2026 (estimation du contrôle de gestion pour les mois non clos), à 2025 et à la moyenne du réseau.</div>';
-  if(q('comparaisonsSynthese'))q('comparaisonsSynthese').innerHTML=comparaisonsHTML(a,REPERES_SYN.r,REPERES_SYN.reseau);
+  if(q('comparaisonsSynthese'))q('comparaisonsSynthese').innerHTML=comparaisonsHTML(a,completerAtterrissageCA(REPERES_SYN.r,a.histCA),REPERES_SYN.reseau);
 }
 function renderSynthese(){
   let a = A();
@@ -8960,6 +8960,18 @@ function atterrissage2026(r,cle){
   for(let m=mc;m<12;m++){let e=estimRep(r,cle,m);if(e===null){manquants++;e=valRep(bu[m])||0;}tot+=e;}
   return {val:tot,manquants:manquants,moisClos:mc};
 }
+// Atterrissage du CA saisi par le contrôle de gestion dans Données agences (« CA 2026 », a.histCA) : les mois non clos
+// reçoivent la différence avec le réalisé, répartie comme le budget 2026 de ces mois. Une estimation du CA saisie dans
+// le tableau de bord reste prioritaire.
+function completerAtterrissageCA(r,caCG){
+  caCG=valRep(caCG);if(!r||!r.reel||!caCG||caCG<=0)return r;
+  let mc=r.moisClos||0;if(mc>=12)return r;
+  let e=r.estim&&r.estim.ca;if(e&&e.some(function(v,m){return m>=mc&&valRep(v)!==null;}))return r;
+  let reste=caCG-sommeRep(serieRep(r,'reel','ca'),0,mc);if(reste<=0)return r;
+  let b=serieRep(r,'budget','ca'),tb=sommeRep(b,mc,12),ca=Array(12).fill(null);
+  for(let m=mc;m<12;m++)ca[m]=tb>0?reste*(valRep(b[m])||0)/tb:reste/(12-mc);
+  return Object.assign({},r,{estim:Object.assign({},r.estim||{},{ca:ca}),caAtterrissageCG:caCG});
+}
 function annuel2025(r,cle){let h=anneeRep(r,2025);if(h){let s=serieRep(h,'reel',cle);if(s.length)return sommeRep(s,0,12);}let s=serieRep(r,'n1',cle);return s.length?sommeRep(s,0,12):null;}
 function budget2027Rep(a,cle){
   if(!a)return 0;
@@ -8973,6 +8985,7 @@ function fmtKRep(v){return Math.round(v/1000).toLocaleString('fr-FR')+' k€';}
 // Repères d'une agence pour la décision : tableau 2025 / atterrissage 2026 / budget 2027, fiabilité du budget 2026, alertes
 function reperesAgence(a,r){
   if(!r||!r.reel)return null;
+  r=completerAtterrissageCA(r,a&&a.histCA);
   let lignes=INDICATEURS_REPERES.map(function(ind){
     let at=atterrissage2026(r,ind.cle),v27=budget2027Rep(a,ind.cle);
     return {cle:ind.cle,lib:ind.lib,v2025:annuel2025(r,ind.cle),v2026:at.val,v2027:v27,manquants:at.manquants};
@@ -9001,6 +9014,7 @@ function reperesAgence(a,r){
     if(dRex<=-SEUILS_REPERES.fiabRex)al.push({niveau:'alerte',texte:'Budget 2026 non tenu : résultat d\'exploitation réalisé '+fmtKRep(fiab.rexReel)+' sur '+fiab.mois+' mois contre '+fmtKRep(fiab.rexBudget)+' budgétés ('+fmtPts(dRex)+' de CA)'});
     if(Math.abs(dCA)>SEUILS_REPERES.fiabCA)al.push({niveau:'info',texte:'CA 2026 réalisé '+(dCA>0?'+':'')+fmtPctRep(dCA)+' par rapport au budget 2026 sur '+fiab.mois+' mois'});
   }
+  if(r.caAtterrissageCG)al.push({niveau:'info',texte:'CA 2026 : atterrissage du contrôle de gestion (Données agences), novembre et décembre déduits du réalisé'});
   if(L.ca.manquants)al.push({niveau:'info',texte:'Atterrissage provisoire : estimation des '+L.ca.manquants+' derniers mois non saisie par le contrôle de gestion (budget 2026 retenu)'});
   let ordre={alerte:0,attention:1,info:2};al.sort(function(x,y){return ordre[x.niveau]-ordre[y.niveau];});
   return {lignes:lignes,ratios:ratios,fiabilite:fiab,alertes:al,moisClos:mc};
@@ -9026,8 +9040,9 @@ async function ecrireRepereMono(agence,annee,data,remplacer){
   return sb.from('reperes').insert({agence:agence,annee:annee,data:d,updated_at:new Date().toISOString()});
 }
 async function majReseauMono(annee){
-  let rows={},res=await sb.from('reperes').select('agence,data').eq('annee',annee);
-  (res.data||[]).forEach(function(x){if(x.agence!==AGENCE_RESEAU)rows[x.agence]=x.data;});
+  let rows={},ca={},res=await sb.from('reperes').select('agence,data').eq('annee',annee);
+  if(annee===2026){let b=(await sb.from('budgets').select('agence,data').eq('annee',2027)).data||[];b.forEach(function(x){ca[x.agence]=(budgetData(x.data)||{}).histCA;});}
+  (res.data||[]).forEach(function(x){if(x.agence!==AGENCE_RESEAU)rows[x.agence]=completerAtterrissageCA(x.data,ca[x.agence]);});
   return ecrireRepereMono(AGENCE_RESEAU,annee,agregerReseau(rows),true);
 }
 function periodeReperes(r){
@@ -9117,10 +9132,11 @@ function afficherDetailTDB(){
     else{
       let mois=[];for(let m=mc;m<12;m++)mois.push(m);
       h+='<div data-testid="estimation-cg" style="margin-bottom:10px"><h4 style="margin:6px 0">Estimation des derniers mois (contrôle de gestion)</h4>'
-        +'<p class="hint" style="font-size:12px;margin:0 0 6px">L\'atterrissage 2026 = réalisé '+M[0]+'–'+M[mc-1]+' + votre estimation pour '+mois.map(function(m){return M[m];}).join(', ')+'. En gris : budget 2026 du mois, retenu tant que vous n\'avez rien saisi.</p>'
+        +'<p class="hint" style="font-size:12px;margin:0 0 6px">L\'atterrissage 2026 = réalisé '+M[0]+'–'+M[mc-1]+' + votre estimation pour '+mois.map(function(m){return M[m];}).join(', ')+'. En gris : ce qui est retenu tant que vous n\'avez rien saisi (CA : votre « CA 2026 » des Données agences moins le réalisé, réparti comme le budget ; autres indicateurs : budget 2026 du mois).</p>'
         +'<table style="border-collapse:collapse;font-size:12px"><tr><th style="text-align:left;padding:3px 6px">Indicateur</th>'+mois.map(function(m){return '<th style="padding:3px 6px">'+M[m]+'</th>';}).join('')+'</tr>';
       INDICATEURS_REPERES.forEach(function(ind){
-        h+='<tr><td style="padding:3px 6px">'+ind.lib+'</td>'+mois.map(function(m){let v=estimRep(r,ind.cle,m),b=Math.round(valRep(serieRep(r,'budget',ind.cle)[m])||0);
+        let rc=completerAtterrissageCA(r,l.a&&l.a.histCA);
+        h+='<tr><td style="padding:3px 6px">'+ind.lib+'</td>'+mois.map(function(m){let v=estimRep(r,ind.cle,m),b=Math.round((ind.cle==='ca'&&rc.caAtterrissageCG?valRep(rc.estim.ca[m]):valRep(serieRep(r,'budget',ind.cle)[m]))||0);
           return '<td style="padding:2px 3px"><input type="number" data-testid="estim-'+ind.cle+'-'+m+'" data-cle="'+ind.cle+'" data-m="'+m+'" value="'+(v===null?'':v)+'" placeholder="'+b+'" style="width:110px;text-align:right;padding:6px 4px"></td>';}).join('')+'</tr>';
       });
       h+='</table><div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center"><button type="button" data-testid="estim-enregistrer" onclick="enregistrerEstimTDB()" style="width:auto;margin:0;font-size:12px;padding:7px 14px">Enregistrer l\'estimation</button>'
