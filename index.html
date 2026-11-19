@@ -1760,6 +1760,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 <!-- PANEL PÉRIODES DE PAIE -->
 <section id="justif" class="panel">
   <div class="card" data-testid="justif">
+    <div id="justifChoixAgence" style="display:none;margin-bottom:10px"><label style="font-size:13px">Agence : <select id="justifAgence" data-testid="justif-agence" onchange="choisirAgenceJustif(this.value)"></select></label></div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="justifTitre" style="margin:0">Détail des calculs</h2><span style="flex:1"></span><button class="secondary" data-testid="justif-export" style="font-size:12px" onclick="exporterJustif()">⬇ Tout exporter (Excel)</button></div>
     <p class="hint" style="margin:6px 0 12px">Comment SOMA obtient chaque montant : masse salariale du mois poste par poste, variables de paie, stockage et déstockage des congés payés, heures. Les chiffres sont ceux de l'application, à l'euro près (arrondis).</p>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
@@ -2242,7 +2243,7 @@ const CG_GROUPS = [
   { label: null, items: ['aide'] }
 ];
 const panelsDR=[['validation','Mes agences'],['consolidation','Consolidation région'],['aide','Aide']];
-const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau'],['aide','Aide']];
+const panelsDFDG=[['validation','Validation'],['consolidation','Consolidation réseau'],['justif','Détail des calculs'],['aide','Aide']];
 const agences=[
   {nom:'ANGOULEME',zone:'A'},{nom:'COGNAC',zone:'A'},{nom:'CHATELLERAULT',zone:'A'},{nom:'PARTHENAY',zone:'A'},
   {nom:'POITIERS',zone:'A'},{nom:'CLERMONT',zone:'A'},{nom:'DIJON',zone:'A'},{nom:'BOURG EN BRESSE',zone:'A'},
@@ -2700,7 +2701,7 @@ function buildNavValidateur() {
   let labels = { dr:'Directeur Régional', dg:'Direction (DG, directeurs opérationnels)', pdg:'Direction (DG, directeurs opérationnels)' };
   let panels = (role === 'dr')
     ? [['validation','Budgets à valider'],['suivi','Suivi des REX'],['saisie','Saisir pour un REX'],['consolidation','Consolidation région'],['aide','Aide']]
-    : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['aide','Aide']];
+    : [['validation','Budgets à valider'],['consolidation','Consolidation réseau'],['justif','Détail des calculs'],['aide','Aide']];
   let h = '<div class="navgroup navGlobalLabel">' + (labels[role]||'Validation') + '</div>';
   let activeId = document.querySelector('.panel.active')?.id || 'validation';
   panels.forEach(function(x){
@@ -10260,8 +10261,21 @@ async function enregistrerStockCP(){
   }catch(e){ if(m) m.textContent = 'Échec : ' + (e.message || 'erreur'); }
 }
 
+// Directions nationales et direction financière (mono) : choix de l'agence, chargée en lecture (aucune sauvegarde)
+let JUSTIF_AGENCE = null;
+async function choisirAgenceJustif(nom){
+  if(!nom) return; JUSTIF_AGENCE = nom;
+  let modeAvant = CONSULT_MODE; CONSULT_MODE = true;
+  try{ await loadBudgetFromSupabase(nom); } finally { CONSULT_MODE = modeAvant || ['df','dg','pdg'].includes(PROFILE && PROFILE.role); }
+  renderJustif();
+}
+
 function renderJustif(){
   let el = q('justifContenu'), a = A(); if(!el) return;
+  let direction = PROFILE && ['df','dg','pdg'].includes(PROFILE.role), ch = q('justifChoixAgence'), sel = q('justifAgence');
+  if(ch) ch.style.display = direction ? '' : 'none';
+  if(direction && sel && !sel.options.length){ sel.innerHTML = '<option value="">— Choisir une agence —</option>' + agencesReseau().map(function(ag){ return '<option value="' + ag.nom + '"' + (ag.nom === JUSTIF_AGENCE ? ' selected' : '') + '>' + ag.nom + '</option>'; }).join(''); }
+  if(direction && !JUSTIF_AGENCE){ el.innerHTML = '<p class="hint">Choisissez une agence pour afficher le détail de ses calculs (lecture seule).</p>'; if(q('justifTitre')) q('justifTitre').textContent = 'Détail des calculs'; return; }
   if(q('justifTitre')) q('justifTitre').textContent = 'Détail des calculs — ' + (a ? a.name : '');
   ['ms','var','cp','h'].forEach(function(k){ let b = q('justifOnglet_' + k); if(b) b.className = JUSTIF_ONGLET === k ? '' : 'secondary'; });
   if(!(a && a.costHour && a.cal && a.cal.length)){ el.innerHTML = '<p class="hint">Le coût horaire de l\'agence (Charges CG) et le calendrier doivent être renseignés pour afficher les calculs.</p>'; return; }
