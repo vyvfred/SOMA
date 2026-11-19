@@ -1986,6 +1986,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
 
     <!-- Masse salariale / CA, mois par mois -->
     <div id="ratioMSMensuel" data-testid="ratio-ms-mensuel" data-visite="ms-ca" style="margin-bottom:18px;border:1px solid var(--border);padding:12px 14px"></div>
+    <div id="comparaisonsSynthese"></div>
 
     <!-- Lecture synthétique en langage naturel -->
     <div class="objInsight" id="synthInsight" style="display:none">
@@ -2053,7 +2054,7 @@ input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     <div id="tdbImport" style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
       <input id="tdbFichier" data-testid="tdb-fichier" type="file" accept=".xlsx,.xls" style="display:none" onchange="importerTDB(this.files[0])">
       <button type="button" data-testid="tdb-importer" onclick="q('tdbFichier').click()" style="width:auto;margin:0;font-size:12px;padding:8px 14px">⇪ Importer le tableau de bord (Excel)</button>
-      <span class="hint" style="font-size:12px">Un onglet par agence (nom en A1, colonnes « B mm-26 » pour le budget) et l'onglet « 26 Vs 25 » pour 2025. Réimportez après chaque clôture : vos estimations sont conservées.</span>
+      <span class="hint" style="font-size:12px">Le classeur 2026 (en cours) et le classeur de l'exercice 2025 (complet) : un onglet par agence (nom en A1, colonnes « B mm-AA » pour le budget) et l'onglet de comparaison avec l'année précédente. L'exercice est reconnu tout seul. Réimportez après chaque clôture : vos estimations sont conservées.</span>
     </div>
     <div id="tdbMessage" data-testid="tdb-message" style="margin-top:8px;font-size:12px;color:var(--ink65)"></div>
   </div>
@@ -2518,7 +2519,7 @@ const ETAPES_VISITE_REX=[
   {ecran:'rh',cible:'mois',titre:'Mois par mois',texte:'Ouvrez chaque mois, ajustez les congés et absences semaine par semaine, regardez les heures supplémentaires, puis « Valider ce mois ».'},
   {ecran:'charges',cible:'charges',titre:'6. Charges',texte:'Six postes sont à vous : quatre en % du CA (matériel, carburant…), deux en montant fixe par mois. Les cases sont préremplies : ajustez-les.'},
   {ecran:'previsionnel',cible:'previsionnel',titre:'7. Prévisionnel',texte:'Le compte d\'exploitation de l\'agence se construit tout seul à partir de vos saisies, jusqu\'au résultat d\'exploitation.'},
-  {ecran:'finance',cible:'ms-ca',titre:'8. Synthèse',texte:'Contrôlez la masse salariale / CA mois par mois : vert jusqu\'à 62 %, orange au-delà. Les points à revoir sont signalés en haut de l\'écran.'},
+  {ecran:'finance',cible:'ms-ca',titre:'8. Synthèse',texte:'Situez la masse salariale / CA mois par mois face à 2026, 2025 et à la moyenne du réseau. Les points à revoir sont signalés en haut de l\'écran.'},
   {ecran:'finance',cible:'historique',titre:'Enregistrement automatique',texte:'Tout est enregistré quelques secondes après chaque saisie. Une erreur ? ↶ annule (Ctrl+Z), ↷ rétablit, jusqu\'à 50 actions.'},
   {ecran:'objectif',cible:'soumettre',titre:'Soumettre au DR',texte:'Quand tout est prêt, « Soumettre au DR ». Votre budget passe en lecture seule ; s\'il vous est renvoyé, le motif s\'affiche ici. Date limite : 27 novembre.'},
   {ecran:'objectif',cible:'nav-aide',titre:'Besoin d\'aide ?',texte:'L\'écran Aide contient la FAQ du REX et le bouton pour revoir cette visite. Bonne construction !'}
@@ -2544,7 +2545,7 @@ const ETAPES_VISITE_DIRECTION=[
   {ecran:'validation',cible:'val-fiche',titre:'La fiche de décisions',texte:'CA, masse salariale / CA, résultat et choix de congés de l\'agence, avec un verdict. « Voir tous les écrans » ouvre le budget en lecture.'},
   {ecran:'validation',cible:'val-decision',titre:'Valider ou refuser',texte:'Le commentaire est obligatoire. Un refus renvoie le budget au REX et le circuit repart du DR. La validation du dernier étage rend le budget définitif.'},
   {ecran:'consolidation',cible:'conso-kpis',titre:'Consolidation réseau',texte:'L\'état de chaque agence du réseau, le CA consolidé et l\'avancement des budgets. Date limite de soumission des REX : 27 novembre.'},
-  {ecran:'consolidation',cible:'conso-table',titre:'Suivre l\'avancement',texte:'Le tableau détaille chaque agence. Le seuil de masse salariale est de 62 % du CA sur l\'année.'},
+  {ecran:'consolidation',cible:'conso-table',titre:'Suivre l\'avancement',texte:'Le tableau détaille chaque agence.'},
   {ecran:'consolidation',cible:'nav-aide',titre:'Besoin d\'aide ?',texte:'L\'écran Aide contient votre FAQ, la vidéo et la présentation de formation des REX, et le bouton pour revoir cette visite.'}
 ];
 function etapesVisitePour(role){return role==='rex'?ETAPES_VISITE_REX:role==='dr'?ETAPES_VISITE_DR:(role==='df'||role==='dg'||role==='pdg')?ETAPES_VISITE_DIRECTION:null;}
@@ -5491,9 +5492,6 @@ function collectAnomalies(){
     if(net < 0){
       anomalies.push({panel:'previsionnel', level:'warn', text:(vueExploitation(a)?'Résultat d\'exploitation déficitaire (':'Budget déficitaire (')+euro(net)+')'});
     }
-    if(tauxMS > SEUIL_MS_CA){
-      anomalies.push({panel:'previsionnel', level:'warn', text:'Masse salariale au-dessus du seuil de '+SEUIL_MS_CA+' % ('+pct(tauxMS)+' du CA)'});
-    }
   }
   return anomalies;
 }
@@ -7078,7 +7076,7 @@ function showWeekDetail(m){
   let msMois = (typeof payrollMonth==='function') ? payrollMonth(a,m) : 0;
   let tauxMS = caMois>0 ? (msMois/caMois*100) : 0;
   // Couleur du taux MS : vert si sain, ambre si élevé, orange si critique
-  let colMS = tauxMS>SEUIL_MS_CA ? 'var(--orange)' : 'var(--green)';
+  let colMS = 'var(--ink)'; // sans seuil d'alerte (nov. 2026)
   let bandeauImpact = '<div id="rhImpactBandeau" style="padding:10px 14px;background:var(--bg3);border-bottom:1px solid var(--border);display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:12px">'
     + '<span style="font-weight:700;color:var(--ink65);text-transform:uppercase;letter-spacing:.06em;font-size:10px">Impact de ce mois</span>'
     + '<span>CA du mois : <b style="color:var(--ink)">'+euro(caMois)+'</b></span>'
@@ -7402,13 +7400,8 @@ function renderPrevInsight(a, ca, net, tauxMS){
   } else {
     phrase = 'Votre budget est à l\'équilibre. ';
   }
-  // Jugement de la masse salariale (mêmes seuils que le reste de l'app)
-  if(tauxMS > SEUIL_MS_CA){
-    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, au-dessus du seuil de ' + SEUIL_MS_CA + ' % : elle pèse sur la rentabilité. Vérifiez vos charges de personnel ou votre objectif de CA.';
-  } else if(tauxMS > 0){
-    phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires, sous le seuil de ' + SEUIL_MS_CA + ' %. ';
-    if(net > 0) phrase += 'Ce budget est équilibré et peut être présenté à votre Directeur Régional.';
-  }
+  // Pas de seuil de masse salariale (nov. 2026) : le ratio se compare à 2025, 2026 et au réseau dans la Synthèse
+  if(tauxMS > 0) phrase += 'La masse salariale représente <b>' + pct(tauxMS) + '</b> du chiffre d\'affaires (comparaisons avec 2025, 2026 et la moyenne du réseau dans la Synthèse). ';
   txt.innerHTML = phrase;
 }
 
@@ -7426,7 +7419,7 @@ function renderPrevisionnel(){
   if(q('prevKpis'))q('prevKpis').innerHTML=[
     ['CA budgété',euro(ca),''],
     [res.lib,euro(net),ca?pct(net/ca*100):''],
-    ['Masse salariale / CA',ca?pct(tauxMS):'—',!ca?'CA non calculé':tauxMS>SEUIL_MS_CA?'⚠ au-dessus du seuil de '+SEUIL_MS_CA+' %':'sous le seuil de '+SEUIL_MS_CA+' %'],
+    ['Masse salariale / CA',ca?pct(tauxMS):'—',!ca?'CA non calculé':'charges de personnel / CA'],
     ['EBE',euro(ebe),ca?pct(ebe/ca*100):'']
   ].map(x=>'<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>').join('');
   // Interprétation : SOMA juge la santé du budget
@@ -7544,19 +7537,54 @@ function renderEnveloppesCP(a){
 }
 
 // Masse salariale / CA mois par mois (charges de personnel, quotes-parts comprises, comme l'indicateur annuel)
-function couleurMS(t){return t>SEUIL_MS_CA?'var(--orange)':'var(--green)';}
+// Sans seuil d'alerte (nov. 2026) : le ratio se lit face à 2026, 2025 et à la moyenne du réseau
+let REPERES_SYN={nom:null,r:null,reseau:null};
+function chargerReperesSyn(a){if(!a||!a.name||a.name==='Nouvelle agence'||REPERES_SYN.nom===a.name)return;REPERES_SYN={nom:a.name,r:null,reseau:null};chargerReperesMono(a.name).then(function(m){if(REPERES_SYN.nom!==a.name)return;REPERES_SYN.r=m[a.name]||null;REPERES_SYN.reseau=m[AGENCE_RESEAU]||null;renderRatioMSMensuel();});}
+// Comparaisons de la Synthèse (nov. 2026) : budget 2027 face à 2025 (N-2), 2026 (N-1) et à la moyenne du réseau, sans alerte
+function comparaisonsHTML(a,r,reseau){
+  if(!r&&!reseau)return '';
+  let k=function(v){return v===null||v===undefined?'—':Math.round(v/1000).toLocaleString('fr-FR')+' k€';};
+  let p1=function(v){return v===null||v===undefined||!isFinite(v)?'—':(Math.round(v*10)/10).toLocaleString('fr-FR')+' %';};
+  let ec=function(v){return v===null||v===undefined||!isFinite(v)?'—':(v>0?'+':'')+(Math.round(v*10)/10).toLocaleString('fr-FR');};
+  let cel='padding:5px 8px;text-align:right;white-space:nowrap',gris=';color:var(--ink65)';
+  let at=function(cle){return anneeRep(r,2026)?atterrissage2026(r,cle).val:null;},an25=function(cle){return annuel2025(r,cle);};
+  let ca25=an25('ca'),ca26=at('ca'),nb=reseau&&reseau.nbAgences,r26=anneeRep(r,2026);
+  let h='<div data-testid="comparaisons" style="margin-bottom:18px;border:1px solid var(--border);padding:12px 14px"><div style="font-weight:700;margin-bottom:2px">Comparaisons : 2025, 2026 et moyenne du réseau</div>'
+    +'<div style="font-size:12px;color:var(--ink65);margin-bottom:10px">Pour situer votre budget, sans valeur imposée : réalisé 2025, atterrissage 2026 (réalisé des mois clos + estimation du contrôle de gestion), budget 2027'+(nb?' et moyenne des '+nb+' agences du réseau (pondérée par le CA)':'')+'.</div>';
+  if(r&&(ca25!==null||ca26!==null)){
+    h+='<div class="tablewrap" style="margin-bottom:12px"><table data-testid="comparaisons-cles" style="border-collapse:collapse;font-size:13px"><tr style="color:var(--ink65)"><th style="'+cel+';text-align:left"></th><th style="'+cel+'">2025</th><th style="'+cel+'">2026</th><th style="'+cel+'">Budget 2027</th><th style="'+cel+'">2027 / 2026</th><th style="'+cel+'">2027 / 2025</th></tr>';
+    INDICATEURS_REPERES.forEach(function(ind){
+      let v25=an25(ind.cle),v26=at(ind.cle),v27=budget2027Rep(a,ind.cle),ev=function(x){return ind.cle==='rex'||!x||!v27?'—':ec((v27/x-1)*100)+' %';};
+      h+='<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">'+ind.lib+'</td><td class="num" style="'+cel+'">'+k(v25)+'</td><td class="num" style="'+cel+'">'+k(v26)+'</td><td class="num" style="'+cel+';font-weight:700">'+(v27?k(v27):'—')+'</td><td class="num" style="'+cel+'">'+ev(v26)+'</td><td class="num" style="'+cel+'">'+ev(v25)+'</td></tr>';
+    });
+    h+='</table></div>';
+  }
+  h+='<div class="tablewrap"><table data-testid="comparaisons-lignes" style="border-collapse:collapse;font-size:13px"><tr style="color:var(--ink65)"><th style="'+cel+';text-align:left">En % du CA</th><th style="'+cel+'">2025</th><th style="'+cel+'">2026</th><th style="'+cel+'">Budget 2027</th><th style="'+cel+'">Écart 2027 / 2026</th><th style="'+cel+'">Réseau 2025</th><th style="'+cel+'">Réseau 2026</th><th style="'+cel+'">Écart au réseau</th></tr>';
+  comparaisonsLignes(a,r,reseau).forEach(function(l){
+    let fort=/^[A-Z' ]+$/.test(l.label)||l.label==='Charges de personnel'||l.label==='Autres Achats et charges externes';
+    h+='<tr data-testid="comparaison-ligne" style="border-top:1px solid var(--border);font-weight:'+(fort?700:400)+'"><td style="'+cel+';text-align:left">'+(l.label==='Autres Achats et charges externes'?'Charges externes (total)':libLigneSIG(l.label))+'</td>'
+      +'<td class="num" style="'+cel+'">'+p1(l.r2025)+'</td><td class="num" style="'+cel+'">'+p1(l.r2026)+'</td><td class="num" style="'+cel+'">'+p1(l.r2027)+'</td>'
+      +'<td class="num" style="'+cel+gris+'">'+(l.r2027!==null&&l.r2026!==null?ec(l.r2027-l.r2026)+' pt':'—')+'</td><td class="num" style="'+cel+gris+'">'+p1(l.res2025)+'</td><td class="num" style="'+cel+gris+'">'+p1(l.res2026)+'</td>'
+      +'<td class="num" style="'+cel+gris+'">'+(l.r2027!==null&&l.res2026!==null?ec(l.r2027-l.res2026)+' pt':'—')+'</td></tr>';
+  });
+  h+='</table></div><div style="font-size:11px;color:var(--ink65);margin-top:6px">2026 en % du CA : sur les mois clos ('+(r26?M[0]+'–'+M[(r26.moisClos||1)-1]:'—')+'). Les écarts sont donnés à titre d\'information : une agence peut avoir de bonnes raisons de s\'écarter de la moyenne.</div></div>';
+  return h;
+}
 function renderRatioMSMensuel(){
   let el=q('ratioMSMensuel');if(!el)return;let a=A();if(!a){el.innerHTML='';return;}
   let s=M.map((_,m)=>sig(a,m)),ca=s.map(x=>x["Chiffre d'affaires"]||0),ms=s.map(x=>x['Charges de personnel']||0);
   let caAn=ca.reduce((x,y)=>x+y,0),msAn=ms.reduce((x,y)=>x+y,0);
   let ratio=(c,v)=>c>0?v/c*100:null,fmtR=r=>r===null?'—':pct(r),cel='padding:6px 8px;text-align:right;white-space:nowrap';
-  let td=(r,extra)=>'<td class="num" style="'+cel+(r===null?'':';color:'+couleurMS(r))+(extra||'')+'">'+fmtR(r)+'</td>';
+  chargerReperesSyn(a);
+  let td=(r,extra)=>'<td class="num" style="'+cel+(extra||'')+'">'+fmtR(r)+'</td>';
+  let histo=[['MS / CA 2026',anneeRep(REPERES_SYN.r,2026)],['MS / CA 2025',anneeRep(REPERES_SYN.r,2025)],['Moyenne réseau 2026',anneeRep(REPERES_SYN.reseau,2026)]].filter(function(x){return x[1];}).map(function(x){let row=x[1],cat=atterrissage2026(row,'ca').val,mst=atterrissage2026(row,'perso').val;return '<tr data-testid="ratio-ms-histo" style="border-top:1px solid var(--border);color:var(--ink65)"><td style="'+cel+';text-align:left">'+x[0]+'</td>'+M.map(function(_,m){return '<td class="num" style="'+cel+'">'+fmtR(ratioMoisRep(row,'perso',m))+'</td>';}).join('')+'<td class="num" style="'+cel+'">'+fmtR(cat?mst/cat*100:null)+'</td></tr>';}).join('');
   el.innerHTML='<div style="font-weight:700;margin-bottom:8px">Masse salariale / CA, mois par mois</div><div class="tablewrap"><table style="border-collapse:collapse;width:100%">'
     +'<thead><tr style="color:var(--ink65)"><th style="'+cel+';text-align:left"></th>'+M.map(m=>'<th style="'+cel+'">'+m+'</th>').join('')+'<th style="'+cel+'">Année</th></tr></thead><tbody>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">CA</td>'+ca.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(caAn)+'</td></tr>'
     +'<tr style="border-top:1px solid var(--border)"><td style="'+cel+';text-align:left">Masse salariale</td>'+ms.map(v=>'<td class="num" style="'+cel+'">'+kEuro(v)+'</td>').join('')+'<td class="num" style="'+cel+';font-weight:700">'+kEuro(msAn)+'</td></tr>'
-    +'<tr style="border-top:1px solid var(--border);font-weight:700"><td style="'+cel+';text-align:left">MS / CA</td>'+M.map((_,m)=>td(ratio(ca[m],ms[m])).replace('<td ','<td data-testid="ratio-ms-'+m+'" ')).join('')+td(ratio(caAn,msAn))+'</tr>'
-    +'</tbody></table></div><div style="font-size:.85em;color:var(--ink65);margin-top:6px">Vert jusqu\'au seuil de '+SEUIL_MS_CA+' %, orange au-delà. Masse salariale = charges de personnel du mois (quotes-parts comprises).</div>';
+    +'<tr style="border-top:1px solid var(--border);font-weight:700"><td style="'+cel+';text-align:left">MS / CA</td>'+M.map((_,m)=>td(ratio(ca[m],ms[m])).replace('<td ','<td data-testid="ratio-ms-'+m+'" ')).join('')+td(ratio(caAn,msAn))+'</tr>'+histo
+    +'</tbody></table></div><div style="font-size:.85em;color:var(--ink65);margin-top:6px">Masse salariale = charges de personnel du mois (quotes-parts comprises). Les lignes grisées situent le budget face au réalisé 2026 (estimation du contrôle de gestion pour les mois non clos), à 2025 et à la moyenne du réseau.</div>';
+  if(q('comparaisonsSynthese'))q('comparaisonsSynthese').innerHTML=comparaisonsHTML(a,REPERES_SYN.r,REPERES_SYN.reseau);
 }
 function renderSynthese(){
   let a = A();
@@ -7579,7 +7607,7 @@ function renderSynthese(){
     q('synthKpis').innerHTML = [
       ['CA budgété', euro(ca), ''],
       [res.lib, euro(net), ca?pct(net/ca*100):''],
-      ['Masse salariale / CA', ca?pct(tauxMS):'—', !ca?'CA non calculé':tauxMS>SEUIL_MS_CA?'⚠ au-dessus du seuil de '+SEUIL_MS_CA+' %':'sous le seuil de '+SEUIL_MS_CA+' %'],
+      ['Masse salariale / CA', ca?pct(tauxMS):'—', !ca?'CA non calculé':'charges de personnel / CA'],
       ['Écart à l\'objectif', (ecart>=0?'+':'')+euro(ecart), caObj?(ecart>=0?'objectif atteint':'sous l\'objectif'):'']
     ].map(function(x){return '<div class="kpi"><div class="label">'+x[0]+'</div><div class="value">'+x[1]+'</div><div class="note">'+x[2]+'</div></div>';}).join('');
   }
@@ -7591,7 +7619,6 @@ function renderSynthese(){
   // Évaluer la santé : équilibré si résultat >= 0 et MS/CA raisonnable
   let problemes = [];
   if(net < 0) problemes.push(res.libMin + ' déficitaire');
-  if(tauxMS > SEUIL_MS_CA) problemes.push('masse salariale au-dessus de '+SEUIL_MS_CA+' % du CA');
   if(caObj && ecart < -caObj*0.03) problemes.push('objectif de CA non atteint');
 
   if(verdict){
@@ -7627,8 +7654,7 @@ function renderSynthese(){
     if(net > 0) p += 'Il dégage un ' + res.libMin + ' positif de <b>' + euro(net) + '</b>. ';
     else if(net < 0) p += 'Il présente un ' + res.libMin + ' déficitaire de <b>' + euro(Math.abs(net)) + '</b>. ';
     // MS
-    if(tauxMS > SEUIL_MS_CA) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) dépasse le seuil de ' + SEUIL_MS_CA + ' %. ';
-    else if(tauxMS > 0) p += 'La masse salariale (' + pct(tauxMS) + ' du CA) reste sous le seuil de ' + SEUIL_MS_CA + ' %. ';
+    if(tauxMS > 0) p += 'La masse salariale représente ' + pct(tauxMS) + ' du CA (à comparer avec 2025, 2026 et la moyenne du réseau ci-dessous). ';
     // Tensions
     if(nbCritiques > 0) p += nbCritiques + ' semaine' + (nbCritiques>1?'s':'') + ' de tension à surveiller.';
     else p += 'Aucune semaine en tension critique.';
@@ -8825,7 +8851,7 @@ function isFilled(v) { return v !== null && v !== undefined && v !== ''; }
 // absentéisme mensuel, mois validés, postes de charges du REX (6e jalon). Les charges CG sont suivies à part.
 // Perspectives & contexte 2027 (nov. 2026) : première étape OBLIGATOIRE de l'Objectif, rédigée par le REX
 // avant de fixer son TXR cible et son objectif de CA ; exigée pour soumettre le budget.
-const CONTEXTE_MIN_CARACTERES = 80;
+const CONTEXTE_MIN_CARACTERES = 20;
 function contexteRedige(a){return !!a&&String(a.perspectives||'').trim().length>=CONTEXTE_MIN_CARACTERES;}
 function contexteManque(a){return Math.max(0,CONTEXTE_MIN_CARACTERES-String((a&&a.perspectives)||'').trim().length);}
 // Repères 2026 issus du tableau de bord du contrôle de gestion (nov. 2026) : réalisé 2025, réalisé 2026 des mois clos,
@@ -8857,11 +8883,11 @@ function agenceDuTDB(nom,agences){
 // Lecture du classeur : feuilles = { nomOnglet: lignes[][] }. Onglet par agence : A1 = nom, colonnes « B mm-26 » = budget,
 // deux colonnes avant = réalisé du mois. Onglet « 26 Vs 25 » : CA, charges externes, charges de personnel et REX 2025.
 function lireTableauDeBord(feuilles,agences){
-  let parAgence={},inconnues=[];
+  let parAgence={},inconnues=[],annee=null;
   Object.keys(feuilles).forEach(function(onglet){
     let rows=feuilles[onglet]||[];if(!rows.length)return;
     let tete=rows[0]||[];
-    let cols=[];tete.forEach(function(h,j){let mt=/^B\s*(\d{1,2})-26/.exec(String(h||'').trim());if(mt)cols[+mt[1]-1]=j;});
+    let cols=[];tete.forEach(function(h,j){let mt=/^B\s*(\d{1,2})-(\d\d)/.exec(String(h||'').trim());if(mt){cols[+mt[1]-1]=j;annee=2000+(+mt[2]);}});
     if(cols.filter(function(x){return x!==undefined;}).length<12)return;
     let ag=agenceDuTDB(tete[0],agences);
     if(!ag){let n=normRep(tete[0]);if(n&&!/VYV/.test(n))inconnues.push(String(tete[0]).trim());return;}
@@ -8872,7 +8898,8 @@ function lireTableauDeBord(feuilles,agences){
     let mc=0;["Chiffre d'affaires",'Charges de personnel',"RESULTAT D'EXPLOITATION"].forEach(function(l){let s=reel[l]||[];for(let m=0;m<12;m++)if(s[m]!==null&&s[m]!==undefined&&s[m]!==0&&m+1>mc)mc=m+1;});
     parAgence[ag]={nomTDB:String(tete[0]).trim(),moisClos:mc,reel:reel,budget:budget};
   });
-  let comp=Object.keys(feuilles).find(function(o){return /26\s*VS\s*25/i.test(o);});
+  // Onglet de comparaison « 26 Vs 25 » (ou « 25 Vs 24 en € ») : année précédente, quatre indicateurs
+  let comp=Object.keys(feuilles).find(function(o){return /\d\d\s*VS\s*\d\d/i.test(o)&&!/%/.test(o);});
   if(comp){
     let rows=feuilles[comp],tete=rows[0]||[],col={};
     tete.forEach(function(h,j){let i=MOIS_TDB.indexOf(normRep(h).toLowerCase());if(i>=0)col[i]=j+1;});
@@ -8884,7 +8911,42 @@ function lireTableauDeBord(feuilles,agences){
       parAgence[cour].n1[k]=MOIS_TDB.map(function(_,m){return col[m]!==undefined?valRep(r[col[m]]):null;});
     });
   }
-  return {parAgence:parAgence,inconnues:inconnues};
+  return {annee:annee||2026,parAgence:parAgence,inconnues:inconnues};
+}
+// Moyenne du réseau (agences opérationnelles, hors structures) : somme des réalisés, budgets et estimations,
+// enregistrée sous l'agence « __RESEAU__ » et lisible par tous les profils. Les ratios au CA donnent la moyenne pondérée.
+const AGENCE_RESEAU='__RESEAU__';
+function agregerReseau(rows){
+  let ag={moisClos:12,reel:{},budget:{},estim:{},nbAgences:0};
+  Object.keys(rows).forEach(function(nom){
+    let r=rows[nom];if(nom===AGENCE_RESEAU||STRUCTURES.indexOf(nom)>=0||!r||!r.reel)return;
+    ag.nbAgences++;ag.moisClos=Math.min(ag.moisClos,r.moisClos||0);
+    ['reel','budget'].forEach(function(q){Object.keys(r[q]||{}).forEach(function(l){let t=ag[q][l]||(ag[q][l]=Array(12).fill(0));for(let m=0;m<12;m++)t[m]+=valRep(r[q][l][m])||0;});});
+    INDICATEURS_REPERES.forEach(function(ind){let t=ag.estim[ind.cle]||(ag.estim[ind.cle]=Array(12).fill(0)),b=serieRep(r,'budget',ind.cle);for(let m=0;m<12;m++){let e=estimRep(r,ind.cle,m);t[m]+=e===null?(valRep(b[m])||0):e;}});
+  });
+  return ag;
+}
+// Ligne d'une année : 2026 = la ligne courante, 2025 = l'historique importé (classeur de l'exercice 2025)
+function anneeRep(r,annee){if(!r)return null;if(annee===2026)return r.reel?r:null;return r.histo&&r.histo[annee]&&r.histo[annee].reel?r.histo[annee]:null;}
+// Part d'une ligne dans le CA sur les mois clos (2026 : janvier à octobre ; 2025 : l'année)
+function ratioLigneRep(row,label){
+  if(!row||!row.reel)return null;let mc=row.moisClos||0,ca=row.reel["Chiffre d'affaires"],s=row.reel[label];
+  if(!mc||!ca||!s)return null;let c=sommeRep(ca,0,mc);return c?sommeRep(s,0,mc)/c*100:null;
+}
+// Ratio d'un mois (masse salariale / CA…) : réalisé, ou estimation du CG pour les mois non clos
+function ratioMoisRep(row,cleNum,m){
+  if(!row||!row.reel)return null;
+  let v=function(cle){let ind=indRep(cle);if(m<(row.moisClos||0))return valRep((row.reel[ind.label]||[])[m]);let e=estimRep(row,cle,m);return e;};
+  let n=v(cleNum),c=v('ca');return n===null||!c?null:n/c*100;
+}
+// Lignes du compte de résultat comparées en % du CA dans la Synthèse
+const LIGNES_COMPARAISON=['Carburant','Crédit bail et location véhicules','Entretiens véhicules - batîment','Location immobilières et charges locatives','Assurance','Péages','Honoraires et prestations de services','Matériels ambulances','Autres Achats et charges externes','Impôts, taxes et versements assimilés','Charges de personnel',"EXCEDENT BRUT D'EXPLOITATION",'Dotations amortissements et provisions',"RESULTAT D'EXPLOITATION"];
+function comparaisonsLignes(a,r,reseau){
+  let ca27=budget2027Rep(a,'ca');
+  return LIGNES_COMPARAISON.map(function(l){
+    return {label:l,r2025:ratioLigneRep(anneeRep(r,2025),l),r2026:ratioLigneRep(anneeRep(r,2026),l),r2027:ca27?ann(a,l)/ca27*100:null,
+      res2025:ratioLigneRep(anneeRep(reseau,2025),l),res2026:ratioLigneRep(anneeRep(reseau,2026),l)};
+  });
 }
 function indRep(cle){return INDICATEURS_REPERES.find(function(i){return i.cle===cle;});}
 function serieRep(r,quoi,cle){let ind=indRep(cle);if(!r||!ind)return [];if(quoi==='n1')return (r.n1&&r.n1[cle])||[];let s=r[quoi]&&r[quoi][ind.label];return s||[];}
@@ -8896,7 +8958,7 @@ function atterrissage2026(r,cle){
   for(let m=mc;m<12;m++){let e=estimRep(r,cle,m);if(e===null){manquants++;e=valRep(bu[m])||0;}tot+=e;}
   return {val:tot,manquants:manquants,moisClos:mc};
 }
-function annuel2025(r,cle){let s=serieRep(r,'n1',cle);return s.length?sommeRep(s,0,12):null;}
+function annuel2025(r,cle){let h=anneeRep(r,2025);if(h){let s=serieRep(h,'reel',cle);if(s.length)return sommeRep(s,0,12);}let s=serieRep(r,'n1',cle);return s.length?sommeRep(s,0,12):null;}
 function budget2027Rep(a,cle){
   if(!a)return 0;
   if(cle==='ca'){let t=0;for(let m=0;m<12;m++)t+=monthCA(a,m);return t;}
@@ -8908,7 +8970,7 @@ function fmtPctRep(v){return (Math.round(v*10)/10).toLocaleString('fr-FR')+' %';
 function fmtKRep(v){return Math.round(v/1000).toLocaleString('fr-FR')+' k€';}
 // Repères d'une agence pour la décision : tableau 2025 / atterrissage 2026 / budget 2027, fiabilité du budget 2026, alertes
 function reperesAgence(a,r){
-  if(!r)return null;
+  if(!r||!r.reel)return null;
   let lignes=INDICATEURS_REPERES.map(function(ind){
     let at=atterrissage2026(r,ind.cle),v27=budget2027Rep(a,ind.cle);
     return {cle:ind.cle,lib:ind.lib,v2025:annuel2025(r,ind.cle),v2026:at.val,v2027:v27,manquants:at.manquants};
@@ -8944,17 +9006,27 @@ function reperesAgence(a,r){
 
 // ── Repères 2026 : tableau de bord du contrôle de gestion (parité avec la version React, nov. 2026) ──
 let REPERES_CACHE=null,TDB_ETAT={reperes:{},lignes:[],choix:null};
+// { agence: { ...ligne 2026, histo: { 2025: ligne 2025 } } } ; « __RESEAU__ » = moyenne du réseau (lisible par tous)
 async function chargerReperesMono(agence){
-  let req=sb.from('reperes').select('agence,data,updated_at').eq('annee',2026);
-  if(agence)req=req.eq('agence',agence);
+  let req=sb.from('reperes').select('agence,annee,data,updated_at');
+  if(agence)req=req.in('agence',[agence,AGENCE_RESEAU]);
   let res=await req;if(res.error)return {};
-  let map={};(res.data||[]).forEach(function(x){map[x.agence]=Object.assign({},x.data||{},{majLe:x.updated_at});});
+  let map={};(res.data||[]).forEach(function(x){
+    let d=Object.assign({},x.data||{},{majLe:x.updated_at}),cur=map[x.agence]||(map[x.agence]={histo:{}});
+    if(x.annee===2026)Object.assign(cur,d,{histo:cur.histo});else cur.histo[x.annee]=d;
+  });
   return map;
 }
-async function ecrireRepereMono(agence,data){
-  let ex=(await sb.from('reperes').select('agence,data').eq('agence',agence).eq('annee',2026).maybeSingle()).data;
-  if(ex)return sb.from('reperes').update({data:Object.assign({},ex.data||{},data),updated_at:new Date().toISOString()}).eq('agence',agence).eq('annee',2026);
-  return sb.from('reperes').insert({agence:agence,annee:2026,data:data,updated_at:new Date().toISOString()});
+async function ecrireRepereMono(agence,annee,data,remplacer){
+  let ex=(await sb.from('reperes').select('agence,data').eq('agence',agence).eq('annee',annee).maybeSingle()).data;
+  let d=remplacer?data:Object.assign({},(ex&&ex.data)||{},data);
+  if(ex)return sb.from('reperes').update({data:d,updated_at:new Date().toISOString()}).eq('agence',agence).eq('annee',annee);
+  return sb.from('reperes').insert({agence:agence,annee:annee,data:d,updated_at:new Date().toISOString()});
+}
+async function majReseauMono(annee){
+  let rows={},res=await sb.from('reperes').select('agence,data').eq('annee',annee);
+  (res.data||[]).forEach(function(x){if(x.agence!==AGENCE_RESEAU)rows[x.agence]=x.data;});
+  return ecrireRepereMono(AGENCE_RESEAU,annee,agregerReseau(rows),true);
 }
 function periodeReperes(r){
   let mc=(r&&r.moisClos)||0;if(!mc)return 'aucun mois clos';
@@ -9001,6 +9073,7 @@ async function renderReperes(){
   let liste=q('tdbListe');if(!liste)return;
   liste.innerHTML='<p class="hint">Chargement…</p>';
   let reperes=await chargerReperesMono();
+  Object.keys(reperes).forEach(function(n){if(n===AGENCE_RESEAU||!reperes[n].reel)delete reperes[n];});
   if(PROFILE.role==='dr'){let aff=await loadAffectationMap();Object.keys(reperes).forEach(function(n){let d=aff&&aff[n];if(!d||d.id!==PROFILE.id)delete reperes[n];});}
   let bud=(await sb.from('budgets').select('agence,statut,data').eq('annee',2027)).data||[],bm={};bud.forEach(function(b){bm[b.agence]=b;});
   let lignes=avecCacheMoteur(function(){return Object.keys(reperes).map(function(nom){
@@ -9063,7 +9136,8 @@ async function enregistrerEstimTDB(){
   let nom=TDB_ETAT.choix;if(!nom)return;
   let estim={};INDICATEURS_REPERES.forEach(function(ind){estim[ind.cle]=Array(12).fill(null);});
   document.querySelectorAll('#tdbDetail input[data-cle]').forEach(function(i){if(i.value!=='')estim[i.dataset.cle][+i.dataset.m]=+String(i.value).replace(/\s/g,'').replace(',','.');});
-  let res=await ecrireRepereMono(nom,{estim:estim,estimeLe:new Date().toISOString()});
+  let res=await ecrireRepereMono(nom,2026,{estim:estim,estimeLe:new Date().toISOString()});
+  await majReseauMono(2026);
   await renderReperes();
   if(q('tdbEstimMsg'))q('tdbEstimMsg').textContent=res&&res.error?'Échec de l\'enregistrement.':'Estimation enregistrée.';
 }
@@ -9077,8 +9151,9 @@ async function importerTDB(f){
     let noms=Object.keys(res.parAgence);
     if(!noms.length){msg.textContent='Aucun onglet d\'agence reconnu dans ce fichier.';return;}
     let ok=0,echecs=[];
-    for(let i=0;i<noms.length;i++){let r=await ecrireRepereMono(noms[i],Object.assign({},res.parAgence[noms[i]],{fichier:f.name,importeLe:new Date().toISOString()}));if(r&&r.error)echecs.push(noms[i]);else ok++;}
-    msg.textContent=ok+' agence(s) et structure(s) importée(s)'+(echecs.length?' ; échec : '+echecs.join(', '):'')+(res.inconnues.length?' ; onglets non reconnus : '+res.inconnues.join(', '):'')+'.';
+    for(let i=0;i<noms.length;i++){let r=await ecrireRepereMono(noms[i],res.annee,Object.assign({},res.parAgence[noms[i]],{fichier:f.name,importeLe:new Date().toISOString()}));if(r&&r.error)echecs.push(noms[i]);else ok++;}
+    await majReseauMono(res.annee);
+    msg.textContent='Exercice '+res.annee+' : '+ok+' agence(s) et structure(s) importée(s)'+(echecs.length?' ; échec : '+echecs.join(', '):'')+(res.inconnues.length?' ; onglets non reconnus : '+res.inconnues.join(', '):'')+'.';
     await renderReperes();
   }catch(e){msg.textContent='Lecture impossible : '+(e.message||e);}
   if(q('tdbFichier'))q('tdbFichier').value='';
@@ -11288,7 +11363,7 @@ const FAQ_CG_SECTIONS = [
     ['Comment saisir les charges d\'une agence ?', 'Ouvrez l\'agence avec « Ouvrir une agence » : SOMA affiche directement l\'écran Charges CG. En haut, vérifiez les taux horaires et la ligne non-roulante, repris des Données agences et modifiables ici. Puis, pour chaque poste, choisissez le <b>mode</b> : saisie par mois, montant annuel (réparti en douze mois égaux ou au prorata du CA mensuel, selon la clé), ou pourcentage du CA ; et le <b>type</b>, fixe ou variable. Le compteur « Postes saisis » suit votre avancement. La saisie est enregistrée automatiquement. Les lignes CA et Charges de personnel sont calculées par SOMA. Six postes sont construits par le REX dans son étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du CA de chaque mois, sous-traitance et entretiens véhicules - bâtiment en montant par mois. Vos valeurs lui servent de point de départ ; vous pouvez toujours les corriger ici.'],
     ['Que fait « Pré-remplir standards » ?', 'Il pose des valeurs types, calculées sur le CA de l\'agence, sur 8 postes : carburant 5,2% du CA, crédit-bail et location de véhicules 5%, locations immobilières 2,8%, assurance 1,8%, impôts et taxes 4,8%, honoraires 2,6%, péages 1,3%, charges financières 0,2%. Attention : ces valeurs remplacent ce qui était déjà saisi sur ces 8 postes. Ajustez-les ensuite à la réalité de l\'agence.'],
     ['Fixe ou variable : à quoi ça sert ?', 'Ce classement ne change pas le résultat. Il sert à l\'analyse : l\'écran Contrôles et la synthèse séparent les charges fixes des charges variables, pour juger la sensibilité du résultat à l\'activité.'],
-    ['Que comprend exactement la masse salariale du prévisionnel ?', 'Pour les roulants : les heures travaillées au coût horaire chargé du mois (taux du 1er janvier, puis du 1er juin), les heures supplémentaires selon leur majoration réelle (25% ou 50%), la part de salaire maintenue pendant les arrêts maladie et AT, et la provision de 10% de prime de précarité sur les heures en CDD. Pour les non-roulants : la ligne globale mensuelle telle que saisie, plus la variation du stock de leurs congés si le nombre d\'ETP non roulants est saisi. S\'y ajoutent les heures supplémentaires des improductifs, les indemnités et, sur la paie de janvier, les variables de décembre 2026. C\'est le coût complet du personnel, charges patronales comprises. Le seuil de référence du ratio masse salariale / CA est de 62 % sur l\'année.'],
+    ['Que comprend exactement la masse salariale du prévisionnel ?', 'Pour les roulants : les heures travaillées au coût horaire chargé du mois (taux du 1er janvier, puis du 1er juin), les heures supplémentaires selon leur majoration réelle (25% ou 50%), la part de salaire maintenue pendant les arrêts maladie et AT, et la provision de 10% de prime de précarité sur les heures en CDD. Pour les non-roulants : la ligne globale mensuelle telle que saisie, plus la variation du stock de leurs congés si le nombre d\'ETP non roulants est saisi. S\'y ajoutent les heures supplémentaires des improductifs, les indemnités et, sur la paie de janvier, les variables de décembre 2026. C\'est le coût complet du personnel, charges patronales comprises.'],
     ['À quoi sert l\'écran Contrôles ?', 'Sur l\'agence ouverte, il récapitule charges fixes, charges variables, charges de personnel, heures supplémentaires et résultat, et liste les contrôles de cohérence. Ces contrôles ne bloquent rien. Quand vous ouvrez un budget soumis, SOMA affiche aussi ses anomalies : coût horaire manquant, CA supérieur à la capacité, congés non équilibrés, TXR manquant, ligne non-roulante absente, ratio de maintien vide, taux de juin absent.'],
     ['Comment saisir Formation, Exceptionnel, Réseau adhérent et Siège ?', 'Ces quatre structures se gèrent comme une agence que vous complétez entièrement : ouvrez-la avec « Ouvrir une agence » (elles sont en fin de liste), l\'écran affiche alors le <b>Budget 2027</b> de la structure : créez une ou plusieurs lignes de <b>chiffre d\'affaires</b> (une par source, nom libre) et une ou plusieurs lignes de <b>masse salariale</b> (nom libre), et saisissez chaque montant mois par mois (bouton « ÷12 » pour répartir un montant annuel). Les autres charges se saisissent dans « Charges CG ». Elles n\'ont ni activités (sanitaire, assis, saisonnier, funéraire), ni équipe, ni calendrier, ni REX : c\'est vous qui préparez leur budget. Le directeur financier les consulte en lecture seule. Elles entrent dans le compte de résultat consolidé du réseau (écran Consolidation).'],
     ['Où saisir l\'impôt sur les sociétés et la participation ?', 'Sur le Siège uniquement : ouvrez SIEGE, écran « Charges CG », lignes « Impôt sur les sociétés » et « Participation aux bénéfices ». Le résultat net = résultat courant avant impôt + résultat exceptionnel − impôt sur les sociétés − participation. Ces lignes n\'existent pas pour les agences et apparaissent dans le consolidé réseau.'],
@@ -11313,7 +11388,7 @@ const FAQ_CG_SECTIONS = [
 const FAQ = {
   rex: [
     ['Que sont « Vos repères 2026 » sur l\'écran Objectif ?', 'Le réalisé 2025 et l\'atterrissage 2026 de votre agence (réalisé des mois clos et estimation du contrôle de gestion pour les derniers mois), issus du tableau de bord : CA, charges externes, charges de personnel, résultat d\'exploitation et leurs ratios au CA, à côté de votre budget 2027. C\'est une information pour fixer votre objectif et rédiger votre contexte : rien n\'est repris automatiquement dans votre budget. Votre DR et la direction voient les mêmes repères sur la fiche de validation.'],
-    ['Pourquoi dois-je rédiger les « Perspectives & contexte 2027 » avant mon objectif ?', 'C\'est la première étape de l\'écran Objectif, et elle est obligatoire : décrivez ce qui change en 2027 (contrats gagnés ou perdus, évolution de l\'activité, gardes, effectifs, véhicules…). L\'objectif de CA et le TXR cible se débloquent une fois ce texte rédigé (80 caractères au minimum), et il est exigé pour soumettre le budget. Il s\'affiche sur la fiche de validation du DR, du contrôle de gestion et de la direction : c\'est lui qui justifie vos chiffres.'],
+    ['Pourquoi dois-je rédiger les « Perspectives & contexte 2027 » avant mon objectif ?', 'C\'est la première étape de l\'écran Objectif, et elle est obligatoire : décrivez ce qui change en 2027 (contrats gagnés ou perdus, évolution de l\'activité, gardes, effectifs, véhicules…). L\'objectif de CA et le TXR cible se débloquent une fois ce texte rédigé (20 caractères au minimum), et il est exigé pour soumettre le budget. Il s\'affiche sur la fiche de validation du DR, du contrôle de gestion et de la direction : c\'est lui qui justifie vos chiffres.'],
     ['Par où je commence ?', 'Suivez les étapes dans l\'ordre de la barre latérale : d\'abord votre objectif de chiffre d\'affaires, puis votre équipe, puis la présence et les heures supplémentaires, vos six postes de charges (étape « Charges »), et enfin le prévisionnel et la synthèse. À chaque écran, SOMA vous guide et calcule les conséquences de vos choix. Vous n\'avez jamais à tout remplir d\'un coup : vous avancez pas à pas.'],
     ['Comment saisir mes références CA journalières ?', 'Sur l\'écran Références CA, indiquez pour chaque mois le chiffre d\'affaires moyen d\'une journée selon son type : jour de semaine normal, jour de semaine pendant les vacances scolaires, samedi, dimanche, jour férié. Il y a un tableau par activité : sanitaire, et saisonnier ou transport de personnes si vous les avez cochés sur l\'écran Objectif. Partez de votre réalisé 2026 et de ce que vous savez de 2027. Le calendrier applique ensuite ces montants à chaque jour de 2027 (vacances de votre zone, jours fériés) : c\'est ce qui donne votre CA budgété, mois par mois. Votre objectif de CA se saisit à part, sur l\'écran Objectif ; la synthèse compare les deux.'],
     ['Mon équipe est-elle déjà saisie ?', 'Oui. Le contrôle de gestion a chargé votre équipe à partir du registre du personnel : roulants (DEA, AA, taxi, TPMR), régulateurs, REX et facturières, avec leur contrat (CDI ou CDD), leurs heures hebdomadaires et leurs dates d\'entrée ou de sortie prévues en 2027. Les autres emplois (administratifs, apprentis, stagiaires) n\'y figurent pas. Vérifiez chaque ligne : « + Salarié » ajoute une personne, la croix en bout de ligne la retire, et « + Poste prévisionnel » ajoute un recrutement prévu (par défaut un CDD ambulancier de juin à septembre, à ajuster). « Importer depuis Excel » permet aussi de charger votre propre fichier : il remplace alors toute la liste, après confirmation. Les heures hebdomadaires viennent de l\'horaire mensuel du registre : un temps plein (151,67 h ou 152 h par mois) donne 35 h. « Trier par », au-dessus du tableau, classe la liste par nom (de A à Z ou de Z à A) ou par qualification, et un clic sur l\'en-tête « Nom » inverse l\'ordre. Le tri ne change que l\'affichage.'],
@@ -11349,7 +11424,7 @@ const FAQ = {
     ['Pourquoi mon prévisionnel s\'arrête-t-il au résultat d\'exploitation ?', 'Votre budget est jugé sur ce que vous pilotez : le chiffre d\'affaires, la masse salariale et les charges d\'exploitation. Les lignes suivantes (charges financières, résultat exceptionnel, impôt sur les sociétés, participation) sont gérées au niveau du siège ; elles sont visibles à partir du directeur régional.'],
     ['Je suis responsable de deux agences : comment passer de l\'une à l\'autre ?', 'Si l\'administrateur vous a rattaché à plusieurs agences, un sélecteur apparaît en haut de l\'écran, à côté de votre nom. Choisissez l\'agence : son budget s\'ouvre, avec ses propres écrans, sa propre équipe et son propre circuit de validation. Votre dernier choix est retenu à la prochaine connexion. Chaque budget se soumet séparément.'],
     ['Comment annuler une modification ?', 'Comme dans Excel : la flèche ↶ en haut de l\'écran (ou Ctrl+Z, Cmd+Z sur Mac) annule la dernière modification, et vous pouvez remonter jusqu\'à 50 actions. La flèche ↷ (ou Ctrl+Y) rétablit ce que vous venez d\'annuler. Une saisie dans une même case compte pour une seule action. L\'annulation est enregistrée comme une modification normale. L\'historique repart à zéro quand vous changez d\'agence ou de version.'],
-    ['Quel niveau de masse salariale viser ?', 'Le seuil est de 62 % du chiffre d\'affaires sur l\'année (charges de personnel, quotes-parts comprises). Au-dessus, la Synthèse, le Prévisionnel et le centre d\'attention le signalent en orange. Sur la Synthèse, le tableau « Masse salariale / CA, mois par mois » donne le ratio de chaque mois : vert jusqu\'à 62 %, orange au-delà. Un mois au-dessus du seuil n\'est pas une erreur, les mois creux le sont souvent : c\'est la moyenne annuelle qui compte.'],
+    ['Quel niveau de masse salariale viser ?', 'SOMA n\'impose pas de seuil. La Synthèse situe votre masse salariale (charges de personnel, quotes-parts comprises) face à votre réalisé 2025, à votre atterrissage 2026 et à la moyenne des agences du réseau, sur l\'année et mois par mois. Ce sont des repères pour expliquer vos choix, pas des limites : les mois creux ont souvent un ratio plus élevé, c\'est l\'année qui compte.'],
     ['Que montre le graphique « CA mensuel » de la Synthèse ?', 'Dans « Graphiques détaillés », chaque barre porte le CA du mois. Dessous, « sem. » donne le nombre de jours de semaine hors vacances scolaires et « VS » le nombre de jours de semaine pendant les vacances scolaires de votre zone. Ces deux chiffres expliquent souvent les écarts de CA d\'un mois à l\'autre.'],
     ['Qui saisit les charges hors personnel ?', 'Vous saisissez six postes à l\'étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du chiffre d\'affaires de chaque mois (le taux peut changer d\'un mois à l\'autre), sous-traitance et entretiens véhicules - bâtiment en montant fixe par mois. Les cases partent des valeurs du contrôle de gestion quand il y en a. Les autres charges (loyers, assurances, crédit-bail…) sont saisies par le contrôleur de gestion et apparaissent dans votre prévisionnel au fur et à mesure. Si un de ces montants vous semble faux, signalez-le au contrôle de gestion.'],
     ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'Les salaires de base sont mensualisés : le même montant chaque mois (heures du contrat × 52/12 × taux horaire), au prorata en cas d\'entrée ou de sortie. Seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) suivent les périodes de paie de 4 ou 5 semaines : janvier, avril, juillet et octobre en comptent 5, et les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend les variables de décembre 2026. La masse salariale varie donc surtout avec les heures supplémentaires, les absences et la hausse du taux horaire de juin. La masse salariale du mois comprend aussi la variation du stock de congés payés des roulants (provision) : les jours acquis dans le mois l\'augmentent, les jours posés la diminuent, chacun valorisé jours × 5,83 h × coût horaire chargé ; les mois de congés sont donc allégés, et sur l\'année l\'effet est nul quand les congés posés égalent les congés acquis. Un bandeau le rappelle sur l\'écran Prévisionnel.'],
