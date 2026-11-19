@@ -3259,7 +3259,7 @@ async function renderValidation() {
       <div id="budgetDetail_${b.id}" style="display:none;margin-bottom:12px;padding:12px;background:var(--bg2);border:1px solid var(--border)"></div>
 
       ${histHtml}
-      ${canValidate ? `
+      ${canValidate && !(PROFILE && PROFILE.consultatif) ? `
       <div class="validActions">
         <button class="ok" onclick="openModal('${b.id}','valide','${role}')">✓ Valider</button>
         <button class="danger" onclick="openModal('${b.id}','refuse','${role}')">✕ Refuser</button>
@@ -3753,7 +3753,7 @@ function joursSemaine(a,w){return indexCal(a).parSemaine.get(w)||[];}
 function genCal(a){a.cal=[];for(let m=0;m<12;m++){let days=new Date(2027,m+1,0).getDate();for(let d=1;d<=days;d++){let dt=new Date(2027,m,d),type=typeDay(dt,a),ca={san:+a.refs.san[m][type]||0,sai:+a.refs.sai[m][type]||0,tp:+a.refs.tp[m][type]||0},ref=null,aj=a.ajustJours&&a.ajustJours[cleJour(m,d)];if(aj){ref={san:ca.san,sai:ca.sai,tp:ca.tp};['san','sai','tp'].forEach(function(k){if(aj[k]!==undefined&&aj[k]!==null&&aj[k]!=='')ca[k]=+aj[k]||0;});}a.cal.push({month:m,day:d,week:isoWeek(dt),type,ca,total:ca.san+ca.sai+ca.tp,ref})}}}
 // Clé d'un jour 2027 (« 2027-03-16 ») ; a.ajustJours[clé] = {san?, sai?, tp?} remplace la référence CA de ce jour (ajustement fait sur le calendrier)
 function cleJour(m,d){return '2027-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
-function monthCA(a,m){if(estStructure(a))return caStructure(a,m);if(!a.cal.length)genCal(a);return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)+caFunMois(a,m)}
+function monthCA(a,m){if(estStructure(a))return caStructure(a,m);if(!a.cal||!a.cal.length){if(!a.refs)return caFunMois(a,m);genCal(a);}return a.cal.filter(d=>d.month===m).reduce((s,d)=>s+d.total,0)+caFunMois(a,m)}
 // Activité funéraire (nov. 2026, agence de Cahors) : CA commercial saisi par mois, réparti à parts égales sur les jours du mois.
 // Sans besoin d'équipage : il entre dans le CA (compte de résultat, charges en % du CA) mais ni dans les heures de besoin
 // (qui viennent du CA des jours du calendrier, a.cal[].total), ni dans le TXR, ni dans l'objectif de CA (transport).
@@ -4816,7 +4816,8 @@ async function renderValidationCollegial(){
   budgets.forEach(function(b){
     if(!b.data || !b.data.validation) return; // jamais soumis : rien à valider
     let v = ensureValidation(b.data.validation);
-    let d = budgetData(b.data);
+    // Données normalisées (valeurs par défaut d'une agence) : un budget incomplet ne casse pas la fiche
+    let d = budgetData(b.data); try { d = Object.assign(agency(b.agence), JSON.parse(JSON.stringify(d)), {name: b.agence}); convertirCPOuvrables(d); } catch(e){}
     let item = { agence:b.agence, updated:b.updated_at, v:v, d:d };
     // Filtrer DR sur ses agences
     if(role === 'dr' && affMap){
@@ -5085,12 +5086,14 @@ function validationCard(it, role){
     + ficheDecisionsHTML(it.d || {}, it.agence)
     + (it.updated ? '<div class="valCardMeta">Mis à jour le '+new Date(it.updated).toLocaleDateString('fr-FR')+'</div>' : '')
     + refusAnterieur
-    + '<label class="valCardCommentLabel">Commentaire (obligatoire)</label>'
-    + '<textarea class="valCardComment" id="valComment_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" rows="2" placeholder="Justifiez votre décision…" oninput="updateValButtons(\''+safe+'\')"></textarea>'
-    + '<div class="valCardActions" data-visite="val-decision">'
-    +   '<button class="valBtnValider" id="valOk_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" disabled onclick="deciderBudget(\''+safe+'\',\'valide\')">✓ Valider</button>'
-    +   '<button class="valBtnRefuser" id="valNo_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" disabled onclick="deciderBudget(\''+safe+'\',\'refuse\')">✗ Refuser</button>'
-    + '</div>'
+    + (PROFILE && PROFILE.consultatif
+      ? '<div class="valCardMeta" data-testid="val-consultatif" style="margin-top:10px">👁 Profil consultatif : vous voyez la fiche et tous les écrans, la décision appartient au directeur financier.</div>'
+      : '<label class="valCardCommentLabel">Commentaire (obligatoire)</label>'
+        + '<textarea class="valCardComment" id="valComment_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" rows="2" placeholder="Justifiez votre décision…" oninput="updateValButtons(\''+safe+'\')"></textarea>'
+        + '<div class="valCardActions" data-visite="val-decision">'
+        +   '<button class="valBtnValider" id="valOk_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" disabled onclick="deciderBudget(\''+safe+'\',\'valide\')">✓ Valider</button>'
+        +   '<button class="valBtnRefuser" id="valNo_'+safe.replace(/[^a-zA-Z0-9]/g,'_')+'" disabled onclick="deciderBudget(\''+safe+'\',\'refuse\')">✗ Refuser</button>'
+        + '</div>')
     + '</div>';
 }
 
@@ -7529,7 +7532,8 @@ function profilEffectifMono(d){
   if(!d) return d;
   let supp = Array.isArray(d.roles_supp) ? d.roles_supp.filter(function(r){ return r && r !== d.role; }) : [];
   let actif = d.role_actif && (d.role_actif === d.role || supp.indexOf(d.role_actif) >= 0) ? d.role_actif : d.role;
-  return Object.assign({}, d, { rolePrincipal: d.role, rolesDispo: [d.role].concat(supp), role: actif });
+  let consult = Array.isArray(d.roles_consultatifs) ? d.roles_consultatifs : [];
+  return Object.assign({}, d, { rolePrincipal: d.role, rolesDispo: [d.role].concat(supp), rolesConsultatifs: consult, consultatif: actif !== d.role && consult.indexOf(actif) >= 0, role: actif });
 }
 function majChoixProfil(){
   let l = q('choixProfil'), s = q('choixProfilSelect'); if(!l || !s) return;
@@ -7537,7 +7541,7 @@ function majChoixProfil(){
   let roles = p && p.rolesDispo || [];
   if(roles.length < 2){ l.style.display = 'none'; return; }
   l.style.display = 'flex';
-  s.innerHTML = roles.map(function(r){ return '<option value="' + r + '"' + (r === p.role ? ' selected' : '') + '>' + (LIBELLES_ROLES[r] || r) + '</option>'; }).join('');
+  s.innerHTML = roles.map(function(r){ return '<option value="' + r + '"' + (r === p.role ? ' selected' : '') + '>' + (LIBELLES_ROLES[r] || r) + (r !== p.rolePrincipal && (p.rolesConsultatifs || []).indexOf(r) >= 0 ? ' (consultation)' : '') + '</option>'; }).join('');
 }
 async function changerRoleMono(r){
   let s = q('choixProfilSelect'); if(s) s.disabled = true;
