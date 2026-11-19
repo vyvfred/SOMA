@@ -3869,6 +3869,23 @@ function refAgenceSeuilsBase(a) {
   };
 }
 function hsTot(a){return hsRows(a).reduce((o,r)=>{o.ca+=r.ca;o.need+=r.hours;o.av+=r.av;o.hs+=r.hs;return o},{ca:0,need:0,av:0,hs:0})}
+// Provision pour congés payés (nov. 2026) : la charge de personnel du mois comprend la variation du stock de congés
+// des roulants (+ jours acquis dans le mois, − jours posés dans le mois), valorisée jours × 35/6 h × coût horaire chargé du mois.
+// Les mois où l'équipe part en congés (souvent les mois faibles en CA), la reprise de provision diminue la charge ;
+// sur l'année, la somme des variations est nulle quand les congés posés égalent les congés acquis.
+function cpAcquisMois(a,m){
+  let tauxMal=a.sick&&a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]/100:0,ref='2027-'+String(m+1).padStart(2,'0')+'-15';
+  return (a.employees||[]).filter(estRoulantPart).reduce(function(s,e){
+    if(!empPresent(e,ref))return s;
+    return s+CP_JOURS_MOIS*(1-tauxMal*(1-CP_ACQUIS_MALADIE))*((+e.hours||0)/35)*partRoulant(e);
+  },0);
+}
+function cpPrisMois(a,m){
+  let s=0;
+  needWeeks(a).forEach(function(w){if(moisDeSemaine(a,w.week).indexOf(m)>=0)s+=absPartMois(a,w.week,'cp',m);});
+  return s;
+}
+function variationStockCPMois(a,m){if(!a||estStructure(a)||!a.employees||!a.employees.length)return 0;return (cpAcquisMois(a,m)-cpPrisMois(a,m))*CP_HEURES_JOUR*chMois(a,m);}
 function payrollMonth(a,m){
   // Structure : charges de personnel saisies par le CG
   if(estStructure(a)) return manual(a,'Charges de personnel',m);
@@ -3927,7 +3944,7 @@ function payrollMonthCivil(a,m){
   });
   // Quote-part DR : incluse dans la ligne globale non-roulante quand elle est saisie
   let msDR = msNRMensuel(a)!==null ? 0 : (+a.drCostAnnual||0)*(+a.drPct||0)/100/12;
-  return msRoulant+msImproductif+msHSImproductif+repasMois+msDR;
+  return msRoulant+msImproductif+msHSImproductif+repasMois+msDR+variationStockCPMois(a,m); // + variation du stock de congés payés
 }
 
 // Coût horaire moyen des improductifs.
@@ -9889,7 +9906,8 @@ function payrollPayMonth(a, moisIdx) {
   let msDR = msNRMensuel(a)!==null ? 0 : (+a.drCostAnnual || 0) * (+a.drPct || 0) / 100 / 12; // mensualisé
 
   // Lissage de la 5e semaine de variables sur le trimestre (voir lissage5eSemaine)
-  return ms + msNonRoulants + msHSImp + repasPeriode + msDR + lissage5eSemaine(a, moisIdx);
+  // + variation du stock de congés payés du mois (provision : dotation des jours acquis, reprise des jours posés)
+  return ms + msNonRoulants + msHSImp + repasPeriode + msDR + lissage5eSemaine(a, moisIdx) + variationStockCPMois(a, moisIdx);
 }
 
 // ── Lissage de la 5e semaine de variables (règle du contrôle de gestion, nov. 2026) ──
@@ -10095,6 +10113,7 @@ const LIGNES_DETAIL_MS = [
   ['mal', 'Retenue maladie non maintenue'],
   ['abs', 'Retenue absences non payées'],
   ['lissage', 'Lissage de la 5e semaine de HS'],
+  ['cpvar', 'Variation du stock de congés payés (provision)'],
   ['dec', 'Variables de décembre 2026'],
   ['nr', 'Non-roulants'],
   ['dr', 'Quote-part DR'],
@@ -10134,12 +10153,14 @@ function detailMSMois(a,m){
     .reduce(function(s,e){return s+(+e.coutJour||0)*(1-partRoulant(e))*(+e.joursSem||5)*52/12;},0);
   let dr=nrLigne?0:(+a.drCostAnnual||0)*(+a.drPct||0)/100/12;
   let lis=lissage5eSemaine(a,m),dec=m===0?varDec2026Total(a):0;
+  let cpA=cpAcquisMois(a,m),cpP=cpPrisMois(a,m),cpV=variationStockCPMois(a,m);
   let det={
     base:[base,nbSal+' roulant(s) présent(s) : '+fmtH(hBase)+' (heures du contrat × part roulante × 52/12, au prorata des jours de présence) × '+ch.toFixed(2).replace('.',',')+' €/h'+(hCDD>0?' + précarité CDD 10 % sur '+fmtH(hCDD):'')],
     hs:[hsE,fmtH(hsH)+' de HS dans la période ('+p.debut.split('-').reverse().join('/')+' – '+p.fin.split('-').reverse().join('/')+', '+nbSemPeriode(p)+' sem.) × taux horaire × majoration 25 / 50 % du mois, précarité CDD comprise'],
     mal:[-malE,fmtH(malH)+' de maladie non maintenue (maladie de la période × (1 − maintien '+Math.round(rm*100)+' %)) × taux horaire'],
     abs:[-absE,fmtH(absH)+' d\'absences non payées × taux horaire'],
     lissage:[lis,lis===0?'Pas de lissage ce mois-ci':(lis<0?'Mois à 5 semaines : − 2/3 d\'une semaine moyenne de HS de la période':'+ 1/3 de la semaine de HS lissée du mois à 5 semaines du trimestre')],
+    cpvar:[cpV,'Jours acquis dans le mois '+(Math.round(cpA*10)/10).toLocaleString('fr-FR')+' j − jours posés '+(Math.round(cpP*10)/10).toLocaleString('fr-FR')+' j = '+(Math.round((cpA-cpP)*10)/10).toLocaleString('fr-FR')+' j × '+(Math.round(CP_HEURES_JOUR*100)/100).toLocaleString('fr-FR')+' h × '+ch.toFixed(2).replace('.',',')+' €/h (dotation quand l\'équipe acquiert plus qu\'elle ne pose, reprise les mois de congés)'],
     dec:[dec,m===0?'Variables de décembre 2026 saisies (chargées), payées sur la paie de janvier':'Janvier seulement'],
     nr:[nr,nrLigne?'Ligne du contrôle de gestion : brut mensuel × (1 + charges), moins la part roulante des non-roulants, moins la maladie non maintenue du mois':'Coût journalier × jours par semaine × 52/12 × part non roulante'],
     dr:[dr,nrLigne?'Incluse dans la ligne non-roulants':'Coût annuel du DR × quote-part / 12'],
@@ -10210,18 +10231,6 @@ function renderDetailMSMono(elId, toujoursOuvert){
 // Congés payés des roulants, mois par mois : acquisition (stockage) et prise (déstockage), en jours ouvrables,
 // en heures (1 j = 35/6 h) et valorisés au coût horaire chargé du mois. Stock d'ouverture au 31/12/2026 : facultatif,
 // saisi par le contrôleur de gestion (a.stockCP2026, jours ouvrables de l'équipe roulante), valorisé au coût horaire de janvier ; 0 sinon.
-function cpAcquisMois(a,m){
-  let tauxMal=a.sick&&a.sick[m]!==null&&a.sick[m]!==undefined?+a.sick[m]/100:0,ref='2027-'+String(m+1).padStart(2,'0')+'-15';
-  return (a.employees||[]).filter(estRoulantPart).reduce(function(s,e){
-    if(!empPresent(e,ref))return s;
-    return s+CP_JOURS_MOIS*(1-tauxMal*(1-CP_ACQUIS_MALADIE))*((+e.hours||0)/35)*partRoulant(e);
-  },0);
-}
-function cpPrisMois(a,m){
-  let s=0;
-  needWeeks(a).forEach(function(w){if(moisDeSemaine(a,w.week).indexOf(m)>=0)s+=absPartMois(a,w.week,'cp',m);});
-  return s;
-}
 function stockCPOuverture(a){let v=a&&a.stockCP2026;return (v===null||v===undefined||v==='')?null:Math.max(0,+v||0);}
 function tableauCPStock(a){
   let ouv=stockCPOuverture(a)||0,stockJ=ouv,stockE=ouv*CP_HEURES_JOUR*chMois(a,0);
@@ -10333,7 +10342,7 @@ function renderJustif(){
         : '<b>' + (ouv === null ? 'non saisi (le stock part de 0)' : ouv.toLocaleString('fr-FR') + ' j') + '</b>')
       + '<span class="hint" style="font-size:11px;flex-basis:100%;margin:0">Reliquat des droits acquis et non pris à la fin de 2026, issu de la paie. Sans saisie, le stock part de 0 et peut devenir négatif quand les congés posés en 2027 puisent dans les droits acquis avant.</span></div>';
     let ligneOuv = ouv !== null ? [['Stock au 31/12/2026','','','','','','','',ouv.toLocaleString('fr-FR'),n0(ouv*CP_HEURES_JOUR*(c[0]?c[0].taux:0)),'','']] : [];
-    el.innerHTML = '<p class="hint" style="font-size:12px">Congés des roulants en jours ouvrables (6 par semaine de congés). <b>Stockage</b> : jours acquis dans le mois (2,5 j par mois pour un temps plein, 80 % pendant les arrêts maladie, au prorata des heures et de la part roulante). <b>Déstockage</b> : jours posés dans le mois. Valorisation : jours × 5,83 h × coût horaire chargé du mois. Le stock part du stock au 31/12/2026 s\'il est saisi (valorisé au coût horaire de janvier), sinon de 0. Les congés sont payés dans le salaire mensualisé : la variation de stock n\'ajoute pas de charge à la masse salariale de l\'application, elle sert au suivi de la provision.</p>' + saisie
+    el.innerHTML = '<p class="hint" style="font-size:12px">Congés des roulants en jours ouvrables (6 par semaine de congés). <b>Stockage</b> : jours acquis dans le mois (2,5 j par mois pour un temps plein, 80 % pendant les arrêts maladie, au prorata des heures et de la part roulante). <b>Déstockage</b> : jours posés dans le mois. Valorisation : jours × 5,83 h × coût horaire chargé du mois. Le stock part du stock au 31/12/2026 s\'il est saisi (valorisé au coût horaire de janvier), sinon de 0. La variation du stock est comptée dans la masse salariale du mois (provision pour congés payés) : dotation quand l\'équipe acquiert plus de jours qu\'elle n\'en pose, reprise les mois de congés, qui allège la masse salariale de ces mois souvent faibles en CA.</p>' + saisie
       + tab('justif-cp', ['Mois','Coût h.','Acquis (j)','Stockage (€)','Posés (j)','Posés (h)','Déstockage (€)','Variation (€)','Stock (j)','Stock (€)','Non-roul. acquis (j)','Non-roul. posés (j)'],
         ligneOuv.concat(c.map(function(x){ return [x.lib, x.taux.toFixed(2).replace('.', ','), n1(x.acquisJ), n0(x.acquisE), n1(x.prisJ), n1(x.prisH), n0(x.prisE), (x.variationE < 0 ? '-' : '') + n0(Math.abs(x.variationE)), (Math.round(x.stockJ*10)/10).toLocaleString('fr-FR'), Math.round(x.stockE).toLocaleString('fr-FR'), n1(x.nrAcquisJ), n1(x.nrPrisJ)]; })),
         ['Année', '', n1(sum(c,'acquisJ')), n0(sum(c,'acquisE')), n1(sum(c,'prisJ')), n1(sum(c,'prisH')), n0(sum(c,'prisE')), n0(sum(c,'variationE')), n1(c[11].stockJ), n0(c[11].stockE), n1(sum(c,'nrAcquisJ')), n1(sum(c,'nrPrisJ'))]);
@@ -10956,7 +10965,7 @@ const FAQ = {
     ['Quel niveau de masse salariale viser ?', 'Le seuil est de 62 % du chiffre d\'affaires sur l\'année (charges de personnel, quotes-parts comprises). Au-dessus, la Synthèse, le Prévisionnel et le centre d\'attention le signalent en orange. Sur la Synthèse, le tableau « Masse salariale / CA, mois par mois » donne le ratio de chaque mois : vert jusqu\'à 62 %, orange au-delà. Un mois au-dessus du seuil n\'est pas une erreur, les mois creux le sont souvent : c\'est la moyenne annuelle qui compte.'],
     ['Que montre le graphique « CA mensuel » de la Synthèse ?', 'Dans « Graphiques détaillés », chaque barre porte le CA du mois. Dessous, « sem. » donne le nombre de jours de semaine hors vacances scolaires et « VS » le nombre de jours de semaine pendant les vacances scolaires de votre zone. Ces deux chiffres expliquent souvent les écarts de CA d\'un mois à l\'autre.'],
     ['Qui saisit les charges hors personnel ?', 'Vous saisissez six postes à l\'étape « Charges » : matériels ambulances, carburant, entretiens petits équipements et fournitures de bureau - vêtements en % du chiffre d\'affaires de chaque mois (le taux peut changer d\'un mois à l\'autre), sous-traitance et entretiens véhicules - bâtiment en montant fixe par mois. Les cases partent des valeurs du contrôle de gestion quand il y en a. Les autres charges (loyers, assurances, crédit-bail…) sont saisies par le contrôleur de gestion et apparaissent dans votre prévisionnel au fur et à mesure. Si un de ces montants vous semble faux, signalez-le au contrôle de gestion.'],
-    ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'Les salaires de base sont mensualisés : le même montant chaque mois (heures du contrat × 52/12 × taux horaire), au prorata en cas d\'entrée ou de sortie. Seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) suivent les périodes de paie de 4 ou 5 semaines : janvier, avril, juillet et octobre en comptent 5, et les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend les variables de décembre 2026. La masse salariale varie donc surtout avec les heures supplémentaires, les absences et la hausse du taux horaire de juin. Un bandeau le rappelle sur l\'écran Prévisionnel.'],
+    ['Pourquoi la masse salariale varie-t-elle d\'un mois à l\'autre ?', 'Les salaires de base sont mensualisés : le même montant chaque mois (heures du contrat × 52/12 × taux horaire), au prorata en cas d\'entrée ou de sortie. Seules les variables (heures supplémentaires, retenues pour maladie non maintenue ou absence non payée) suivent les périodes de paie de 4 ou 5 semaines : janvier, avril, juillet et octobre en comptent 5, et les heures supplémentaires de la 5e semaine sont lissées sur le trimestre. La paie de janvier comprend les variables de décembre 2026. La masse salariale varie donc surtout avec les heures supplémentaires, les absences et la hausse du taux horaire de juin. La masse salariale du mois comprend aussi la variation du stock de congés payés des roulants (provision) : les jours acquis dans le mois l\'augmentent, les jours posés la diminuent, chacun valorisé jours × 5,83 h × coût horaire chargé ; les mois de congés sont donc allégés, et sur l\'année l\'effet est nul quand les congés posés égalent les congés acquis. Un bandeau le rappelle sur l\'écran Prévisionnel.'],
     ['Mon agence a une activité funéraire : comment la budgéter ?', 'Cochez <b>Funéraire</b> dans les activités (écran Objectif), puis saisissez le <b>CA de chaque mois</b> dans le bloc « Funéraire » des Références CA. Le montant du mois est réparti à parts égales sur chaque jour du calendrier. C\'est une activité commerciale sans besoin d\'équipage : elle compte dans le chiffre d\'affaires et le compte de résultat (et dans les charges calculées en % du CA), mais pas dans les heures nécessaires, les heures supplémentaires, le TXR ni l\'objectif de CA, qui portent sur le transport.'],
   ],
   cg: FAQ_CG_SECTIONS.reduce(function(l, sct){ return l.concat(sct.items); }, []),
